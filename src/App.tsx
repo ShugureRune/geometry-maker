@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
 
 export default function App() {
+  const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState('undefined-heartbeat');
   const [ratio, setRatio] = useState<Ratio>('16:9');
   const [background, setBackground] = useState<Background>({
@@ -60,10 +62,16 @@ export default function App() {
 
       <section className="preview-panel" aria-labelledby="preview-heading">
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
-        <div className="canvas-stage"><div className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><Preview scene={scene} background={background} /></div></div>
+        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><Preview scene={scene} background={background} /></div></div>
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{ALGORITHM_VERSION}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
+        <ExportPanel seed={seed} ratio={ratio} background={background} artwork={() => artworkRef.current?.querySelector('svg') ?? null}
+          onRatio={setRatio} onRestore={settings => {
+            setSeed(settings.seed); setRatio(settings.aspectRatio);
+            setBackground({ mode: settings.backgroundMode, solid: settings.solidColor, colors: settings.gradientColors, angle: settings.gradientAngle });
+            setRegenerations(0);
+          }} />
       </section>
     </main>
     <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第1段階 · 2D基本機能</span></footer>
