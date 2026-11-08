@@ -77,9 +77,15 @@ SVGの座標と実寸の比率を一致させ、画面サイズ変更時も図�
 
 ## GitHub / GitHub Pages
 
-GitHubの接続先は未指定です。リモートリポジトリの作成・push・公開は行っていません。`.gitignore` と `package-lock.json` を含み、GitHub管理に移せる構成です。`.github/workflows/ci.yml` はGitHubへ登録した際の型チェック・ユニットテスト・ビルド用です（デプロイは実行しません）。
+ソースは [ShugureRune/geometry-maker](https://github.com/ShugureRune/geometry-maker) の `main` で管理しています。`.github/workflows/ci.yml` は型チェック・ユニットテスト・ビルド用です。
 
-Viteの `base: './'` によりアセットを相対参照し、GitHub Pagesのリポジトリ配下でも使える構成です。クライアント側のURLルーティングは使用していません。将来公開するときはGitHub Actionsで `npm ci` → `npm test` → `npm run build` を実行し、`dist/` をPages用アーティファクトとして配信します。Pages設定・公開先・公開範囲はその段階で決定してください。今回、実サイトへの公開は検証していません。
+`.github/workflows/pages.yml` は `main` へのpushまたは手動実行で、`npm ci` → `npm test` → `npm run build`（型チェックを含む）→ `dist/` のアップロード → GitHub Pagesへのデプロイを行います。テスト・ビルドの失敗時にはデプロイしません。公開処理は同時実行せず、既存のPagesデプロイを途中で中断しません。アプリの2D生成・描画コードは変更していません。
+
+初回はリポジトリの **Settings → Pages → Build and deployment → Source → GitHub Actions** を設定してください。Actionsが無効ならSettings → Actions → Generalから有効にします。その後mainへのpush、またはActions → Deploy to GitHub Pages → Run workflowで実行できます。
+
+公開先は `https://shugurerune.github.io/geometry-maker/` です。デプロイの完了はActionsの `Deploy to GitHub Pages` 実行結果で確認してください。完了後、iPhoneのSafariで同じURLを開けます。Safariで表示されない場合は、末尾の `/` まで含めてURLを確認し、再読み込みしてください。iPhone実機の操作確認は別途必要です。
+
+Viteの `base: './'` を維持し、アセットを相対参照します。クライアント側のURLルーティングは使用していないため、リポジトリ配下でのページ再読み込みにも対応します。GitHub Pagesの標準HTTPSで配信し、バックエンドや追加の秘密情報は不要です。
 
 ## 今回の対象外
 
