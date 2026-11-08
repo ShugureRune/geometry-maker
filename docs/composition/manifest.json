@@ -1,0 +1,195 @@
+{
+  "baseline": "196b1779db3eec5227dffc3b1681fa87bca347ef",
+  "beforeVersion": "2d-v1",
+  "afterVersion": "2d-v2",
+  "seeds": [
+    "undefined-heartbeat",
+    "neon-city",
+    "aurora-42",
+    "未定義の心音"
+  ],
+  "ratios": [
+    "16:9",
+    "9:16",
+    "1:1"
+  ],
+  "background": {
+    "mode": "gradient",
+    "colors": [
+      "#101b2d",
+      "#241938",
+      "#102a30"
+    ],
+    "angle": 135
+  },
+  "images": [
+    {
+      "version": "before",
+      "seed": "undefined-heartbeat",
+      "ratio": "16:9",
+      "name": "before-0-16x9.png",
+      "centralInkPercent": 4.71
+    },
+    {
+      "version": "before",
+      "seed": "undefined-heartbeat",
+      "ratio": "9:16",
+      "name": "before-0-9x16.png",
+      "centralInkPercent": 6.32
+    },
+    {
+      "version": "before",
+      "seed": "undefined-heartbeat",
+      "ratio": "1:1",
+      "name": "before-0-1x1.png",
+      "centralInkPercent": 14.46
+    },
+    {
+      "version": "before",
+      "seed": "neon-city",
+      "ratio": "16:9",
+      "name": "before-1-16x9.png",
+      "centralInkPercent": 12.66
+    },
+    {
+      "version": "before",
+      "seed": "neon-city",
+      "ratio": "9:16",
+      "name": "before-1-9x16.png",
+      "centralInkPercent": 10.63
+    },
+    {
+      "version": "before",
+      "seed": "neon-city",
+      "ratio": "1:1",
+      "name": "before-1-1x1.png",
+      "centralInkPercent": 22.66
+    },
+    {
+      "version": "before",
+      "seed": "aurora-42",
+      "ratio": "16:9",
+      "name": "before-2-16x9.png",
+      "centralInkPercent": 16.31
+    },
+    {
+      "version": "before",
+      "seed": "aurora-42",
+      "ratio": "9:16",
+      "name": "before-2-9x16.png",
+      "centralInkPercent": 16.42
+    },
+    {
+      "version": "before",
+      "seed": "aurora-42",
+      "ratio": "1:1",
+      "name": "before-2-1x1.png",
+      "centralInkPercent": 29.08
+    },
+    {
+      "version": "before",
+      "seed": "未定義の心音",
+      "ratio": "16:9",
+      "name": "before-3-16x9.png",
+      "centralInkPercent": 21.37
+    },
+    {
+      "version": "before",
+      "seed": "未定義の心音",
+      "ratio": "9:16",
+      "name": "before-3-9x16.png",
+      "centralInkPercent": 19.06
+    },
+    {
+      "version": "before",
+      "seed": "未定義の心音",
+      "ratio": "1:1",
+      "name": "before-3-1x1.png",
+      "centralInkPercent": 36.71
+    },
+    {
+      "version": "after",
+      "seed": "undefined-heartbeat",
+      "ratio": "16:9",
+      "name": "after-0-16x9.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "undefined-heartbeat",
+      "ratio": "9:16",
+      "name": "after-0-9x16.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "undefined-heartbeat",
+      "ratio": "1:1",
+      "name": "after-0-1x1.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "neon-city",
+      "ratio": "16:9",
+      "name": "after-1-16x9.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "neon-city",
+      "ratio": "9:16",
+      "name": "after-1-9x16.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "neon-city",
+      "ratio": "1:1",
+      "name": "after-1-1x1.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "aurora-42",
+      "ratio": "16:9",
+      "name": "after-2-16x9.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "aurora-42",
+      "ratio": "9:16",
+      "name": "after-2-9x16.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "aurora-42",
+      "ratio": "1:1",
+      "name": "after-2-1x1.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "未定義の心音",
+      "ratio": "16:9",
+      "name": "after-3-16x9.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "未定義の心音",
+      "ratio": "9:16",
+      "name": "after-3-9x16.png",
+      "centralInkPercent": 0
+    },
+    {
+      "version": "after",
+      "seed": "未定義の心音",
+      "ratio": "1:1",
+      "name": "after-3-1x1.png",
+      "centralInkPercent": 0
+    }
+  ]
+}
