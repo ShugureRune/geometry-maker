@@ -41,6 +41,8 @@ export function inkAt(tone: Tone, background: Background, p: Point, width: numbe
   return contrast('#f7f1ff', behind) > contrast('#271737', behind) ? '#f7f1ff' : '#271737';
 }
 export function paintFor(shape: Shape, background: Background, width: number, height: number) {
-  return { color: inkAt(shape.tone, background, shape, width, height),
+  const light = luminance(backgroundAt(background, shape, width, height)) > 0.3;
+  const opacity = light && shape.layer !== 'background' ? Math.min(1, shape.opacity * (shape.role === 'decoration' ? 1.25 : 1.12)) : shape.opacity;
+  return { opacity, color: inkAt(shape.tone, background, shape, width, height),
     glow: shape.glow && luminance(backgroundAt(background, shape, width, height)) < 0.3 };
 }

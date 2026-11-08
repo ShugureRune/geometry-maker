@@ -164,7 +164,7 @@ test.describe('mobile touch layout', () => {
     await page.goto('./');
     await page.getByLabel('シード値', { exact: true }).fill('neon-city');
     await page.getByLabel('キャンバスの比率').selectOption('9:16');
-    await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm', '2d-v3');
+    await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm', '2d-v4');
     await page.getByRole('button', { name: '単色', exact: true }).tap();
     await page.getByLabel('背景色', { exact: true }).fill('#faf8ff');
     await page.getByRole('button', { name: 'ランダムシードを生成' }).tap();
