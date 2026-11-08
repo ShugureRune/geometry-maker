@@ -1,0 +1,11 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.local
+.env
+.env.*
+!.env.example
+*.mp4
+*.webm
+.DS_Store
