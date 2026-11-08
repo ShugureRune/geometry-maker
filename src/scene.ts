@@ -1,7 +1,9 @@
 import { contoursOf, crossesRect, polar, radians, shapeBounds, worldPoint } from './geometry.ts';
 
 /** Geometry and styling changes require a new version to preserve seed semantics. */
-export const ALGORITHM_VERSION = '2d-v3';
+export const ALGORITHM_VERSION = '2d-v4';
+// Retain v3's blueprint streams: polishing a seed must not replace its composition.
+const BLUEPRINT_VERSION = '2d-v3';
 export const RATIOS = {
   '16:9': [1600, 900], '9:16': [900, 1600], '1:1': [1200, 1200],
   '4:5': [1200, 1500], '3:2': [1500, 1000], '21:9': [2100, 900],
@@ -87,12 +89,13 @@ function baseShape(kind: Shape['kind'], role: Shape['role'], layer: Shape['layer
 }
 function heroShape(h: HeroPlan, unit: number, i: number): Shape {
   return { ...baseShape(h.kind, 'hero', 'midground', h, h.size, h.rotation, unit), ...h,
-    id: `hero-${i}`, group: `hero-${i}`, tone: i === 0 ? 'violet' : 'mint' };
+    id: `hero-${i}`, group: `hero-${i}`, tone: i === 0 ? 'violet' : 'mint',
+    opacity: i === 0 ? 0.96 : 0.76, fillOpacity: h.kind === 'triangle' ? (i === 0 ? 0.43 : 0.32) : 0.6 };
 }
 
 /** Five blueprints, varied internally by the seed. No individual detail exists yet. */
 export function planComposition(seed: string, width: number, height: number): Composition {
-  const random = seededRandom(`${ALGORITHM_VERSION}\u0000plan\u0000${seed}`);
+  const random = seededRandom(`${BLUEPRINT_VERSION}\u0000plan\u0000${seed}`);
   const type = COMPOSITION_TYPES[Math.floor(random() * COMPOSITION_TYPES.length)];
   const unit = Math.min(width, height), wide = width >= height;
   const sign = random() < 0.5 ? -1 : 1;
@@ -111,8 +114,8 @@ export function planComposition(seed: string, width: number, height: number): Co
     quiet = rectAt(focus, unit * 0.3, unit * 0.22);
   } else if (type === 'corners') {
     const left = sign < 0, top = random() < 0.5;
-    focus = { x: width * (left ? 0.07 : 0.93), y: height * (top ? 0.1 : 0.9) };
-    size = unit * (0.42 + random() * 0.13); bleed = true;
+    focus = { x: width * (left ? 0.16 : 0.84), y: height * (top ? 0.2 : 0.8) };
+    size = unit * (0.39 + random() * 0.09); bleed = true;
     kind = (['frame', 'arc', 'triangle'] as const)[Math.floor(random() * 3)];
     quiet = rectAt({ x: width * (left ? 0.61 : 0.39), y: height * (top ? 0.61 : 0.39) }, width * 0.28, height * 0.26);
   } else if (type === 'asymmetric') {
@@ -130,6 +133,8 @@ export function planComposition(seed: string, width: number, height: number): Co
   }
   const anchor: HeroPlan = { ...focus, kind, size, rotation: kind === 'triangle' ? direction + (random() < 0.5 ? 0 : 90) : direction + 45,
     bleed, rings: type === 'frame' ? 3 : 2, arcStart: -145 + random() * 50, arcSweep: 235 + random() * 70 };
+  // Filled triangles carry more visual mass than hollow frames of equal radius.
+  if (anchor.kind === 'triangle') anchor.size = Math.min(anchor.size, unit * (type === 'asymmetric' ? 0.32 : 0.35), Math.sqrt(width * height * 0.08 / 1.299));
   if (!anchor.bleed) {
     anchor.size = Math.min(anchor.size, unit * 0.46);
     const bounds = shapeBounds(heroShape(anchor, unit, 0)), inset = unit * 0.025;
@@ -152,6 +157,14 @@ export function planComposition(seed: string, width: number, height: number): Co
       break;
     }
   }
+  if (type === 'corners') {
+    // A subordinate counterweight, not uniform filling of the empty quadrant.
+    const counter: HeroPlan = { ...anchor, kind: 'arc',
+      x: width * (focus.x < width / 2 ? 0.8 : 0.2),
+      y: height * (focus.y < height / 2 ? 0.78 : 0.22),
+      size: unit * 0.19, rings: 2, bleed: true, arcSweep: 225 };
+    anchors.splice(1, anchors.length - 1, counter);
+  }
   // Resolve a readable pocket against actual outlines, including hollow interiors.
   // A filled central triangle must not force its text area into the triangle.
   const sketches = anchors.map((h, i) => heroShape(h, unit, i));
@@ -166,7 +179,7 @@ export function planComposition(seed: string, width: number, height: number): Co
   quiet = reservation;
   const noiseSeed = Math.floor(random() * 4294967296);
   const lanes = [-1, 1].map(side => {
-    const delta = polar(size * (0.75 + random() * 0.18) * side, direction + 90);
+    const delta = polar(anchor.size * (0.75 + random() * 0.18) * side, direction + 90);
     return { x: focus.x + delta.x, y: focus.y + delta.y,
       length: Math.hypot(width, height) * 0.65, thickness: unit * (0.065 + random() * 0.045) };
   });
@@ -194,7 +207,7 @@ export function generateScene(seed: string, ratio: Ratio): Scene {
   const [width, height] = RATIOS[ratio];
   const composition = planComposition(seed, width, height);
   const { unit, direction, quiet, focus } = composition;
-  const random = seededRandom(`${ALGORITHM_VERSION}\u0000details\u0000${seed}`);
+  const random = seededRandom(`${BLUEPRINT_VERSION}\u0000details\u0000${seed}`);
   const heroes = composition.anchors.map((h, i) => heroShape(h, unit, i));
   const shapes: Shape[] = [...heroes];
   let serial = 0;
@@ -205,6 +218,7 @@ export function generateScene(seed: string, ratio: Ratio): Scene {
     const outside = b.x < 0 || b.y < 0 || b.x + b.width > width || b.y + b.height > height;
     if (outside && !shape.bleed) return;
     if (!crossesRect(shape, { x: 0, y: 0, width, height })) return;
+    if (shape.role === 'decoration' && heroes.some(h => h.filled && crossesRect(h, b, unit * 0.004))) return;
     // Keep small marks away from each other. Related large planes may overlap by design.
     if (shape.role === 'decoration' && shapes.some(s => s.role === 'decoration'
       && Math.hypot(s.x - shape.x, s.y - shape.y) < (s.size + shape.size) * 0.75)) return;
@@ -228,7 +242,7 @@ export function generateScene(seed: string, ratio: Ratio): Scene {
       const t = (i * 0.55 * unit) + phase;
       const p = at(lane, t, 0);
       const local = spatialNoise(p.x / unit * 2, p.y / unit * 2, composition.noiseSeed);
-      const size = unit * (0.22 + local * 0.15);
+      const size = unit * (0.19 + local * 0.075);
       const plate = baseShape('band', 'support', 'background', p, size, direction, unit);
       plate.bleed = true; plate.thickness = lane.thickness * (0.8 + local * 0.6);
       plate.opacity = 0.36; plate.fillOpacity = 0.68;

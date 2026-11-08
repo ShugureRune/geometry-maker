@@ -5,8 +5,8 @@ import { backgroundVector, inkAt, paintFor } from './paint';
 
 function Geometry({ shape }: { shape: Shape }) {
   return <>{contoursOf(shape).map((c, i) => c.circle
-    ? <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius} stroke={shape.kind === 'circle' ? undefined : 'none'} />
-    : <path key={i} d={pathData(c)} fill={shape.filled && c.closed ? undefined : 'none'}
+    ? <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} stroke={shape.kind === 'circle' ? undefined : 'none'} />
+    : <path key={i} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} d={pathData(c)} fill={shape.filled && c.closed ? undefined : 'none'}
       opacity={c.opacity} strokeDasharray={c.dashed ? `${shape.size * 0.065} ${shape.size * 0.06}` : undefined} />)}</>;
 }
 function localPoint(shape: Shape, p: Point): Point {
@@ -59,7 +59,7 @@ export function Preview({ scene, background }: { scene: Scene; background: Backg
         return <g key={shape.id} data-shape-id={shape.id} data-layer={shape.layer} data-role={shape.role} data-kind={shape.kind}
           data-group={shape.group} data-parent={shape.parent} data-glow={paint.glow || undefined}
           transform={`translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
-          stroke={ink} strokeWidth={shape.strokeWidth} opacity={shape.opacity}
+          stroke={ink} strokeWidth={shape.strokeWidth} opacity={paint.opacity}
           fill={shape.filled || shape.kind === 'circuit' ? solidFill || shape.kind === 'circuit' ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
           fillOpacity={solidFill || shape.kind === 'circuit' ? 1 : shape.fillOpacity}>
           {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity="0.7"><Geometry shape={shape} /></g>}

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { COMPOSITION_TYPES, densityAt, generateScene, RATIOS, spatialNoise, type Ratio } from './scene';
 import { contoursOf, crossesRect, shapeBounds, worldPoint } from './geometry';
 
-describe('2d-v3 designed composition acceptance', () => {
+describe('2d-v4 designed composition acceptance', () => {
   it('produces all five blueprints and different plans within each blueprint', () => {
     const scenes = Array.from({ length: 150 }, (_, i) => generateScene(`design-${i}`, '16:9'));
     expect(new Set(scenes.map(s => s.composition.type))).toEqual(new Set(COMPOSITION_TYPES));
@@ -73,8 +73,8 @@ describe('2d-v3 designed composition acceptance', () => {
     }
   });
 
-  it('locks v3 geometry, blueprint and depth styling against accidental changes', () => {
+  it('locks v4 geometry, blueprint and depth styling against accidental changes', () => {
     const digest = createHash('sha256').update(JSON.stringify(generateScene('reference', '16:9'))).digest('hex');
-    expect(digest).toMatchInlineSnapshot(`"985e8b399a2b163126762de40a6dc694ed41b67c600988a8207635f27b9e4267"`);
+    expect(digest).toMatchInlineSnapshot(`"727ab089a0542e83a0d92a32110ac0f87c015f7fa8fcfa57870ba02d024402b6"`);
   });
 });
