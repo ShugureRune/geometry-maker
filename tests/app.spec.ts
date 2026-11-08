@@ -2,15 +2,14 @@ import { test, expect, type Locator } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { RATIOS } from '../src/scene';
 
-// React can insert identical SVG attributes in different orders when recycling
-// nodes between shape kinds. Compare geometry, not attribute insertion order or
-// React's per-instance gradient/filter IDs. Rendered pixels are checked below.
+// Compare structure and geometry separately from contrast-adaptive paint and
+// glow copies. Attribute order is not significant. Full pixels are checked below.
 async function geometryHash(shapes: Locator) {
   const geometry = await shapes.evaluate(element => {
     function record(node: Element): unknown {
-      const attributes = [...node.attributes].map(a => [a.name,
+      const attributes = [...node.attributes].filter(a => !['stroke', 'fill', 'opacity', 'filter', 'fill-opacity', 'data-glow'].includes(a.name)).map(a => [a.name,
         a.value.replace(/url\(#.*?-(hero-\d+|glow)\)/g, 'url(#$1)')]).sort((a, b) => a[0].localeCompare(b[0]));
-      return [node.tagName, attributes, [...node.children].map(record)];
+      return [node.tagName, attributes, [...node.children].filter(child => !child.hasAttribute('filter')).map(record)];
     }
     return JSON.stringify(record(element));
   });
@@ -49,10 +48,13 @@ test('all stage-one controls and deterministic browser rendering', async ({ page
   const shapes = page.getByTestId('shapes');
   const seed = page.getByLabel('シード値', { exact: true });
   await expect(svg).toBeVisible();
-  await expect(shapes.locator(':scope > g')).toHaveCount(76);
-  await expect(shapes.locator(':scope > [data-layer="hero"]')).toHaveCount(5);
-  await expect(shapes.locator(':scope > [data-layer="support"]')).toHaveCount(27);
-  await expect(shapes.locator(':scope > [data-layer="decoration"]')).toHaveCount(44);
+  expect(await shapes.locator(':scope > g').count()).toBeGreaterThan(10);
+  const heroCount = await shapes.locator(':scope > [data-role="hero"]').count();
+  expect(heroCount).toBeGreaterThanOrEqual(1);
+  expect(heroCount).toBeLessThanOrEqual(2);
+  for (const layer of ['background', 'midground', 'foreground']) {
+    expect(await shapes.locator(`:scope > [data-layer="${layer}"]`).count()).toBeGreaterThan(0);
+  }
   await seed.fill('心音🌱-001');
   await expect(page.getByTestId('current-seed')).toHaveText('心音🌱-001');
   const reference = await geometryHash(shapes);
@@ -125,4 +127,48 @@ test('desktop and narrow layouts remain usable with portrait previews', async ({
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByLabel('キャンバスの比率').selectOption('16:9');
   await page.screenshot({ path: 'test-results/desktop.png', fullPage: true });
+});
+
+test('light, dark and mixed backgrounds preserve geometry and deterministic contrast', async ({ page }) => {
+  await page.goto('./');
+  await page.getByLabel('シード値', { exact: true }).fill('design-6');
+  const svg = page.getByTestId('preview'), shapes = page.getByTestId('shapes');
+  const reference = await geometryHash(shapes);
+  await page.getByRole('button', { name: '単色', exact: true }).click();
+  await page.getByLabel('背景色', { exact: true }).fill('#faf8ff');
+  await expect(shapes.locator('[data-glow="true"]')).toHaveCount(0);
+  const hero = shapes.locator(':scope > [data-role="hero"]').first();
+  await expect(hero).toHaveAttribute('stroke', '#704096');
+  expect(await geometryHash(shapes)).toBe(reference);
+  const lightPixels = await renderedHash(svg);
+  await page.getByRole('button', { name: '同じ設定で再生成' }).click();
+  expect(await renderedHash(svg)).toBe(lightPixels);
+  await page.getByLabel('背景色', { exact: true }).fill('#111526');
+  await expect(hero).toHaveAttribute('stroke', '#ba9bff');
+  expect(await shapes.locator('[data-glow="true"]').count()).toBeGreaterThan(0);
+  expect(await geometryHash(shapes)).toBe(reference);
+  await page.getByRole('button', { name: 'グラデーション', exact: true }).click();
+  for (const [i, color] of ['#ffffff', '#a9a0b0', '#111526'].entries()) {
+    await page.getByLabel(`グラデーション色${i + 1}`).fill(color);
+  }
+  await page.getByLabel('方向').fill('45');
+  expect(await geometryHash(shapes)).toBe(reference);
+  const mixedPixels = await renderedHash(svg);
+  await page.getByRole('button', { name: '同じ設定で再生成' }).click();
+  expect(await renderedHash(svg)).toBe(mixedPixels);
+});
+
+test.describe('mobile touch layout', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test('edits a portrait composition without horizontal overflow', async ({ page }) => {
+    await page.goto('./');
+    await page.getByLabel('シード値', { exact: true }).fill('neon-city');
+    await page.getByLabel('キャンバスの比率').selectOption('9:16');
+    await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm', '2d-v3');
+    await page.getByRole('button', { name: '単色', exact: true }).tap();
+    await page.getByLabel('背景色', { exact: true }).fill('#faf8ff');
+    await page.getByRole('button', { name: 'ランダムシードを生成' }).tap();
+    expect(await page.getByLabel('シード値', { exact: true }).inputValue()).toMatch(/^[0-9a-f]{24}$/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
 });

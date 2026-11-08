@@ -1,54 +1,71 @@
 import { useId } from 'react';
-import { gradientEndpoints, type Background, type Scene, type Shape } from './scene';
+import { contoursOf, pathData, radians, shapeBounds, worldPoint } from './geometry';
+import { gradientEndpoints, type Background, type Point, type Scene, type Shape } from './scene';
+import { backgroundVector, inkAt, paintFor } from './paint';
 
 function Geometry({ shape }: { shape: Shape }) {
-  const s = shape.size;
-  switch (shape.kind) {
-    case 'circle': return <circle r={s * 0.72} />;
-    case 'triangle': return <polygon points={`0,${-s} ${s * 0.866},${s / 2} ${-s * 0.866},${s / 2}`} />;
-    case 'diamond': return <rect x={-s / 2} y={-s / 2} width={s} height={s} />;
-    case 'frame': return <g fill="none"><path d={`M 0,${-s} L ${s},0 0,${s} ${-s},0 Z`} /><path d={`M ${-s * 0.08},${-s * 0.88} L ${s * 0.8},0 0,${s * 0.8}`} opacity="0.4" /></g>;
-    case 'arc': return <g fill="none"><path d={`M ${-s * 0.504746},${-s * 0.720854} A ${s * 0.88},${s * 0.88} 0 1 1 ${-s * 0.504746},${s * 0.720854}`} /><path d={`M ${-s * 0.407},${-s * 0.581} A ${s * 0.71},${s * 0.71} 0 1 1 ${-s * 0.407},${s * 0.581}`} strokeDasharray={`${s * 0.08} ${s * 0.07}`} opacity="0.5" /></g>;
-    case 'band': return <path d={`M ${-s * 0.94},${-s * 0.18} H ${s * 0.74} L ${s * 0.94},${s * 0.18} H ${-s * 0.74} Z`} />;
-    case 'rectangle': return <rect x={-s * 0.94} y={-s * 0.13} width={s * 1.88} height={s * 0.26} />;
-    case 'cross': return <path d={`M ${-s * 0.55},0 H ${s * 0.55} M 0,${-s * 0.55} V ${s * 0.55}`} fill="none" />;
-    case 'dots': return <g fill={shape.color} stroke="none">{Array.from({ length: 18 }, (_, i) => <circle key={i} cx={(i % 6 - 2.5) * s * 0.29} cy={(Math.floor(i / 6) - 1) * s * 0.29} r={s * 0.055} />)}</g>;
-    case 'accent': return <g fill={shape.color} stroke="none">{[-0.5, 0, 0.5].map(x => <path key={x} d={`M ${s * (x - 0.12)},${-s * 0.18} L ${s * (x + 0.12)},0 ${s * (x - 0.12)},${s * 0.18} Z`} />)}</g>;
-    case 'line': return <path d={`M ${-s},0 H ${s}`} fill="none" />;
-    case 'circuit': return <g fill="none"><path d={`M ${-s * 0.48},0 H 0 L ${s * 0.18},${s * 0.18} H ${s * 0.48}`} /><circle cx={s * 0.48} cy={s * 0.18} r={s * 0.032} /></g>;
-    case 'dot': return <circle r={s * 0.045} fill={shape.color} stroke="none" />;
-  }
+  return <>{contoursOf(shape).map((c, i) => c.circle
+    ? <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius} stroke={shape.kind === 'circle' ? undefined : 'none'} />
+    : <path key={i} d={pathData(c)} fill={shape.filled && c.closed ? undefined : 'none'}
+      opacity={c.opacity} strokeDasharray={c.dashed ? `${shape.size * 0.065} ${shape.size * 0.06}` : undefined} />)}</>;
+}
+function localPoint(shape: Shape, p: Point): Point {
+  const dx = p.x - shape.x, dy = p.y - shape.y, angle = radians(-shape.rotation);
+  return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
 }
 
 export function Preview({ scene, background }: { scene: Scene; background: Background }) {
   const gradientId = `background-${useId().replace(/:/g, '')}`;
+  const { width, height } = scene;
+  const unit = Math.min(width, height);
+  const vector = backgroundVector(background, width, height);
   return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
-    data-algorithm={scene.version} viewBox={`0 0 ${scene.width} ${scene.height}`}
-    xmlns="http://www.w3.org/2000/svg">
+    data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
+    xmlns="http://www.w3.org/2000/svg" overflow="hidden">
     {background.mode === 'gradient' && <defs>
       <linearGradient data-testid="background-gradient" id={gradientId} {...gradientEndpoints(background.angle)}>
         {background.colors.map((color, i) => <stop key={i} offset={`${i * 50}%`} stopColor={color} />)}
       </linearGradient>
     </defs>}
     <defs>
-      <filter id={`${gradientId}-glow`} x="-50%" y="-50%" width="200%" height="200%" colorInterpolationFilters="sRGB">
-        <feGaussianBlur stdDeviation={Math.min(scene.width, scene.height) * 0.003} />
-      </filter>
-      {scene.shapes.filter(s => s.layer === 'hero').map((s, i) => <linearGradient key={i} id={`${gradientId}-hero-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor={s.color} stopOpacity="0.85" /><stop offset="100%" stopColor={s.color} stopOpacity="0.04" />
-      </linearGradient>)}
+      {scene.shapes.map(shape => {
+        const start = localPoint(shape, vector.start), end = localPoint(shape, vector.end);
+        const paint = paintFor(shape, background, width, height);
+        const bounds = shapeBounds({ ...shape, x: 0, y: 0, rotation: 0 });
+        return <g key={shape.id}>
+          {background.mode === 'gradient' && <linearGradient id={`${gradientId}-ink-${shape.id}`} gradientUnits="userSpaceOnUse"
+            x1={start.x} y1={start.y} x2={end.x} y2={end.y}>
+            {[0, 0.25, 0.5, 0.75, 1].map(t => <stop key={t} offset={`${t * 100}%`}
+              stopColor={inkAt(shape.tone, background, { x: vector.start.x + (vector.end.x - vector.start.x) * t,
+                y: vector.start.y + (vector.end.y - vector.start.y) * t }, width, height)} />)}
+          </linearGradient>}
+          {shape.filled && <linearGradient id={`${gradientId}-fill-${shape.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={inkAt(shape.tone, background, worldPoint(shape, { x: -shape.size, y: -shape.size }), width, height)} stopOpacity="0.95" />
+            <stop offset="100%" stopColor={paint.color} stopOpacity="0.05" />
+          </linearGradient>}
+          {paint.glow && <filter id={`${gradientId}-glow-${shape.id}`} filterUnits="userSpaceOnUse"
+            x={bounds.x - unit * 0.02} y={bounds.y - unit * 0.02} width={bounds.width + unit * 0.04} height={bounds.height + unit * 0.04} colorInterpolationFilters="sRGB">
+            <feGaussianBlur stdDeviation={unit * 0.004} />
+          </filter>}
+        </g>;
+      })}
     </defs>
-    <rect data-testid="background" width={scene.width} height={scene.height}
-      fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />
-    <g data-testid="shapes" strokeWidth={Math.min(scene.width, scene.height) * 0.0016} strokeLinejoin="round" strokeLinecap="round">
-      {scene.shapes.map((shape, i) => <g key={i} data-layer={shape.layer} data-kind={shape.kind}
-        transform={`translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
-        stroke={shape.color} strokeWidth={shape.strokeWidth}
-        fill={shape.filled ? shape.layer === 'hero' ? `url(#${gradientId}-hero-${i})` : shape.color : 'none'}
-        fillOpacity={shape.fillOpacity} opacity={shape.opacity}>
-        {shape.layer === 'hero' && <g filter={`url(#${gradientId}-glow)`} opacity="0.45"><Geometry shape={shape} /></g>}
-        <Geometry shape={shape} />
-      </g>)}
+    <rect data-testid="background" width={width} height={height} fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />
+    <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
+      {scene.shapes.map(shape => {
+        const paint = paintFor(shape, background, width, height);
+        const solidFill = ['dot', 'dots', 'accent'].includes(shape.kind);
+        const ink = background.mode === 'gradient' ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
+        return <g key={shape.id} data-shape-id={shape.id} data-layer={shape.layer} data-role={shape.role} data-kind={shape.kind}
+          data-group={shape.group} data-parent={shape.parent} data-glow={paint.glow || undefined}
+          transform={`translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
+          stroke={ink} strokeWidth={shape.strokeWidth} opacity={shape.opacity}
+          fill={shape.filled || shape.kind === 'circuit' ? solidFill || shape.kind === 'circuit' ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
+          fillOpacity={solidFill || shape.kind === 'circuit' ? 1 : shape.fillOpacity}>
+          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity="0.7"><Geometry shape={shape} /></g>}
+          <Geometry shape={shape} />
+        </g>;
+      })}
     </g>
   </svg>;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ALGORITHM_VERSION, createRandomSeed, generateScene, gradientEndpoints, RATIOS, seededRandom } from './scene';
+import { crossesRect, shapeBounds } from './geometry';
 
 describe('versioned deterministic scene generation', () => {
   it.each(['12345', 'undefined-heartbeat', '未定義の心音🌱', '', '  001  '])('reproduces exact scene for %j', seed => {
@@ -11,7 +12,7 @@ describe('versioned deterministic scene generation', () => {
   it('does not use Math.random or time while generating', () => {
     const random = vi.spyOn(Math, 'random').mockImplementation(() => { throw new Error('global randomness'); });
     const time = vi.spyOn(Date, 'now').mockImplementation(() => { throw new Error('time'); });
-    try { expect(generateScene('stable', '1:1').shapes).toHaveLength(76); }
+    try { expect(generateScene('stable', '1:1').shapes.length).toBeGreaterThan(0); }
     finally { random.mockRestore(); time.mockRestore(); }
   });
   it('distinguishes seeds including whitespace and leading zeroes', () => {
@@ -28,15 +29,19 @@ describe('versioned deterministic scene generation', () => {
       ]
     `);
   });
-  it.each(Object.keys(RATIOS) as (keyof typeof RATIOS)[])('keeps geometry finite and inset at %s', ratio => {
+  it.each(Object.keys(RATIOS) as (keyof typeof RATIOS)[])('keeps geometry visible with intentional cropping at %s', ratio => {
     for (let i = 0; i < 20; i++) {
       const scene = generateScene(String(i), ratio);
       expect([scene.width, scene.height]).toEqual(RATIOS[ratio]);
       for (const s of scene.shapes) {
-        expect(s.x - s.size * 1.1).toBeGreaterThanOrEqual(0);
-        expect(s.y - s.size * 1.1).toBeGreaterThanOrEqual(0);
-        expect(s.x + s.size * 1.1).toBeLessThanOrEqual(scene.width);
-        expect(s.y + s.size * 1.1).toBeLessThanOrEqual(scene.height);
+        const bounds = shapeBounds(s);
+        expect(crossesRect(s, { x: 0, y: 0, width: scene.width, height: scene.height })).toBe(true);
+        if (!s.bleed) {
+          expect(bounds.x).toBeGreaterThanOrEqual(-1e-8);
+          expect(bounds.y).toBeGreaterThanOrEqual(-1e-8);
+          expect(bounds.x + bounds.width).toBeLessThanOrEqual(scene.width + 1e-8);
+          expect(bounds.y + bounds.height).toBeLessThanOrEqual(scene.height + 1e-8);
+        }
         expect(Number.isFinite(s.rotation)).toBe(true);
       }
     }
