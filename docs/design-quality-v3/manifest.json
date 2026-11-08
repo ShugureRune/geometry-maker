@@ -1,0 +1,1331 @@
+{
+  "baselineCommit": "407e5814625dfe1cb666dfe2c69a5207ad6cc1c4",
+  "beforeVersion": "2d-v2",
+  "afterVersion": "2d-v3",
+  "seeds": [
+    "design-6",
+    "未定義の心音",
+    "neon-city",
+    "undefined-heartbeat",
+    "001",
+    "design-31"
+  ],
+  "ratios": [
+    "16:9",
+    "9:16",
+    "1:1"
+  ],
+  "themes": {
+    "dark": {
+      "mode": "gradient",
+      "colors": [
+        "#101b2d",
+        "#241938",
+        "#102a30"
+      ],
+      "angle": 135
+    },
+    "light": {
+      "mode": "solid",
+      "color": "#faf8ff"
+    }
+  },
+  "images": [
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "design-6",
+      "ratio": "16:9",
+      "name": "before-dark-0-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 10.19,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 604.7964002322406,
+        "y": 347.20359976775944,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "design-6",
+      "ratio": "9:16",
+      "name": "before-dark-0-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 10.08,
+      "quietInkPercent": 0.32,
+      "quiet": {
+        "x": 282.79640023224056,
+        "y": 697.2035997677594,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "design-6",
+      "ratio": "1:1",
+      "name": "before-dark-0-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 13.33,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 377.06186697632074,
+        "y": 462.93813302367926,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "未定義の心音",
+      "ratio": "16:9",
+      "name": "before-dark-1-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.27,
+      "quietInkPercent": 5.35,
+      "quiet": {
+        "x": 1113,
+        "y": 427.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "未定義の心音",
+      "ratio": "9:16",
+      "name": "before-dark-1-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.54,
+      "quietInkPercent": 6.7,
+      "quiet": {
+        "x": 333,
+        "y": 1071.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "未定義の心音",
+      "ratio": "1:1",
+      "name": "before-dark-1-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 11.22,
+      "quietInkPercent": 5.86,
+      "quiet": {
+        "x": 834,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "neon-city",
+      "ratio": "16:9",
+      "name": "before-dark-2-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.25,
+      "quietInkPercent": 4.26,
+      "quiet": {
+        "x": 752,
+        "y": 432,
+        "width": 448.00000000000006,
+        "height": 234
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "neon-city",
+      "ratio": "9:16",
+      "name": "before-dark-2-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.59,
+      "quietInkPercent": 7.81,
+      "quiet": {
+        "x": 423,
+        "y": 768,
+        "width": 252.00000000000003,
+        "height": 416
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "neon-city",
+      "ratio": "1:1",
+      "name": "before-dark-2-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 11.1,
+      "quietInkPercent": 8.31,
+      "quiet": {
+        "x": 564,
+        "y": 576,
+        "width": 336.00000000000006,
+        "height": 312
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "undefined-heartbeat",
+      "ratio": "16:9",
+      "name": "before-dark-3-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.69,
+      "quietInkPercent": 10.94,
+      "quiet": {
+        "x": 65.99999999999999,
+        "y": 355.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "undefined-heartbeat",
+      "ratio": "9:16",
+      "name": "before-dark-3-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.89,
+      "quietInkPercent": 10.09,
+      "quiet": {
+        "x": 98.99999999999999,
+        "y": 305.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "undefined-heartbeat",
+      "ratio": "1:1",
+      "name": "before-dark-3-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 11.21,
+      "quietInkPercent": 10.82,
+      "quiet": {
+        "x": 30,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "001",
+      "ratio": "16:9",
+      "name": "before-dark-4-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.29,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 741.8577707754448,
+        "y": 338.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "001",
+      "ratio": "9:16",
+      "name": "before-dark-4-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.08,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 343.9471264068122,
+        "y": 688.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "001",
+      "ratio": "1:1",
+      "name": "before-dark-4-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 11.16,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 458.5961685424163,
+        "y": 450.85630563274026,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "design-31",
+      "ratio": "16:9",
+      "name": "before-dark-5-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9.78,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 614.7127766991034,
+        "y": 337.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "design-31",
+      "ratio": "9:16",
+      "name": "before-dark-5-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 10.11,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 292.7127766991034,
+        "y": 687.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "dark",
+      "seed": "design-31",
+      "ratio": "1:1",
+      "name": "before-dark-5-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 13.18,
+      "quietInkPercent": 0.12,
+      "quiet": {
+        "x": 390.2837022654712,
+        "y": 449.7162977345288,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "design-6",
+      "ratio": "16:9",
+      "name": "before-light-0-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9.06,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 604.7964002322406,
+        "y": 347.20359976775944,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "design-6",
+      "ratio": "9:16",
+      "name": "before-light-0-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.85,
+      "quietInkPercent": 0.25,
+      "quiet": {
+        "x": 282.79640023224056,
+        "y": 697.2035997677594,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "design-6",
+      "ratio": "1:1",
+      "name": "before-light-0-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 11.43,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 377.06186697632074,
+        "y": 462.93813302367926,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "未定義の心音",
+      "ratio": "16:9",
+      "name": "before-light-1-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.21,
+      "quietInkPercent": 4.36,
+      "quiet": {
+        "x": 1113,
+        "y": 427.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "未定義の心音",
+      "ratio": "9:16",
+      "name": "before-light-1-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.52,
+      "quietInkPercent": 6.32,
+      "quiet": {
+        "x": 333,
+        "y": 1071.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "未定義の心音",
+      "ratio": "1:1",
+      "name": "before-light-1-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9.39,
+      "quietInkPercent": 1.89,
+      "quiet": {
+        "x": 834,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "neon-city",
+      "ratio": "16:9",
+      "name": "before-light-2-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.42,
+      "quietInkPercent": 4.02,
+      "quiet": {
+        "x": 752,
+        "y": 432,
+        "width": 448.00000000000006,
+        "height": 234
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "neon-city",
+      "ratio": "9:16",
+      "name": "before-light-2-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.51,
+      "quietInkPercent": 7.52,
+      "quiet": {
+        "x": 423,
+        "y": 768,
+        "width": 252.00000000000003,
+        "height": 416
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "neon-city",
+      "ratio": "1:1",
+      "name": "before-light-2-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9.32,
+      "quietInkPercent": 8.09,
+      "quiet": {
+        "x": 564,
+        "y": 576,
+        "width": 336.00000000000006,
+        "height": 312
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "undefined-heartbeat",
+      "ratio": "16:9",
+      "name": "before-light-3-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.58,
+      "quietInkPercent": 4.86,
+      "quiet": {
+        "x": 65.99999999999999,
+        "y": 355.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "undefined-heartbeat",
+      "ratio": "9:16",
+      "name": "before-light-3-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.81,
+      "quietInkPercent": 7.92,
+      "quiet": {
+        "x": 98.99999999999999,
+        "y": 305.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "undefined-heartbeat",
+      "ratio": "1:1",
+      "name": "before-light-3-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9.78,
+      "quietInkPercent": 8.81,
+      "quiet": {
+        "x": 30,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "001",
+      "ratio": "16:9",
+      "name": "before-light-4-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 7.02,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 741.8577707754448,
+        "y": 338.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "001",
+      "ratio": "9:16",
+      "name": "before-light-4-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 6.95,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 343.9471264068122,
+        "y": 688.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "001",
+      "ratio": "1:1",
+      "name": "before-light-4-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9.35,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 458.5961685424163,
+        "y": 450.85630563274026,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "design-31",
+      "ratio": "16:9",
+      "name": "before-light-5-16x9.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 8.5,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 614.7127766991034,
+        "y": 337.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "design-31",
+      "ratio": "9:16",
+      "name": "before-light-5-9x16.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 9,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 292.7127766991034,
+        "y": 687.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "before",
+      "theme": "light",
+      "seed": "design-31",
+      "ratio": "1:1",
+      "name": "before-light-5-1x1.png",
+      "type": null,
+      "count": 76,
+      "glowCount": 5,
+      "inkPercent": 11.23,
+      "quietInkPercent": 0.12,
+      "quiet": {
+        "x": 390.2837022654712,
+        "y": 449.7162977345288,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "design-6",
+      "ratio": "16:9",
+      "name": "after-dark-0-16x9.png",
+      "type": "central",
+      "count": 56,
+      "glowCount": 2,
+      "inkPercent": 25.18,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 604.7964002322406,
+        "y": 347.20359976775944,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "design-6",
+      "ratio": "9:16",
+      "name": "after-dark-0-9x16.png",
+      "type": "central",
+      "count": 54,
+      "glowCount": 2,
+      "inkPercent": 21.9,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 282.79640023224056,
+        "y": 697.2035997677594,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "design-6",
+      "ratio": "1:1",
+      "name": "after-dark-0-1x1.png",
+      "type": "central",
+      "count": 36,
+      "glowCount": 2,
+      "inkPercent": 23.63,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 377.06186697632074,
+        "y": 462.93813302367926,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "未定義の心音",
+      "ratio": "16:9",
+      "name": "after-dark-1-16x9.png",
+      "type": "diagonal",
+      "count": 46,
+      "glowCount": 2,
+      "inkPercent": 24.02,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 1113,
+        "y": 427.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "未定義の心音",
+      "ratio": "9:16",
+      "name": "after-dark-1-9x16.png",
+      "type": "diagonal",
+      "count": 44,
+      "glowCount": 2,
+      "inkPercent": 22.5,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 333,
+        "y": 1071.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "未定義の心音",
+      "ratio": "1:1",
+      "name": "after-dark-1-1x1.png",
+      "type": "diagonal",
+      "count": 27,
+      "glowCount": 2,
+      "inkPercent": 34.28,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 834,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "neon-city",
+      "ratio": "16:9",
+      "name": "after-dark-2-16x9.png",
+      "type": "corners",
+      "count": 27,
+      "glowCount": 1,
+      "inkPercent": 8.54,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 752,
+        "y": 432,
+        "width": 448.00000000000006,
+        "height": 234
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "neon-city",
+      "ratio": "9:16",
+      "name": "after-dark-2-9x16.png",
+      "type": "corners",
+      "count": 27,
+      "glowCount": 1,
+      "inkPercent": 7.87,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 423,
+        "y": 768,
+        "width": 252.00000000000003,
+        "height": 416
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "neon-city",
+      "ratio": "1:1",
+      "name": "after-dark-2-1x1.png",
+      "type": "corners",
+      "count": 22,
+      "glowCount": 1,
+      "inkPercent": 12.13,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 564,
+        "y": 576,
+        "width": 336.00000000000006,
+        "height": 312
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "undefined-heartbeat",
+      "ratio": "16:9",
+      "name": "after-dark-3-16x9.png",
+      "type": "asymmetric",
+      "count": 59,
+      "glowCount": 2,
+      "inkPercent": 29.18,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 65.99999999999999,
+        "y": 355.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "undefined-heartbeat",
+      "ratio": "9:16",
+      "name": "after-dark-3-9x16.png",
+      "type": "asymmetric",
+      "count": 52,
+      "glowCount": 2,
+      "inkPercent": 27.17,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 98.99999999999999,
+        "y": 305.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "undefined-heartbeat",
+      "ratio": "1:1",
+      "name": "after-dark-3-1x1.png",
+      "type": "asymmetric",
+      "count": 28,
+      "glowCount": 1,
+      "inkPercent": 44.97,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 30,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "001",
+      "ratio": "16:9",
+      "name": "after-dark-4-16x9.png",
+      "type": "frame",
+      "count": 52,
+      "glowCount": 2,
+      "inkPercent": 19.97,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 741.8577707754448,
+        "y": 338.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "001",
+      "ratio": "9:16",
+      "name": "after-dark-4-9x16.png",
+      "type": "frame",
+      "count": 59,
+      "glowCount": 2,
+      "inkPercent": 23.41,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 343.9471264068122,
+        "y": 688.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "001",
+      "ratio": "1:1",
+      "name": "after-dark-4-1x1.png",
+      "type": "frame",
+      "count": 40,
+      "glowCount": 2,
+      "inkPercent": 25.16,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 458.5961685424163,
+        "y": 450.85630563274026,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "design-31",
+      "ratio": "16:9",
+      "name": "after-dark-5-16x9.png",
+      "type": "central",
+      "count": 71,
+      "glowCount": 2,
+      "inkPercent": 34.24,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 614.7127766991034,
+        "y": 337.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "design-31",
+      "ratio": "9:16",
+      "name": "after-dark-5-9x16.png",
+      "type": "central",
+      "count": 55,
+      "glowCount": 2,
+      "inkPercent": 15.5,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 292.7127766991034,
+        "y": 687.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "dark",
+      "seed": "design-31",
+      "ratio": "1:1",
+      "name": "after-dark-5-1x1.png",
+      "type": "central",
+      "count": 46,
+      "glowCount": 1,
+      "inkPercent": 24.51,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 390.2837022654712,
+        "y": 449.7162977345288,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "design-6",
+      "ratio": "16:9",
+      "name": "after-light-0-16x9.png",
+      "type": "central",
+      "count": 56,
+      "glowCount": 0,
+      "inkPercent": 24.71,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 604.7964002322406,
+        "y": 347.20359976775944,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "design-6",
+      "ratio": "9:16",
+      "name": "after-light-0-9x16.png",
+      "type": "central",
+      "count": 54,
+      "glowCount": 0,
+      "inkPercent": 21.42,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 282.79640023224056,
+        "y": 697.2035997677594,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "design-6",
+      "ratio": "1:1",
+      "name": "after-light-0-1x1.png",
+      "type": "central",
+      "count": 36,
+      "glowCount": 0,
+      "inkPercent": 22.9,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 377.06186697632074,
+        "y": 462.93813302367926,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "未定義の心音",
+      "ratio": "16:9",
+      "name": "after-light-1-16x9.png",
+      "type": "diagonal",
+      "count": 46,
+      "glowCount": 0,
+      "inkPercent": 23.68,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 1113,
+        "y": 427.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "未定義の心音",
+      "ratio": "9:16",
+      "name": "after-light-1-9x16.png",
+      "type": "diagonal",
+      "count": 44,
+      "glowCount": 0,
+      "inkPercent": 22.14,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 333,
+        "y": 1071.5,
+        "width": 270,
+        "height": 225
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "未定義の心音",
+      "ratio": "1:1",
+      "name": "after-light-1-1x1.png",
+      "type": "diagonal",
+      "count": 27,
+      "glowCount": 0,
+      "inkPercent": 33.76,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 834,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "neon-city",
+      "ratio": "16:9",
+      "name": "after-light-2-16x9.png",
+      "type": "corners",
+      "count": 27,
+      "glowCount": 0,
+      "inkPercent": 8.42,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 752,
+        "y": 432,
+        "width": 448.00000000000006,
+        "height": 234
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "neon-city",
+      "ratio": "9:16",
+      "name": "after-light-2-9x16.png",
+      "type": "corners",
+      "count": 27,
+      "glowCount": 0,
+      "inkPercent": 7.72,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 423,
+        "y": 768,
+        "width": 252.00000000000003,
+        "height": 416
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "neon-city",
+      "ratio": "1:1",
+      "name": "after-light-2-1x1.png",
+      "type": "corners",
+      "count": 22,
+      "glowCount": 0,
+      "inkPercent": 11.94,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 564,
+        "y": 576,
+        "width": 336.00000000000006,
+        "height": 312
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "undefined-heartbeat",
+      "ratio": "16:9",
+      "name": "after-light-3-16x9.png",
+      "type": "asymmetric",
+      "count": 59,
+      "glowCount": 0,
+      "inkPercent": 28.85,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 65.99999999999999,
+        "y": 355.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "undefined-heartbeat",
+      "ratio": "9:16",
+      "name": "after-light-3-9x16.png",
+      "type": "asymmetric",
+      "count": 52,
+      "glowCount": 0,
+      "inkPercent": 26.86,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 98.99999999999999,
+        "y": 305.5,
+        "width": 252.00000000000003,
+        "height": 189
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "undefined-heartbeat",
+      "ratio": "1:1",
+      "name": "after-light-3-1x1.png",
+      "type": "asymmetric",
+      "count": 28,
+      "glowCount": 0,
+      "inkPercent": 44.72,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 30,
+        "y": 474,
+        "width": 336.00000000000006,
+        "height": 252
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "001",
+      "ratio": "16:9",
+      "name": "after-light-4-16x9.png",
+      "type": "frame",
+      "count": 52,
+      "glowCount": 0,
+      "inkPercent": 19.59,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 741.8577707754448,
+        "y": 338.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "001",
+      "ratio": "9:16",
+      "name": "after-light-4-9x16.png",
+      "type": "frame",
+      "count": 59,
+      "glowCount": 0,
+      "inkPercent": 22.65,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 343.9471264068122,
+        "y": 688.1422292245552,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "001",
+      "ratio": "1:1",
+      "name": "after-light-4-1x1.png",
+      "type": "frame",
+      "count": 40,
+      "glowCount": 0,
+      "inkPercent": 24.57,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 458.5961685424163,
+        "y": 450.85630563274026,
+        "width": 360,
+        "height": 264
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "design-31",
+      "ratio": "16:9",
+      "name": "after-light-5-16x9.png",
+      "type": "central",
+      "count": 71,
+      "glowCount": 0,
+      "inkPercent": 33.48,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 614.7127766991034,
+        "y": 337.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "design-31",
+      "ratio": "9:16",
+      "name": "after-light-5-9x16.png",
+      "type": "central",
+      "count": 55,
+      "glowCount": 0,
+      "inkPercent": 15.13,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 292.7127766991034,
+        "y": 687.2872233008966,
+        "width": 270,
+        "height": 198
+      }
+    },
+    {
+      "version": "after",
+      "theme": "light",
+      "seed": "design-31",
+      "ratio": "1:1",
+      "name": "after-light-5-1x1.png",
+      "type": "central",
+      "count": 46,
+      "glowCount": 0,
+      "inkPercent": 24.06,
+      "quietInkPercent": 0,
+      "quiet": {
+        "x": 390.2837022654712,
+        "y": 449.7162977345288,
+        "width": 360,
+        "height": 264
+      }
+    }
+  ]
+}

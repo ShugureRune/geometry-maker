@@ -61,7 +61,7 @@ export default function App() {
       <section className="preview-panel" aria-labelledby="preview-heading">
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
         <div className="canvas-stage"><div className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><Preview scene={scene} background={background} /></div></div>
-        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>76 SHAPES</span></div>
+        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{ALGORITHM_VERSION}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>
