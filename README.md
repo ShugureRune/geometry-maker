@@ -1,6 +1,6 @@
 # 幾何学メーカー — 第1段階（2D基本機能）
 
-この開発ブランチは**第1.5段階・構図アルゴリズム改善候補（2d-v2）**です。公開main（2d-v1）へは未マージです。[変更内容・検証・比較画像](docs/COMPOSITION-REPORT.md)を確認し、見た目の承認後に統合する想定です。
+**第1.5段階・構図アルゴリズム（2d-v2）**を実装しています。見た目の確認後、mainへの統合とGitHub Pagesへの公開が承認されました。[変更内容・検証・比較画像](docs/COMPOSITION-REPORT.md)を参照してください。公開状況は[Pagesの実行結果](https://github.com/ShugureRune/geometry-maker/actions/workflows/pages.yml)で確認できます。
 
 React + TypeScript + Vite / SVG の、バックエンド不要のWebアプリです。
 Windows・macOSのデスクトップブラウザで利用する構成です。

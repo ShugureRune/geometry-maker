@@ -2,7 +2,7 @@
 
 2026-11-08 / 開発ブランチ `feat/2d-composition-v2`
 
-**公開mainとGitHub Pagesは2d-v1のままです。見た目の確認前にマージ・公開しません。**
+**この文書は開発候補のレビュー提出時点の記録です。提出時はmain・Pagesを2d-v1に維持し、その後ユーザーからmainへのマージとPagesへの反映が承認されました。最新の統合状態は[PR #1](https://github.com/ShugureRune/geometry-maker/pull/1)、公開結果は[PagesのActions](https://github.com/ShugureRune/geometry-maker/actions/workflows/pages.yml)を参照してください。**
 
 ## 変更前後
 
