@@ -2,7 +2,7 @@
 
 2026-11-08 / 開発ブランチ `feat/2d-design-quality-v3`
 
-**見た目の確認待ちです。mainへのマージ、GitHub Pagesの本番更新は行っていません。** 比較元は公開mainの `407e5814625dfe1cb666dfe2c69a5207ad6cc1c4`（2d-v2）です。
+**この文書はレビュー提出時点の実装・検証記録です。その後、ユーザーからmainへのマージとGitHub Pagesへの反映が承認されました。** 最新の統合状態は[PR #2](https://github.com/ShugureRune/geometry-maker/pull/2)、公開結果は[PagesのActions](https://github.com/ShugureRune/geometry-maker/actions/workflows/pages.yml)で確認できます。比較元は当時の公開main `407e5814625dfe1cb666dfe2c69a5207ad6cc1c4`（2d-v2）です。
 
 ## 参考画像の分析と採用した特徴
 
