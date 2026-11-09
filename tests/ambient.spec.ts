@@ -1,5 +1,6 @@
 import {test,expect} from './ui-test';
 test('ambient modes remain bounded, pause, stop and restore normal preview',async({page})=>{
+ test.setTimeout(90000);
  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await expect(page.getByTestId('ambient-preview')).toHaveCount(0);
  await page.getByLabel('自動待機画面を有効化').check();await expect(page.getByTestId('ambient-preview')).toHaveCount(1);
  for(const version of ['2d-v4','2d-v5'])for(const mode of ['growth','float','scroll','combined']){

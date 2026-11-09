@@ -1,3 +1,4 @@
+import {paletteSource,scrollBackgroundAt,type ScrollPaletteState} from './scroll-palette';
 import {scrollPathAt,scrollVelocity,type ScrollLeg} from './scroll-world';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ambientDefaults, ambientClock, ambientSeed, type AmbientInput, type AmbientSettings } from './ambient';
@@ -6,6 +7,7 @@ export function useAmbientClock(enabled:boolean,speedLimit:boolean,settings:Ambi
  const [seconds,setSeconds]=useState(0),[playing,setPlaying]=useState(false);
  const elapsed=useRef(0);
  const [scrollPath,setScrollPath]=useState<ScrollLeg[]>([]);
+ const [scrollPaletteState,setScrollPaletteState]=useState<ScrollPaletteState>();
  useLayoutEffect(()=>{
   if(!enabled)return;
   setScrollPath(previous=>{
@@ -17,15 +19,30 @@ export function useAmbientClock(enabled:boolean,speedLimit:boolean,settings:Ambi
   });
  },[enabled,settings.speed,settings.scrollSpeed,settings.duration,settings.direction]);
  useEffect(()=>{if(!enabled||!playing)return;let frame=0,last:number|undefined,draw=0;const tick=(now:number)=>{if(document.hidden){last=undefined;}else{if(last!==undefined)elapsed.current+=(now-last)/1000;last=now;if(now-draw>=(speedLimit?1000/20:1000/30)){setSeconds(elapsed.current);draw=now;}}frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);const visibility=()=>{last=undefined;};document.addEventListener('visibilitychange',visibility);return()=>{cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',visibility);};},[enabled,playing,speedLimit]);
- return{seconds,playing,scrollPath,play:()=>setPlaying(true),pause:()=>setPlaying(false),stop:()=>{setPlaying(false);elapsed.current=0;setSeconds(0);setScrollPath([{time:0,x:0,y:0,...scrollVelocity(settings),speed:settings.speed}]);}};
+ return{seconds,playing,scrollPath,scrollPaletteState,setScrollPaletteState,play:()=>setPlaying(true),pause:()=>setPlaying(false),stop:()=>{setPlaying(false);elapsed.current=0;setSeconds(0);setScrollPaletteState(undefined);setScrollPath([{time:0,x:0,y:0,...scrollVelocity(settings),speed:settings.speed}]);}};
 }
-export function AmbientControls({settings,onChange,clock}:{settings:AmbientSettings;onChange:(s:AmbientSettings)=>void;clock:ReturnType<typeof useAmbientClock>}){
- const select=(key:keyof AmbientSettings,label:string,options:string[][])=><label>{label}<select value={String(settings[key])} onChange={e=>onChange({...settings,[key]:e.target.value})}>{options.map(([value,text])=><option key={value} value={value}>{text}</option>)}</select></label>;
- const number=(key:keyof AmbientSettings,label:string,min:number,max:number,step=1,unit='秒')=><div className="ambient-range"><label htmlFor={`ambient-${key}`}>{label}</label><output htmlFor={`ambient-${key}`}>{Number(settings[key]).toFixed(step<1?2:0)}{unit}</output><input id={`ambient-${key}`} type="range" min={min} max={max} step={step} value={Number(settings[key])} aria-valuetext={`${Number(settings[key])}${unit}`} onChange={e=>onChange({...settings,[key]:Number(e.target.value)})}/></div>;
+export function AmbientControls({settings,onChange,clock,input}:{input?:AmbientInput;settings:AmbientSettings;onChange:(s:AmbientSettings)=>void;clock:ReturnType<typeof useAmbientClock>}){
+ function changePalette(next:AmbientSettings){
+  if(!input){onChange(next);return;}
+  const full={...input,settings,scrollPaletteState:clock.scrollPaletteState},background=scrollBackgroundAt(full,clock.seconds),frozen={source:paletteSource(full),solid:background.solid,colors:background.colors};
+  clock.setScrollPaletteState({...frozen,at:clock.seconds,automatic:next.scrollBackgroundAuto});onChange({...next,scrollFrozen:frozen});
+ }
+ const select=(key:keyof AmbientSettings,label:string,options:string[][])=><label>{label}<select value={String(settings[key])} onChange={e=>{const next={...settings,[key]:e.target.value};if(key==='loop'&&settings.mode==='scroll'&&settings.scrollBackgroundAuto)changePalette(next);else onChange(next);}}>{options.map(([value,text])=><option key={value} value={value}>{text}</option>)}</select></label>;
+ const number=(key:keyof AmbientSettings,label:string,min:number,max:number,step=1,unit='秒')=><div className="ambient-range"><label htmlFor={`ambient-${key}`}>{label}</label><output htmlFor={`ambient-${key}`}>{Number(settings[key]).toFixed(step<1?2:0)}{unit}</output><input id={`ambient-${key}`} type="range" min={min} max={max} step={step} value={Number(settings[key])} aria-valuetext={`${Number(settings[key])}${unit}`} onChange={e=>{const next={...settings,[key]:Number(e.target.value)};if(settings.mode==='scroll'&&settings.scrollBackgroundAuto&&(key==='scrollBackgroundInterval'||(settings.loop==='perfect'&&(key==='duration'||key==='speed'))))changePalette(next);else onChange(next);}}/></div>;
  return <section className="control-section ambient-controls"><h3>自動待機画面モード</h3><label><input type="checkbox" checked={settings.enabled} onChange={e=>{clock.stop();onChange({...settings,enabled:e.target.checked});if(e.target.checked&&!matchMedia('(prefers-reduced-motion: reduce)').matches)clock.play();}}/> 自動待機画面を有効化</label>
  {settings.enabled&&<>
  {select('mode','待機アニメーション',[['growth','自動成長・再生成'],['float','浮遊・回転'],['scroll','無限スクロール'],['combined','複合モード']])}
  {select('loop','ループ方式',[['perfect','完全ループ'],['evolving','無限変化']])}
+ {settings.mode==='scroll'&&<fieldset className="scroll-settings"><legend>スクロールの密度と配色</legend>
+ {number('scrollDensity','スクロール専用図形密度',0,100,5,'%')}
+ <label><input type="checkbox" checked={settings.scrollBackgroundAuto} onChange={e=>{
+  changePalette({...settings,scrollBackgroundAuto:e.target.checked});
+ }}/> 背景色を自動変更</label>
+ {number('scrollBackgroundInterval','背景色変更間隔',3,60,1,'秒')}
+ <label><input type="checkbox" checked={settings.scrollAutoFigureColors} onChange={e=>onChange({...settings,scrollAutoFigureColors:e.target.checked})}/> 背景に合わせて図形色を自動生成</label>
+ <p className="help">通常の密度・配色は変更しません。固定色は維持します。背景の自動変更をOFFにすると、その時点の背景色を保持します。完全ループでは背景の変化間隔も周期に合わせます。</p>
+ </fieldset>}
+
  <div className="play-buttons"><button onClick={clock.play}>待機画面を再生</button><button onClick={clock.pause}>待機画面を一時停止</button><button onClick={clock.stop}>待機画面を停止</button></div>
  <p className="help">{clock.playing?'再生中':'停止・一時停止中'} · {clock.seconds.toFixed(1)}秒。通常のシード値は保持します。</p>
  <details><summary>待機画面の詳細設定</summary>
@@ -35,7 +52,7 @@ export function AmbientControls({settings,onChange,clock}:{settings:AmbientSetti
  {number('exportDuration','待機動画の書き出し時間（秒）',1,120)}{number('interval','シード更新間隔（秒）',4,120)}{number('floatAmount','浮遊量',0,5,.25,'倍')}{number('rotation','回転量（度）',0,5,.25,'度')}{number('rotationSpeed','回転速度（周期内の回数）',1,4,1,'回')}
  {select('direction','スクロール方向',[['horizontal','横'],['vertical','縦'],['diagonal','斜め']])}{number('scrollSpeed','スクロール速度',.25,4,.25,'倍')}
  <label><input type="checkbox" checked={settings.lowPower} onChange={e=>onChange({...settings,lowPower:e.target.checked})}/> 低負荷表示（20fps）</label>
- <p className="help">{settings.mode==='scroll'&&settings.loop==='evolving'?'無限変化スクロールは元シードとチャンク座標で生成します。自動シード更新と更新間隔は使用しません。スクロール速度はループ時間を基準にし、カメラは戻りません。':''}成長時間・イージング・密度・配色は通常設定を使用します。完全ループではシードを固定します。周期が短い場合、成長・保持・消失時間を周期内に収めます。</p>
+ <p className="help">{settings.mode==='scroll'&&settings.loop==='evolving'?'無限変化スクロールは元シードとチャンク座標で生成します。自動シード更新と更新間隔は使用しません。スクロール速度はループ時間を基準にし、カメラは戻りません。':''}成長時間・イージングは通常設定を使用します。スクロール以外の密度・配色は通常設定です。完全ループではシードを固定します。周期が短い場合、成長・保持・消失時間を周期内に収めます。</p>
  </details></>}
  </section>;
 }
@@ -44,7 +61,7 @@ export function AmbientStage({input,clock}:{input:AmbientInput;clock:ReturnType<
  const reduced=typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
  const c=ambientClock(input.settings,clock.seconds);
  return <div ref={ref} className={`ambient-stage ${hidden?'ambient-hidden':''}`}>
- <AmbientView input={{...input,scrollPath:clock.scrollPath}} seconds={clock.seconds}/>
+ <AmbientView input={{...input,scrollPath:clock.scrollPath,scrollPaletteState:clock.scrollPaletteState}} seconds={clock.seconds}/>
  <div className="ambient-toolbar"><button onClick={()=>setHidden(!hidden)}>{hidden?'操作を表示':'操作を隠す'}</button>{!hidden&&<><button onClick={()=>clock.playing?clock.pause():clock.play()}>{clock.playing?'一時停止':'再生'}</button><button onClick={clock.stop}>停止</button><button onClick={()=>{if(document.fullscreenElement)void document.exitFullscreen();else if(ref.current?.requestFullscreen)void ref.current.requestFullscreen().catch(()=>setMessage('全画面表示はこのブラウザで利用できません。'));else setMessage('全画面表示はこのブラウザで利用できません。');}}>全画面表示</button><code>表示シード：{input.settings.mode==='scroll'&&input.settings.loop==='evolving'?input.seed:ambientSeed(input.seed,c.index)}</code></> }</div>
  {message&&<p role="status">{message}</p>}{reduced&&!hidden&&<p className="help">視覚効果軽減が有効です。再生ボタンで開始できます。</p>}
  </div>;

@@ -146,14 +146,14 @@ export default function App() {
         </div>
         <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={category!=='animation'}>
           <h2 className="category-title">アニメーション</h2>
-        <AmbientControls settings={ambient} onChange={setAmbient} clock={ambientClock}/>
+        <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
 
         </div>
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={category!=='export'}>
           <h2 className="category-title">書き出し</h2>
       <div className="export-area">
-        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
             setDensity(settings.density ?? 50);

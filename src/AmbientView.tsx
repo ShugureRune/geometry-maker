@@ -1,3 +1,4 @@
+import {scrollPaletteAt} from './scroll-palette';
 import {createScrollWorld,entryTime,growthSeconds,type ScrollWorld} from './scroll-world';
 import { useMemo } from 'react';
 import { Preview } from './Preview';
@@ -24,9 +25,9 @@ function Tile({input,index,progress,phase,opacity=1,scale=1}:{input:AmbientInput
 
  return <g opacity={opacity} transform={transform}><Preview scene={generated.scene} background={background} motion={motion} growth={progress>=1?undefined:Object.fromEntries(generated.scene.shapes.map(shape=>[shape.id,progressAt(generated.cues[shape.id],progress,input.animation.easingType)]))}/></g>;
 }
-export function AmbientView({input,seconds,world}:{input:AmbientInput;seconds:number;world?:ScrollWorld}){
- const localWorld=useMemo(()=>input.settings.mode==='scroll'&&input.settings.loop==='evolving'&&!world?createScrollWorld(input):undefined,[input.seed,input.ratio,input.version,input.density,input.settings.mode,input.settings.loop,world]);
- if(input.settings.mode==='scroll'&&input.settings.loop==='evolving')return <ChunkScroll input={input} seconds={seconds} world={(world??localWorld)!}/>;
+export function AmbientView({input,seconds,world,scrollCamera='parent'}:{input:AmbientInput;seconds:number;world?:ScrollWorld;scrollCamera?:'parent'|'per-chunk'}){
+ const localWorld=useMemo(()=>input.settings.mode==='scroll'&&input.settings.loop==='evolving'&&!world?createScrollWorld(input):undefined,[input.seed,input.ratio,input.version,input.settings.scrollDensity,input.settings.mode,input.settings.loop,world]);
+ if(input.settings.mode==='scroll'&&input.settings.loop==='evolving')return <ChunkScroll input={input} seconds={seconds} world={(world??localWorld)!} camera={scrollCamera}/>;
  const s=input.settings,c=ambientClock(s,seconds),[width,height]=RATIOS[input.ratio];
  const cycleGrowth=s.mode==='growth'||s.mode==='combined';
  const envelope=ambientEnvelope(s,seconds,input.animation.animationDuration,input.animation.playbackSpeed);
@@ -35,10 +36,11 @@ export function AmbientView({input,seconds,world}:{input:AmbientInput;seconds:nu
  const nextIndex=s.loop==='perfect'?0:s.autoSeed?c.index+1:0;
 
  const scroll=s.mode==='scroll';
+ const scrollInput=scroll?{...input,density:s.scrollDensity,background:scrollPaletteAt(input,seconds)}:input;
  const fraction=(c.phase*Math.max(1,Math.round(s.scrollSpeed)))%1;
  return <svg data-testid="ambient-preview" className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
   {scroll?<>
-   {[{index:c.index,opacity:1},{index:nextIndex,opacity:s.loop==='evolving'?fade:0}].filter(layer=>layer.opacity>0).map((layer,k)=><g key={k} opacity={layer.opacity}>{(s.direction==='vertical'?[0]:[0,1,2]).flatMap(x=>(s.direction==='horizontal'?[0]:[0,1,2]).map(y=><g key={`${x}:${y}`} transform={`translate(${(x-(s.direction!=='vertical'?fraction*2:0))*width} ${(y-(s.direction!=='horizontal'?fraction*2:0))*height})`}><g transform={`translate(${Math.abs(x)%2?width:0} ${Math.abs(y)%2?height:0}) scale(${Math.abs(x)%2?-1:1} ${Math.abs(y)%2?-1:1})`}><Tile input={input} index={layer.index} progress={1} phase={0}/></g></g>))}</g>)}
+   {[{index:c.index,opacity:1},{index:nextIndex,opacity:s.loop==='evolving'?fade:0}].filter(layer=>layer.opacity>0).map((layer,k)=><g key={k} opacity={layer.opacity}>{(s.direction==='vertical'?[0]:[0,1,2]).flatMap(x=>(s.direction==='horizontal'?[0]:[0,1,2]).map(y=><g key={`${x}:${y}`} transform={`translate(${(x-(s.direction!=='vertical'?fraction*2:0))*width} ${(y-(s.direction!=='horizontal'?fraction*2:0))*height})`}><g transform={`translate(${Math.abs(x)%2?width:0} ${Math.abs(y)%2?height:0}) scale(${Math.abs(x)%2?-1:1} ${Math.abs(y)%2?-1:1})`}><Tile input={scrollInput} index={layer.index} progress={1} phase={0}/></g></g>))}</g>)}
   </>:<>
    <Tile input={input} index={c.index} progress={s.transitionType==='reverse'&&exit>0?1-exit:progress} phase={c.phase} opacity={1} scale={s.transitionType==='shrink'?1-exit*.08:1}/>
    {exit>0&&<Tile input={input} index={nextIndex} progress={cycleGrowth?0:1} phase={0} opacity={exit}/>}
@@ -46,19 +48,22 @@ export function AmbientView({input,seconds,world}:{input:AmbientInput;seconds:nu
  </svg>;
 }
 
-function ChunkScroll({input,seconds,world}:{input:AmbientInput;seconds:number;world:ScrollWorld}){
+function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:number;world:ScrollWorld;camera:'parent'|'per-chunk'}){
  const {width,height}=world,s=input.settings,{cx,cy,chunks}=world.frame(seconds,s,input.scrollPath);
- return <svg data-testid="ambient-preview" data-scroll-world="v1" data-cache-size={world.cache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
-  <Preview scene={world.empty} background={input.background}/>
-  {chunks.map(chunk=>{
+ const background=useMemo(()=>scrollPaletteAt(input,seconds),[input.background,input.colors,input.seed,input.settings,input.scrollPaletteState,s.scrollBackgroundAuto?seconds:0]);
+ return <svg data-testid="ambient-preview" data-scroll-world="v2" data-scroll-density={s.scrollDensity} data-cache-size={world.cache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
+  <Preview scene={world.empty} background={background}/>
+  <g data-testid="scroll-camera" transform={camera==='parent'?`translate(${-cx} ${-cy})`:undefined}>{chunks.map(chunk=>{
+   const margin=world.renderMargin;
+   if(chunk.anchorX-cx < -margin||chunk.anchorX-cx > width+margin||chunk.anchorY-cy < -margin||chunk.anchorY-cy > height+margin)return null;
    const start=entryTime(chunk.anchorX/width,chunk.anchorY/height,seconds,s,input.scrollPath);
    if(!Number.isFinite(start))return null;
    const elapsed=growthSeconds(start,seconds,s,input.scrollPath);
    const progress=Math.min(1,elapsed*input.animation.playbackSpeed/input.animation.animationDuration);
    const growth=progress>=1?undefined:Object.fromEntries(chunk.scene.shapes.map(shape=>[shape.id,progressAt(chunk.cues[shape.id],progress,input.animation.easingType)]));
-   return <g key={chunk.key} data-chunk={chunk.key} data-chunk-seed={chunk.seed} data-growth-start={start} data-growth-progress={progress} data-anchor-x={chunk.anchorX-cx} data-anchor-y={chunk.anchorY-cy} transform={`translate(${chunk.anchorX-cx} ${chunk.anchorY-cy}) scale(${chunk.scale}) translate(${-chunk.localX} ${-chunk.localY})`}>
-    <Preview scene={chunk.scene} background={input.background} growth={growth} transparent/>
+   return <g key={chunk.key} data-chunk={chunk.key} data-chunk-seed={chunk.seed} data-growth-start={start} data-growth-progress={progress} data-anchor-x={chunk.anchorX-cx} data-anchor-y={chunk.anchorY-cy} transform={`translate(${chunk.anchorX-(camera==='parent'?0:cx)} ${chunk.anchorY-(camera==='parent'?0:cy)}) scale(${chunk.scale}) translate(${-chunk.localX} ${-chunk.localY})`}>
+    <Preview scene={chunk.scene} background={background} growth={growth} transparent/>
    </g>;
-  })}
+  })}</g>
  </svg>;
 }

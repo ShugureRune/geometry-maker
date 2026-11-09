@@ -1,3 +1,4 @@
+import {shapeBounds} from './geometry';
 import {describe,it,expect} from 'vitest';
 import {ambientDefaults,type AmbientInput} from './ambient';
 import {defaults} from './animation';
@@ -12,10 +13,11 @@ describe('deterministic infinite world',()=>{
   }
  },15000);
  it('uses identical candidates at all densities and ignores periodic seed settings',()=>{
-  const a=createScrollWorld(input),b=createScrollWorld({...input,density:100});const low=a.frame(8,input.settings).chunks,high=b.frame(8,input.settings).chunks;
+  const a=createScrollWorld(input),b=createScrollWorld({...input,settings:{...input.settings,scrollDensity:100}});const low=a.frame(8,input.settings).chunks,high=b.frame(8,input.settings).chunks;
   low.forEach((c,i)=>{expect(c.scale).toBe(high[i].scale);expect(c.anchorX).toBe(high[i].anchorX);for(const shape of c.scene.shapes)expect(high[i].scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
   expect(a.frame(30,input.settings)).toEqual(a.frame(30,{...input.settings,autoSeed:false,interval:4}));
  });
+ it('caps every hero envelope so adjacent groups retain a gap',()=>{for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version});for(const chunk of world.frame(0,input.settings).chunks)for(const shape of chunk.scene.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);for(const x of [b.x,b.x+b.width])for(const y of [b.y,b.y+b.height])expect(Math.hypot(x-chunk.localX,y-chunk.localY)*chunk.scale).toBeLessThanOrEqual(world.pitch*.400001);}}});
  it('enters only when the actual anchor is inside, including diagonal edges',()=>{
   const s={...input.settings,duration:4,speed:1,scrollSpeed:1};
   expect(entryTime(2,.5,1,s)).toBe(Infinity);expect(entryTime(2,.5,2,s)).toBe(2);
