@@ -3,7 +3,7 @@ import { contoursOf, pathData, radians, shapeBounds, worldPoint, trimContour } f
 import { gradientEndpoints, type Background, type Point, type Scene, type Shape, NEW_SHAPE_KINDS } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
 
-function Geometry({ shape, progress=1 }: { shape: Shape; progress?:number }) {
+function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; finalFillOpacity:number; progress?:number }) {
   const modern=(NEW_SHAPE_KINDS as readonly string[]).includes(shape.kind);
   const contours=useMemo(()=>contoursOf(shape),[shape]);
   return <>{contours.map((contour,i)=>{
@@ -22,7 +22,7 @@ function Geometry({ shape, progress=1 }: { shape: Shape; progress?:number }) {
         stroke={['circle','concentric'].includes(shape.kind)?undefined:'none'}/>;
     }
     return <path key={i} pathLength={t<1&&(!modern||!contour.dashed)?1:undefined}
-      style={t<1?{...(modern&&contour.dashed?{}:{strokeDasharray:1,strokeDashoffset:1-t}),fillOpacity:t,...(scale===undefined?{}:{transform:`scale(${scale})`})}:undefined}
+      style={t<1?{...(modern&&contour.dashed?{}:{strokeDasharray:1,strokeDashoffset:1-t}),fillOpacity:finalFillOpacity*t,...(scale===undefined?{}:{transform:`scale(${scale})`})}:undefined}
       vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'} d={pathData(c)}
       fill={shape.filled&&c.closed?undefined:'none'} opacity={c.opacity}
       strokeDasharray={contour.dashed?`${shape.size*.065} ${shape.size*.06}`:undefined}/>;
@@ -76,15 +76,16 @@ export function Preview({ scene, background, growth }: { scene: Scene; backgroun
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
         const solidFill = ['dot', 'dots', 'accent'].includes(shape.kind);
+        const finalFillOpacity=solidFill || ['circuit','branch-circuit'].includes(shape.kind)?1:shape.fillOpacity;
         const ink = background.mode === 'gradient' ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
         return <g key={shape.id} data-shape-id={shape.id} data-layer={shape.layer} data-role={shape.role} data-kind={shape.kind}
           data-group={shape.group} data-parent={shape.parent} data-glow={paint.glow || undefined}
           transform={`translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
           stroke={ink} strokeWidth={shape.strokeWidth} opacity={paint.opacity}
           fill={shape.filled || ['circuit','branch-circuit'].includes(shape.kind) ? solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
-          fillOpacity={solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? 1 : shape.fillOpacity}>
-          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity={paint.glowOpacity} fill={background.glowIntensity===undefined?undefined:solidFill||['circuit','branch-circuit'].includes(shape.kind)?ink:"none"}><Geometry shape={shape} progress={growth?.[shape.id]} /></g>}
-          <Geometry shape={shape} progress={growth?.[shape.id]} />
+          fillOpacity={finalFillOpacity}>
+          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity={paint.glowOpacity} fill={background.glowIntensity===undefined?undefined:solidFill||['circuit','branch-circuit'].includes(shape.kind)?ink:"none"}><Geometry shape={shape} finalFillOpacity={finalFillOpacity} progress={growth?.[shape.id]} /></g>}
+          <Geometry shape={shape} finalFillOpacity={finalFillOpacity} progress={growth?.[shape.id]} />
         </g>;
       })}
     </g>
