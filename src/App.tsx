@@ -1,3 +1,4 @@
+import { AmbientControls, AmbientStage, useAmbientClock, ambientDefaults } from './AmbientControls';
 import { darkTheme } from './themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AnimationControls,usePlayback } from './AnimationControls';
@@ -14,6 +15,8 @@ const initialBackground: Background = {glowIntensity:100,mode:'gradient',solid:'
 
 
 export default function App() {
+  const [ambient,setAmbient]=useState({...ambientDefaults});
+  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower);
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState(createRandomSeed);
   const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
@@ -39,6 +42,7 @@ export default function App() {
 
   const [animation,setAnimation]=useState<AnimationSettings>({...defaults,animationEnabled:true});
   const playback=usePlayback(animation);
+  useEffect(()=>{if(ambient.enabled)playback.setPlaying(false);},[ambient.enabled]);
   useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
   function replayOnRegenerate(){if(animation.animationEnabled)playback.restart(true);}
@@ -115,6 +119,7 @@ export default function App() {
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
           <p className="help">0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。</p>
         </section>
+        <AmbientControls settings={ambient} onChange={setAmbient} clock={ambientClock}/>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
         <button type="button" className="generate-button" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
@@ -122,14 +127,15 @@ export default function App() {
 
       <section className="preview-panel" aria-labelledby="preview-heading">
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
-        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><Preview scene={scene} background={background} growth={growth} /></div></div>
+        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth}/>}</></div></div>
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>
       <div className="export-area">
-        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
+            ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
             setDensity(settings.density ?? 50);
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
             setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
@@ -141,6 +147,6 @@ export default function App() {
           }} />
       </div>
     </main>
-    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第3.5段階 · 2D成長と多様性</span></footer>
+    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第5段階 · 2D自動待機画面</span></footer>
   </div>;
 }

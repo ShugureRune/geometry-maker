@@ -1,0 +1,281 @@
+[
+  {
+    "minute": 0,
+    "elapsedSeconds": 0.073,
+    "heap": 7591768,
+    "nodes": 3,
+    "shapes": 27,
+    "clock": "\u518d\u751f\u4e2d \u00b7 0.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 1,
+    "elapsedSeconds": 60.054,
+    "heap": 8665996,
+    "nodes": 3,
+    "shapes": 26,
+    "clock": "\u518d\u751f\u4e2d \u00b7 60.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 2,
+    "elapsedSeconds": 120.093,
+    "heap": 8524016,
+    "nodes": 3,
+    "shapes": 14,
+    "clock": "\u518d\u751f\u4e2d \u00b7 120.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 3,
+    "elapsedSeconds": 180.068,
+    "heap": 11164128,
+    "nodes": 3,
+    "shapes": 61,
+    "clock": "\u518d\u751f\u4e2d \u00b7 180.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 4,
+    "elapsedSeconds": 240.334,
+    "heap": 9651916,
+    "nodes": 3,
+    "shapes": 2,
+    "clock": "\u518d\u751f\u4e2d \u00b7 241.1\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 5,
+    "elapsedSeconds": 300.09,
+    "heap": 10827172,
+    "nodes": 3,
+    "shapes": 57,
+    "clock": "\u518d\u751f\u4e2d \u00b7 300.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 6,
+    "elapsedSeconds": 360.132,
+    "heap": 10332428,
+    "nodes": 3,
+    "shapes": 44,
+    "clock": "\u518d\u751f\u4e2d \u00b7 360.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 7,
+    "elapsedSeconds": 420.083,
+    "heap": 9272840,
+    "nodes": 3,
+    "shapes": 30,
+    "clock": "\u518d\u751f\u4e2d \u00b7 420.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 8,
+    "elapsedSeconds": 480.172,
+    "heap": 10299620,
+    "nodes": 3,
+    "shapes": 41,
+    "clock": "\u518d\u751f\u4e2d \u00b7 480.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 9,
+    "elapsedSeconds": 540.114,
+    "heap": 9303268,
+    "nodes": 3,
+    "shapes": 27,
+    "clock": "\u518d\u751f\u4e2d \u00b7 540.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 10,
+    "elapsedSeconds": 600.094,
+    "heap": 11521488,
+    "nodes": 3,
+    "shapes": 60,
+    "clock": "\u518d\u751f\u4e2d \u00b7 600.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 11,
+    "elapsedSeconds": 660.106,
+    "heap": 10271412,
+    "nodes": 3,
+    "shapes": 48,
+    "clock": "\u518d\u751f\u4e2d \u00b7 660.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 12,
+    "elapsedSeconds": 720.082,
+    "heap": 9106580,
+    "nodes": 3,
+    "shapes": 33,
+    "clock": "\u518d\u751f\u4e2d \u00b7 720.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 13,
+    "elapsedSeconds": 780.154,
+    "heap": 10311756,
+    "nodes": 3,
+    "shapes": 35,
+    "clock": "\u518d\u751f\u4e2d \u00b7 780.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 14,
+    "elapsedSeconds": 840.151,
+    "heap": 10838980,
+    "nodes": 3,
+    "shapes": 53,
+    "clock": "\u518d\u751f\u4e2d \u00b7 840.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 15,
+    "elapsedSeconds": 900.136,
+    "heap": 10908540,
+    "nodes": 3,
+    "shapes": 48,
+    "clock": "\u518d\u751f\u4e2d \u00b7 900.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 16,
+    "elapsedSeconds": 960.086,
+    "heap": 10652040,
+    "nodes": 3,
+    "shapes": 70,
+    "clock": "\u518d\u751f\u4e2d \u00b7 960.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 17,
+    "elapsedSeconds": 1020.129,
+    "heap": 9937608,
+    "nodes": 3,
+    "shapes": 36,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1020.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 18,
+    "elapsedSeconds": 1080.106,
+    "heap": 9287624,
+    "nodes": 3,
+    "shapes": 37,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1080.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 19,
+    "elapsedSeconds": 1140.058,
+    "heap": 10087452,
+    "nodes": 3,
+    "shapes": 34,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1140.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 20,
+    "elapsedSeconds": 1200.147,
+    "heap": 10351548,
+    "nodes": 3,
+    "shapes": 23,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1200.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 21,
+    "elapsedSeconds": 1260.183,
+    "heap": 10513252,
+    "nodes": 3,
+    "shapes": 48,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1261.0\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 22,
+    "elapsedSeconds": 1320.141,
+    "heap": 10799700,
+    "nodes": 3,
+    "shapes": 36,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1321.0\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 23,
+    "elapsedSeconds": 1380.1,
+    "heap": 10512432,
+    "nodes": 3,
+    "shapes": 39,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1380.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 24,
+    "elapsedSeconds": 1440.138,
+    "heap": 10221896,
+    "nodes": 3,
+    "shapes": 33,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1440.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 25,
+    "elapsedSeconds": 1500.102,
+    "heap": 10854120,
+    "nodes": 3,
+    "shapes": 60,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1500.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 26,
+    "elapsedSeconds": 1560.067,
+    "heap": 10233260,
+    "nodes": 3,
+    "shapes": 49,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1560.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 27,
+    "elapsedSeconds": 1620.11,
+    "heap": 9276740,
+    "nodes": 3,
+    "shapes": 29,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1620.8\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 28,
+    "elapsedSeconds": 1680.133,
+    "heap": 10625100,
+    "nodes": 3,
+    "shapes": 63,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1680.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 29,
+    "elapsedSeconds": 1740.235,
+    "heap": 10059108,
+    "nodes": 3,
+    "shapes": 22,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1741.0\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  },
+  {
+    "minute": 30,
+    "elapsedSeconds": 1800.138,
+    "heap": 9707996,
+    "nodes": 3,
+    "shapes": 28,
+    "clock": "\u518d\u751f\u4e2d \u00b7 1800.9\u79d2\u3002\u901a\u5e38\u306e\u30b7\u30fc\u30c9\u5024\u306f\u4fdd\u6301\u3057\u307e\u3059\u3002",
+    "errors": []
+  }
+]

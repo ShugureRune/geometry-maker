@@ -1,0 +1,20 @@
+{
+  "v5": {
+    "seconds": 1800.138,
+    "heapMiBMin": 7.240074157714844,
+    "heapMiBMax": 10.987747192382812,
+    "heapMiBFinal": 9.25826644897461,
+    "maxSVG": 3,
+    "maxShapes": 70,
+    "browserErrors": 0
+  },
+  "v4": {
+    "seconds": 1800.078,
+    "heapMiBMin": 8.229995727539062,
+    "heapMiBMax": 11.048110961914062,
+    "heapMiBFinal": 8.846138000488281,
+    "maxSVG": 2,
+    "maxShapes": 58,
+    "browserErrors": 0
+  }
+}
