@@ -18,6 +18,7 @@ export function Preview({ scene, background }: { scene: Scene; background: Backg
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
+  const colorAt = (shape: Shape, point: Point) => background.figureColors?.[shape.role === 'hero' ? 'primary' : shape.role === 'accent' ? 'accent' : 'support'] ?? inkAt(shape.tone, background, point, width, height);
   const vector = backgroundVector(background, width, height);
   return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
     data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
@@ -30,17 +31,17 @@ export function Preview({ scene, background }: { scene: Scene; background: Backg
     <defs>
       {scene.shapes.map(shape => {
         const start = localPoint(shape, vector.start), end = localPoint(shape, vector.end);
-        const paint = paintFor(shape, background, width, height);
+        const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
         const bounds = shapeBounds({ ...shape, x: 0, y: 0, rotation: 0 });
         return <g key={shape.id}>
           {background.mode === 'gradient' && <linearGradient id={`${gradientId}-ink-${shape.id}`} gradientUnits="userSpaceOnUse"
             x1={start.x} y1={start.y} x2={end.x} y2={end.y}>
             {[0, 0.25, 0.5, 0.75, 1].map(t => <stop key={t} offset={`${t * 100}%`}
-              stopColor={inkAt(shape.tone, background, { x: vector.start.x + (vector.end.x - vector.start.x) * t,
-                y: vector.start.y + (vector.end.y - vector.start.y) * t }, width, height)} />)}
+              stopColor={colorAt(shape, { x: vector.start.x + (vector.end.x - vector.start.x) * t,
+                y: vector.start.y + (vector.end.y - vector.start.y) * t })} />)}
           </linearGradient>}
           {shape.filled && <linearGradient id={`${gradientId}-fill-${shape.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={inkAt(shape.tone, background, worldPoint(shape, { x: -shape.size, y: -shape.size }), width, height)} stopOpacity="0.95" />
+            <stop offset="0%" stopColor={colorAt(shape, worldPoint(shape, { x: -shape.size, y: -shape.size }))} stopOpacity="0.95" />
             <stop offset="100%" stopColor={paint.color} stopOpacity="0.05" />
           </linearGradient>}
           {paint.glow && <filter id={`${gradientId}-glow-${shape.id}`} filterUnits="userSpaceOnUse"
@@ -53,7 +54,7 @@ export function Preview({ scene, background }: { scene: Scene; background: Backg
     <rect data-testid="background" width={width} height={height} fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.map(shape => {
-        const paint = paintFor(shape, background, width, height);
+        const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
         const solidFill = ['dot', 'dots', 'accent'].includes(shape.kind);
         const ink = background.mode === 'gradient' ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
         return <g key={shape.id} data-shape-id={shape.id} data-layer={shape.layer} data-role={shape.role} data-kind={shape.kind}
