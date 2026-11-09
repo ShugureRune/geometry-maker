@@ -36,12 +36,12 @@ function localPoint(shape: Shape, p: Point): Point {
   return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
 }
 
-export function Preview({ scene, background, growth, motion, transparent=false }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean }) {
+export function Preview({ scene, background, growth, motion, transparent=false, shapeColors }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean; shapeColors?:Record<string,string> }) {
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
-  const roleColor=(shape:Shape)=>background.figureColors?.[shape.role==='hero'?'primary':shape.role==='accent'?'accent':'support'];
-  const colorAt = (shape: Shape, point: Point) => background.figureColors?.[shape.role === 'hero' ? 'primary' : shape.role === 'accent' ? 'accent' : 'support'] ?? inkAt(shape.tone, background, point, width, height);
+  const roleColor=(shape:Shape)=>shapeColors?.[shape.id]??background.figureColors?.[shape.role==='hero'?'primary':shape.role==='accent'?'accent':'support'];
+  const colorAt = (shape: Shape, point: Point) => roleColor(shape) ?? inkAt(shape.tone, background, point, width, height);
   const vector = backgroundVector(background, width, height);
   const localBounds=useMemo(()=>new Map(scene.shapes.map(shape=>[shape.id,shapeBounds({...shape,x:0,y:0,rotation:0})])),[scene]);
   // Static gradients and bounds do not need recomputing on every animation frame.
@@ -66,7 +66,7 @@ export function Preview({ scene, background, growth, motion, transparent=false }
             {background.glowIntensity!==undefined&&<feComponentTransfer><feFuncA type="linear" slope={1+background.glowIntensity/50}/></feComponentTransfer>}
           </filter>}
         </g>;
-      }),[scene,background,gradientId,localBounds,transparent]);
+      }),[scene,background,gradientId,localBounds,transparent,shapeColors]);
   return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
     data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
     xmlns="http://www.w3.org/2000/svg" overflow={transparent?"visible":"hidden"}>
