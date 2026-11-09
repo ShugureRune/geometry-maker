@@ -1,0 +1,288 @@
+[
+  {
+    "version": "2d-v4",
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "width": 1280,
+    "height": 720,
+    "glow": 0,
+    "fps": 24,
+    "errors": [
+      0,
+      0.7519965277777778,
+      0.4755150462962963,
+      1.2732175925925926,
+      1.4584953703703705
+    ],
+    "kinds": [
+      "line",
+      "band",
+      "triangle",
+      "arc",
+      "dots",
+      "cross",
+      "circuit",
+      "rectangle",
+      "accent",
+      "circle",
+      "dot"
+    ]
+  },
+  {
+    "version": "2d-v4",
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "width": 1920,
+    "height": 1080,
+    "glow": 50,
+    "fps": 30,
+    "errors": [
+      0,
+      0.9566377314814815,
+      0.4547395833333333,
+      1.418298611111111,
+      1.6723726851851852
+    ],
+    "kinds": [
+      "line",
+      "band",
+      "triangle",
+      "arc",
+      "dots",
+      "cross",
+      "circuit",
+      "rectangle",
+      "dot",
+      "circle",
+      "accent"
+    ]
+  },
+  {
+    "version": "2d-v4",
+    "seed": "design-6",
+    "ratio": "16:9",
+    "width": 3840,
+    "height": 2160,
+    "glow": 100,
+    "fps": 60,
+    "errors": [
+      0,
+      1.5216724537037036,
+      0.4648611111111111,
+      2.006736111111111,
+      2.155486111111111
+    ],
+    "kinds": [
+      "line",
+      "band",
+      "triangle",
+      "arc",
+      "dots",
+      "frame",
+      "circuit",
+      "rectangle",
+      "circle",
+      "dot"
+    ]
+  },
+  {
+    "version": "2d-v4",
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "glow": 150,
+    "fps": 30,
+    "errors": [
+      0,
+      0.9683820298769772,
+      0.6573667252489748,
+      1.480061877562976,
+      1.6343548623315758
+    ],
+    "kinds": [
+      "line",
+      "band",
+      "triangle",
+      "arc",
+      "dots",
+      "cross",
+      "circuit",
+      "rectangle",
+      "accent",
+      "circle",
+      "dot"
+    ]
+  },
+  {
+    "version": "2d-v4",
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "width": 2048,
+    "height": 2048,
+    "glow": 200,
+    "fps": 24,
+    "errors": [
+      0,
+      1.3540755208333333,
+      0.4572981770833333,
+      1.7454459635416666,
+      1.9774967447916667
+    ],
+    "kinds": [
+      "line",
+      "band",
+      "triangle",
+      "arc",
+      "dots",
+      "cross",
+      "circuit",
+      "rectangle",
+      "accent",
+      "dot",
+      "circle"
+    ]
+  },
+  {
+    "version": "2d-v5",
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "width": 1280,
+    "height": 720,
+    "glow": 0,
+    "fps": 24,
+    "errors": [
+      0,
+      0.6193229166666666,
+      0.4655324074074074,
+      1.126423611111111,
+      1.310954861111111
+    ],
+    "kinds": [
+      "linked",
+      "parallelogram",
+      "line",
+      "cross",
+      "dots",
+      "zigzag",
+      "pentagon",
+      "branch-circuit",
+      "circle",
+      "hexagon"
+    ]
+  },
+  {
+    "version": "2d-v5",
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "width": 1920,
+    "height": 1080,
+    "glow": 50,
+    "fps": 30,
+    "errors": [
+      0,
+      0.8736226851851852,
+      0.44949652777777777,
+      1.2866956018518518,
+      1.575775462962963
+    ],
+    "kinds": [
+      "linked",
+      "line",
+      "trapezoid",
+      "chevron",
+      "hexagon",
+      "parallelogram",
+      "pentagon",
+      "dots",
+      "sector",
+      "branch-circuit",
+      "zigzag",
+      "circle",
+      "cross"
+    ]
+  },
+  {
+    "version": "2d-v5",
+    "seed": "design-6",
+    "ratio": "16:9",
+    "width": 3840,
+    "height": 2160,
+    "glow": 100,
+    "fps": 60,
+    "errors": [
+      0,
+      1.0290335648148148,
+      0.4482233796296296,
+      1.5683969907407407,
+      1.7178761574074075
+    ],
+    "kinds": [
+      "arc",
+      "sector",
+      "semicircle",
+      "rays",
+      "circle",
+      "dots",
+      "hexagon",
+      "pentagon",
+      "star",
+      "branch-circuit",
+      "line"
+    ]
+  },
+  {
+    "version": "2d-v5",
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "glow": 150,
+    "fps": 30,
+    "errors": [
+      0,
+      0.7827346953719977,
+      0.4877544669009959,
+      1.2815282659636789,
+      1.462135691271236
+    ],
+    "kinds": [
+      "linked",
+      "line",
+      "cross",
+      "dots",
+      "branch-circuit",
+      "pentagon",
+      "circle",
+      "hexagon"
+    ]
+  },
+  {
+    "version": "2d-v5",
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "width": 2048,
+    "height": 2048,
+    "glow": 200,
+    "fps": 24,
+    "errors": [
+      0,
+      1.421787109375,
+      0.5034016927083333,
+      1.7388118489583333,
+      1.9738346354166667
+    ],
+    "kinds": [
+      "sector",
+      "linked",
+      "line",
+      "chevron",
+      "hexagon",
+      "parallelogram",
+      "dots",
+      "cross",
+      "branch-circuit",
+      "zigzag"
+    ]
+  }
+]

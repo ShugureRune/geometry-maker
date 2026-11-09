@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { videoDefaults, videoResolutionError, videoSettings, videoTimeline } from './video-settings';
+import { videoBitrate, videoDefaults, videoResolutionError, videoSettings, videoTimeline } from './video-settings';
 import { parseSettings, settingsText, type ProjectSettings } from './settings';
 describe('deterministic video settings and frame clock', () => {
   it.each([24,30,60])('uses exact frame times and includes both endpoints at %i fps', fps => {
@@ -24,4 +24,9 @@ describe('deterministic video settings and frame clock', () => {
     expect(parseSettings(settingsText({...old,...videoDefaults}))).toEqual({...old,...videoDefaults,density:50});
     expect(()=>parseSettings(JSON.stringify({...old,exportVideoFps:25}))).toThrow();
   });
+});
+
+it('uses integer codec bitrates for all export presets and frame rates',()=>{
+ for(const [width,height] of [[1280,720],[1920,1080],[3840,2160],[1080,1920],[2048,2048]])for(const fps of [24,30,60]){const bitrate=videoBitrate(width,height,fps);expect(Number.isInteger(bitrate)).toBe(true);expect(bitrate).toBeGreaterThanOrEqual(2_000_000);expect(bitrate).toBeLessThanOrEqual(24_000_000);}
+ expect(videoBitrate(2048,2048,24)).toBe(20_132_659);
 });

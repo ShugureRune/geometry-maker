@@ -1,5 +1,5 @@
 import { createVideoRenderer, drawVideoFrame, type VideoArtwork } from './video-frame';
-import { videoSettings, videoTimeline, type VideoSettings } from './video-settings';
+import { videoBitrate, videoSettings, videoTimeline, type VideoSettings } from './video-settings';
 export const videoAvailable = () => typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
 export async function videoCodec(settings: VideoSettings) {
   if (!videoAvailable()) return null;
@@ -22,7 +22,7 @@ export async function exportVideo(input: VideoArtwork, requested: VideoSettings,
   const target = new BufferTarget();
   const output = new Output({ target, format: format === 'webm' ? new WebMOutputFormat() : new Mp4OutputFormat() });
   let bytes = 0;
-  const source = new CanvasSource(canvas, { codec, quality: new Quality({ bitrate: Math.min(24_000_000, Math.max(2_000_000, width * height * fps * .2)), bitrateMode: 'variable' }), latencyMode: 'quality', hardwareAcceleration: 'prefer-software', keyFrameInterval: 2, onEncodedPacket: packet => { bytes += packet.data.byteLength; } });
+  const source = new CanvasSource(canvas, { codec, quality: new Quality({ bitrate: videoBitrate(width, height, fps), bitrateMode: 'variable' }), latencyMode: 'quality', hardwareAcceleration: 'prefer-software', keyFrameInterval: 2, onEncodedPacket: packet => { bytes += packet.data.byteLength; } });
   output.addVideoTrack(source, { frameRate: fps });
   output.setMetadataTags({ creationTime: null });
   const render = createVideoRenderer(snapshot);
