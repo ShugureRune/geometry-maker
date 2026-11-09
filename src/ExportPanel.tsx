@@ -4,9 +4,9 @@ import { ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene'
 import { downloadBlob, pngBlob, serializeArtwork } from './export';
 import { EXPORT_PRESETS, fileStem, MAX_PNG_PIXELS, MAX_SETTINGS_BYTES, parseSettings, resolutionError, settingsText, type ProjectSettings } from './settings';
 
-type Props = { colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
+type Props = { density:number; colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
   onRatio: (ratio: Ratio) => void; onRestore: (settings: ProjectSettings) => void };
-export function ExportPanel({ colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
+export function ExportPanel({ density, colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
   const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
@@ -16,7 +16,7 @@ export function ExportPanel({ colorSettings, seed, ratio, background, artwork, o
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
   function snapshot(): ProjectSettings {
-    return { ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed, aspectRatio: ratio,
+    return { density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }

@@ -3,3 +3,10 @@
 .color-editor{margin:12px 0;font-size:11px;color:#c4c9d3}.color-editor>div{display:flex;gap:5px;margin-top:6px;align-items:center}.color-editor input[type=color]{width:40px;height:44px;flex:none}.color-editor input:not([type=color]){width:75px;min-width:0;flex:1;background:#11141a;color:#e8eaf0;border:1px solid #444957;border-radius:5px;padding:8px;font-family:monospace}.color-editor button{min-width:44px;min-height:44px;background:#30293e;border:1px solid #75658e;border-radius:5px}.color-editor button[aria-pressed=true]{background:#514169}.color-editor input[aria-invalid=true]{border-color:#f29a9a}
 /* Keep export after editing controls on mobile, while retaining the desktop right column. */
 .controls{grid-row:1 / 3}.preview-panel{grid-column:2;grid-row:1}.export-area{grid-column:2;grid-row:2;padding:0 40px 24px}.export-area .export-panel{margin-top:0}@media(min-width:1500px){.export-area{padding:0 52px 24px}}@media(max-width:1050px){.export-area{padding:0 24px 24px}}@media(max-width:720px){.export-area{order:2;padding:24px 18px;border-top:1px solid #292d36}}
+
+/* Keep the density track slim while providing a 44px touch target. */
+#density{height:44px;appearance:none;background:transparent;margin:0}
+#density::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:#575063}
+#density::-webkit-slider-thumb{appearance:none;width:20px;height:20px;margin-top:-8px;border-radius:50%;background:#b09af4}
+#density::-moz-range-track{height:4px;border-radius:2px;background:#575063}
+#density::-moz-range-thumb{width:20px;height:20px;border:0;border-radius:50%;background:#b09af4}
