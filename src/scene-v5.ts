@@ -189,16 +189,6 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
       if(add(accent,h,20))break;
     }
   }
-  // A link across anchors belongs to the second parent, with exact contour endpoints.
-  if(heroes.length===2) {
-    const a=heroes[0],b=heroes[1];
-    const va=contoursOf(a)[0].points.map(p=>worldPoint(a,p)),vb=contoursOf(b)[0].points.map(p=>worldPoint(b,p));
-    let nearest={a:va[0],b:vb[0],d:Infinity};
-    for(const p of va)for(const q of vb){const d=Math.hypot(p.x-q.x,p.y-q.y);if(d<nearest.d)nearest={a:p,b:q,d};}
-    const link=make('line','support',nearest.a,unit*.3,0,'anchor-link');
-    link.points=[{x:0,y:0},{x:nearest.b.x-nearest.a.x,y:nearest.b.y-nearest.a.y}];link.opacity=.32;link.layer='background';
-    add(link,b,40);
-  }
   const order={background:0,midground:1,foreground:2};
   shapes.sort((a,b)=>order[a.layer]-order[b.layer]);
   return {version:ALGORITHM_VERSION,width,height,composition:plan,shapes};
