@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './ui-test';
 import { readFile } from 'node:fs/promises';
-import type { Page } from '@playwright/test';
+import type { Page } from './ui-test';
 async function download(page: Page, button: string) {
  const pending = page.waitForEvent('download');
  await page.getByRole('button',{name:button,exact:true}).click();

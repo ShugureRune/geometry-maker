@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './ui-test';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 async function save(page:Page,name:string,path:string){const pending=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();const download=await Promise.race([pending,page.getByRole('alert').first().waitFor({state:'visible',timeout:0}).then(async()=>{throw new Error(await page.getByRole('alert').first().textContent() || 'export error');})]);await download.saveAs(path);return await readFile(path);}

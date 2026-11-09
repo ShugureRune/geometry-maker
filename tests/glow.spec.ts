@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises';
-import {test,expect} from '@playwright/test';
+import {test,expect} from './ui-test';
 test('glow and themes preserve geometry, locks and playback while changing rendered glow',async({page})=>{
  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  const geometry=()=>page.locator('[data-shape-id]').evaluateAll(nodes=>nodes.map(n=>[n.getAttribute('data-shape-id'),n.getAttribute('transform')]));

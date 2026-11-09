@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './ui-test';
 import {mkdir} from 'node:fs/promises';
 test('growth start, seek, completion, playback and complete exports',async({page})=>{
  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');const shapes=page.getByTestId('shapes');

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './ui-test';
 test('random startup, automatic growth, 200% glow and independent persisted UI theme',async({page})=>{
  await page.goto('./');const seed=page.getByLabel('シード値',{exact:true});const first=await seed.inputValue();expect(first).toMatch(/^[0-9a-f]{24}$/);
  await expect(page.getByLabel('アニメーションを有効化')).toBeChecked();await expect(page.getByLabel('発光強度')).toHaveValue('100');

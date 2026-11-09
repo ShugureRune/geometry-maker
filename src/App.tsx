@@ -1,3 +1,4 @@
+import { SettingsCategories, type Category } from './SettingsCategories';
 import { AmbientControls, AmbientStage, useAmbientClock, ambientDefaults } from './AmbientControls';
 import { darkTheme } from './themes';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -15,6 +16,8 @@ const initialBackground: Background = {glowIntensity:100,mode:'gradient',solid:'
 
 
 export default function App() {
+  const [category,setCategory]=useState<Category|null>('shapes');
+  const lastGlow=useRef(100);
   const [ambient,setAmbient]=useState({...ambientDefaults});
   const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower);
   const artworkRef = useRef<HTMLDivElement>(null);
@@ -60,6 +63,9 @@ export default function App() {
       <aside className="controls" aria-label="生成設定">
         <div className="panel-intro"><span className="eyebrow">MAKE IT YOURS</span><h2>ひとつのシードから、<br />あなただけの幾何学を。</h2><p>文字や数字を変えて、新しい構図に出会う。</p></div>
 
+        <SettingsCategories active={category} onChange={setCategory}/>
+        <div id="panel-shapes" className="category-panel" data-category="shapes" role="region" aria-labelledby="category-shapes" hidden={category!=='shapes'}>
+          <h2 className="category-title">図形</h2>
         <section className="control-section" aria-labelledby="seed-heading">
           <div className="section-heading"><h3 id="seed-heading"><span>01</span> シード</h3><span className="tiny-label">SEED</span></div>
           <label htmlFor="seed">シード値</label>
@@ -72,39 +78,6 @@ export default function App() {
           {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。</p>}
         </section>
 
-        <section className="control-section" aria-labelledby="background-heading">
-          <div className="section-heading"><h3 id="background-heading"><span>02</span> 背景</h3><span className="tiny-label">BACKGROUND</span></div>
-          <div className="segmented" role="group" aria-label="背景の種類">
-            <button type="button" aria-pressed={background.mode === 'solid'} onClick={() => setBackground({ ...background, mode: 'solid' })}>単色</button>
-            <button type="button" aria-pressed={background.mode === 'gradient'} onClick={() => setBackground({ ...background, mode: 'gradient' })}>グラデーション</button>
-          </div>
-          {background.mode === 'solid' ? editor('solid','背景色') : <>
-            {editor('gradient0','グラデーション色1')}{editor('gradient1','グラデーション色2')}{editor('gradient2','グラデーション色3')}
-            <label className="range-label" htmlFor="angle">方向 <output htmlFor="angle">{background.angle}°</output></label>
-            <input id="angle" type="range" min="0" max="360" value={background.angle} onChange={e => setBackground({ ...background, angle: Number(e.target.value) })} />
-          </>}
-        </section>
-
-        <section className="control-section">
-          <h3>配色の生成</h3>
-          <div className="play-buttons" aria-label="暗色テーマ"><button onClick={()=>applyColors(darkTheme(activeColors,seed,'night'))}>ミッドナイト</button><button onClick={()=>applyColors(darkTheme(activeColors,seed,'neon'))}>ネオンナイト</button></div>
-          <p className="help">暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</p>
-          <label className="range-label" htmlFor="line-width">線の太さ <output>{background.lineWidth ?? 125}%</output></label>
-          <input id="line-width" type="range" min="50" max="300" step="5" value={background.lineWidth ?? 125} onChange={e=>setBackground({...background,lineWidth:+e.target.value})}/>
-          <label className="range-label" htmlFor="glow-intensity">発光強度 <output>{background.glowIntensity??0}%</output></label>
-          <input id="glow-intensity" type="range" min="0" max="200" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
-          <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
-          <label htmlFor="color-mode">カラー変更モード</label>
-          <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
-            <option value="manual">手動色を維持</option><option value="seed">シードに連動</option>
-          </select>
-          <label htmlFor="color-appearance">自動配色の明暗</label>
-          <select id="color-appearance" value={activeColors.appearance} onChange={e=>applyColors(reseedColors({...activeColors,appearance:e.target.value as ColorSettings['appearance']},seed))}>
-            <option value="seed">シードで決定</option><option value="light">明るい背景向け</option><option value="dark">暗い背景向け</option>
-          </select>
-          {editor('primary','主役色')}{editor('support','補助色')}{editor('accent','アクセント色')}
-          <p className="help">シード連動が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
-        </section>
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
           <div className="section-heading"><h3 id="ratio-heading"><span>03</span> 縦横比</h3><span className="tiny-label">ASPECT RATIO</span></div>
           <label htmlFor="ratio">キャンバスの比率</label>
@@ -119,19 +92,66 @@ export default function App() {
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
           <p className="help">0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。</p>
         </section>
+        <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
+        <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
+        </div>
+        <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={category!=='background'}>
+          <h2 className="category-title">背景</h2>
+        <section className="control-section" aria-labelledby="background-heading">
+          <div className="section-heading"><h3 id="background-heading"><span>02</span> 背景</h3><span className="tiny-label">BACKGROUND</span></div>
+          <div className="segmented" role="group" aria-label="背景の種類">
+            <button type="button" aria-pressed={background.mode === 'solid'} onClick={() => setBackground({ ...background, mode: 'solid' })}>単色</button>
+            <button type="button" aria-pressed={background.mode === 'gradient'} onClick={() => setBackground({ ...background, mode: 'gradient' })}>グラデーション</button>
+          </div>
+          {background.mode==='gradient'&&<>
+            <label className="range-label" htmlFor="angle">方向 <output htmlFor="angle">{background.angle}°</output></label>
+            <input id="angle" type="range" min="0" max="360" value={background.angle} onChange={e=>setBackground({...background,angle:Number(e.target.value)})}/>
+          </>}
+          <p className="help">背景の各色は「カラー」で編集できます。</p>
+        </section>
+
+
+        </div>
+        <div id="panel-colors" className="category-panel" data-category="colors" role="region" aria-labelledby="category-colors" hidden={category!=='colors'}>
+          <h2 className="category-title">カラー</h2>
+        <section className="control-section">
+          <h3>背景と図形の配色</h3>
+          {editor('solid','背景色')}
+          {editor('gradient0','グラデーション色1')}{editor('gradient1','グラデーション色2')}{editor('gradient2','グラデーション色3')}
+          <div className="play-buttons" aria-label="暗色テーマ"><button onClick={()=>applyColors(darkTheme(activeColors,seed,'night'))}>ミッドナイト</button><button onClick={()=>applyColors(darkTheme(activeColors,seed,'neon'))}>ネオンナイト</button></div>
+          <p className="help">暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</p>
+          <label htmlFor="color-mode">カラー変更モード</label>
+          <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
+            <option value="manual">手動色を維持</option><option value="seed">シードに連動</option>
+          </select>
+          <label htmlFor="color-appearance">自動配色の明暗</label>
+          <select id="color-appearance" value={activeColors.appearance} onChange={e=>applyColors(reseedColors({...activeColors,appearance:e.target.value as ColorSettings['appearance']},seed))}>
+            <option value="seed">シードで決定</option><option value="light">明るい背景向け</option><option value="dark">暗い背景向け</option>
+          </select>
+          {editor('primary','主役色')}{editor('support','補助色')}{editor('accent','アクセント色')}
+          <p className="help">シード連動が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
+        </section>
+
+        </div>
+        <div id="panel-decoration" className="category-panel" data-category="decoration" role="region" aria-labelledby="category-decoration" hidden={category!=='decoration'}>
+          <h2 className="category-title">装飾</h2>
+        <section className="control-section">
+          <label className="glow-toggle"><input type="checkbox" checked={(background.glowIntensity??0)>0} onChange={e=>{if(e.target.checked)setBackground({...background,glowIntensity:lastGlow.current||100});else{lastGlow.current=background.glowIntensity||100;setBackground({...background,glowIntensity:0});}}}/> 発光を有効化</label>
+          <label className="range-label" htmlFor="line-width">線の太さ <output>{background.lineWidth ?? 125}%</output></label>
+          <input id="line-width" type="range" min="50" max="300" step="5" value={background.lineWidth ?? 125} onChange={e=>setBackground({...background,lineWidth:+e.target.value})}/>
+          <label className="range-label" htmlFor="glow-intensity">発光強度 <output>{background.glowIntensity??0}%</output></label>
+          <input id="glow-intensity" type="range" min="0" max="200" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
+          <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
+        </section>
+        </div>
+        <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={category!=='animation'}>
+          <h2 className="category-title">アニメーション</h2>
         <AmbientControls settings={ambient} onChange={setAmbient} clock={ambientClock}/>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
-        <button type="button" className="generate-button" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
-        <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
-      </aside>
 
-      <section className="preview-panel" aria-labelledby="preview-heading">
-        <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
-        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth}/>}</></div></div>
-        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
-        <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
-        <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
-      </section>
+        </div>
+        <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={category!=='export'}>
+          <h2 className="category-title">書き出し</h2>
       <div className="export-area">
         <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
@@ -146,7 +166,18 @@ export default function App() {
             setRegenerations(0);
           }} />
       </div>
+        </div>
+      </aside>
+
+      <section className="preview-panel" aria-labelledby="preview-heading">
+        <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
+        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth}/>}</></div></div>
+        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
+        <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
+        <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
+      </section>
+
     </main>
-    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第5段階 · 2D自動待機画面</span></footer>
+    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第5.5段階 · 2D背景スタジオ</span></footer>
   </div>;
 }

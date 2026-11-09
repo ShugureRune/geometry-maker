@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './ui-test';
 import { readFile, mkdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 test('deterministic WebM frames, FPS, ratios, glow, playback and JSON', async ({page})=>{
