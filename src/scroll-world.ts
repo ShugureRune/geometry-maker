@@ -39,22 +39,28 @@ export type ScrollChunk={key:string;seed:string;x:number;y:number;anchorX:number
 export const SCROLL_CACHE_LIMIT=48;
 /** Renderer-owned bounded cache. No global cache or frame-dependent randomness. */
 export function createScrollWorld(input:AmbientInput){
- const [width,height]=RATIOS[input.ratio],pitch=Math.min(width,height)*1.25,cache=new Map<string,ScrollChunk>();
+ const [width,height]=RATIOS[input.ratio],unit=Math.min(width,height),pitch=unit,cache=new Map<string,ScrollChunk>();
  const empty=generateScene(input.seed,input.ratio,input.version);empty.shapes=[];
  function chunk(x:number,y:number){
   const key=`${x}:${y}`;let value=cache.get(key);
   if(value){cache.delete(key);cache.set(key,value);return value;}
   const seed=chunkSeed(input.seed,x,y),random=seededRandom(seed+'::anchor');
-  const base=generateScene(seed,input.ratio,input.version),candidates=densityCandidates(base,seed),scene=visibleScene(base,candidates,input.density);
+  const base=generateScene(seed,input.ratio,input.version),candidates=densityCandidates(base,seed),scene=visibleScene(base,candidates,input.settings.scrollDensity);
   const hero=base.shapes.find(s=>s.role==='hero')??{x:width/2,y:height/2};
   // Fit the entire group around its actual main anchor. No rectangular clipping or mirroring.
+  const radiusFrom=(b:ReturnType<typeof shapeBounds>)=>Math.max(...[b.x,b.x+b.width].flatMap(x=>[b.y,b.y+b.height].map(y=>Math.hypot(x-hero.x,y-hero.y))));
   let radius=Math.min(width,height)*.3;
-  for(const shape of candidates){const b=shapeBounds(shape);radius=Math.max(radius,Math.hypot(b.x-hero.x,b.y-hero.y),Math.hypot(b.x+b.width-hero.x,b.y+b.height-hero.y));}
-  value={key,seed,x,y,anchorX:(x+.5+(random()-.5)*.16)*pitch,anchorY:(y+.5+(random()-.5)*.16)*pitch,localX:hero.x,localY:hero.y,scale:pitch*.54/radius,scene,cues:schedule(candidates,seed,input.version)};
+  for(const shape of candidates){const b=shapeBounds(shape);radius=Math.max(radius,radiusFrom(b));}
+  // Denser world spacing keeps the previous group size where possible. Cap
+  // every hero around the anchor so neighboring hero envelopes do not overlap.
+  let heroRadius=1;
+  for(const shape of base.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);heroRadius=Math.max(heroRadius,radiusFrom(b));}
+  const scale=Math.min(unit*.675/radius,pitch*.4/heroRadius);
+  value={key,seed,x,y,anchorX:(x+.5+(random()-.5)*.16)*pitch,anchorY:(y+.5+(random()-.5)*.16)*pitch,localX:hero.x,localY:hero.y,scale,scene,cues:schedule(candidates,seed,input.version)};
   cache.set(key,value);while(cache.size>SCROLL_CACHE_LIMIT)cache.delete(cache.keys().next().value!);
   return value;
  }
- return{width,height,pitch,empty,cache,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
+ return{width,height,pitch,renderMargin:unit*.82,empty,cache,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
   const camera=scrollPathAt(s,time,path),cx=camera.x*width,cy=camera.y*height;
   const chunks:ScrollChunk[]=[];
   // One complete group radius of overscan; generated before anchor entry.

@@ -1,11 +1,11 @@
-import { useId, useMemo } from 'react';
+import { memo, useId, useMemo } from 'react';
 import { contoursOf, pathData, radians, shapeBounds, worldPoint, trimContour } from './geometry';
 import { gradientEndpoints, type Background, type Point, type Scene, type Shape, NEW_SHAPE_KINDS } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
 
 // All strokes and glow radii use scene units. Pixel-fixed strokes become thinner
 // when a high-resolution export is displayed at the preview size.
-function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; finalFillOpacity:number; progress?:number }) {
+function GeometryImpl({ shape, finalFillOpacity, progress=1 }: { shape: Shape; finalFillOpacity:number; progress?:number }) {
   const modern=(NEW_SHAPE_KINDS as readonly string[]).includes(shape.kind);
   const contours=useMemo(()=>contoursOf(shape),[shape]);
   return <>{contours.map((contour,i)=>{
@@ -30,6 +30,7 @@ function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; final
       strokeDasharray={contour.dashed?`${shape.size*.065} ${shape.size*.06}`:undefined}/>;
   })}</>;
 }
+const Geometry=memo(GeometryImpl);
 function localPoint(shape: Shape, p: Point): Point {
   const dx = p.x - shape.x, dy = p.y - shape.y, angle = radians(-shape.rotation);
   return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
@@ -39,15 +40,17 @@ export function Preview({ scene, background, growth, motion, transparent=false }
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
+  const roleColor=(shape:Shape)=>background.figureColors?.[shape.role==='hero'?'primary':shape.role==='accent'?'accent':'support'];
   const colorAt = (shape: Shape, point: Point) => background.figureColors?.[shape.role === 'hero' ? 'primary' : shape.role === 'accent' ? 'accent' : 'support'] ?? inkAt(shape.tone, background, point, width, height);
   const vector = backgroundVector(background, width, height);
+  const localBounds=useMemo(()=>new Map(scene.shapes.map(shape=>[shape.id,shapeBounds({...shape,x:0,y:0,rotation:0})])),[scene]);
   // Static gradients and bounds do not need recomputing on every animation frame.
   const definitions=useMemo(()=>scene.shapes.map(shape => {
         const start = localPoint(shape, vector.start), end = localPoint(shape, vector.end);
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
-        const bounds = shapeBounds({ ...shape, x: 0, y: 0, rotation: 0 });
+        const bounds = localBounds.get(shape.id)!;
         return <g key={shape.id}>
-          {background.mode === 'gradient' && <linearGradient id={`${gradientId}-ink-${shape.id}`} gradientUnits="userSpaceOnUse"
+          {background.mode === 'gradient' && !(transparent&&roleColor(shape)) && <linearGradient id={`${gradientId}-ink-${shape.id}`} gradientUnits="userSpaceOnUse"
             x1={start.x} y1={start.y} x2={end.x} y2={end.y}>
             {[0, 0.25, 0.5, 0.75, 1].map(t => <stop key={t} offset={`${t * 100}%`}
               stopColor={colorAt(shape, { x: vector.start.x + (vector.end.x - vector.start.x) * t,
@@ -63,7 +66,7 @@ export function Preview({ scene, background, growth, motion, transparent=false }
             {background.glowIntensity!==undefined&&<feComponentTransfer><feFuncA type="linear" slope={1+background.glowIntensity/50}/></feComponentTransfer>}
           </filter>}
         </g>;
-      }),[scene,background,gradientId]);
+      }),[scene,background,gradientId,localBounds,transparent]);
   return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
     data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
     xmlns="http://www.w3.org/2000/svg" overflow={transparent?"visible":"hidden"}>
@@ -79,7 +82,7 @@ export function Preview({ scene, background, growth, motion, transparent=false }
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
         const solidFill = ['dot', 'dots', 'accent'].includes(shape.kind);
         const finalFillOpacity=solidFill || ['circuit','branch-circuit'].includes(shape.kind)?1:shape.fillOpacity;
-        const ink = background.mode === 'gradient' ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
+        const ink = background.mode === 'gradient' && !(transparent&&roleColor(shape)) ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
         return <g key={shape.id} data-shape-id={shape.id} data-layer={shape.layer} data-role={shape.role} data-kind={shape.kind}
           data-group={shape.group} data-parent={shape.parent} data-glow={paint.glow || undefined}
           transform={`${motion?.[shape.id]??''} translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
