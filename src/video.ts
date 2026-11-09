@@ -1,3 +1,4 @@
+import { ambientVideoSeconds } from './ambient';
 import { createVideoRenderer, drawVideoFrame, type VideoArtwork } from './video-frame';
 import { videoBitrate, videoSettings, videoTimeline, type VideoSettings } from './video-settings';
 export const videoAvailable = () => typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
@@ -26,7 +27,10 @@ export async function exportVideo(input: VideoArtwork, requested: VideoSettings,
   output.addVideoTrack(source, { frameRate: fps });
   output.setMetadataTags({ creationTime: null });
   const render = createVideoRenderer(snapshot);
-  const timeline = videoTimeline(snapshot.animation.animationDuration, snapshot.animation.playbackSpeed, fps);
+  const isAmbient=snapshot.ambient?.settings.enabled;
+  const seconds=isAmbient?ambientVideoSeconds(snapshot.ambient!.settings):0;
+  const ambientFrames=Math.max(1,Math.round(seconds*fps));
+  const timeline = isAmbient?{frameCount:ambientFrames,timeAt:(i:number)=>i*seconds/ambientFrames}:videoTimeline(snapshot.animation.animationDuration, snapshot.animation.playbackSpeed, fps);
   // Cancel immediately, including while awaiting encoder backpressure.
   const cancel = () => { void output.cancel().catch(() => {}); };
   signal.addEventListener('abort', cancel, { once: true });

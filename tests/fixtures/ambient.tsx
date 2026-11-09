@@ -1,0 +1,11 @@
+import {createRoot} from 'react-dom/client';
+import {AmbientView} from '../../src/AmbientView';
+import {ambientDefaults,type AmbientInput} from '../../src/ambient';
+import {generateScene} from '../../src/scene';
+import {densityCandidates,visibleScene} from '../../src/density';
+import {exportVideo} from '../../src/video';
+import {defaults} from '../../src/animation';
+const root=createRoot(document.getElementById('atlas')!);
+const input:AmbientInput={seed:'ambient-fixture',version:'2d-v5',ratio:'16:9',density:25,background:{mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135,glowIntensity:50},animation:defaults,settings:{...ambientDefaults,enabled:true,loop:'perfect',duration:4,speed:4}};
+Object.assign(window,{ambientFrame:(seconds:number,mode:AmbientInput['settings']['mode'],version:AmbientInput['version']='2d-v5',evolving=false)=>{input.settings.loop=evolving?'evolving':'perfect';input.settings.mode=mode;input.version=version;root.render(<AmbientView input={structuredClone(input)} seconds={seconds}/>);},ambientExport:async(format:'webm'|'mp4')=>{const base=generateScene(input.seed,input.ratio,input.version),candidates=densityCandidates(base,input.seed),scene=visibleScene(base,candidates,input.density);const blob=await exportVideo({scene,candidates,seed:input.seed,background:input.background,animation:input.animation,ambient:structuredClone(input)},{exportVideoFormat:format,exportVideoWidth:512,exportVideoHeight:288,exportVideoFps:24},new AbortController().signal,()=>{});const bytes=new Uint8Array(await blob.arrayBuffer());let text='';for(const byte of bytes)text+=String.fromCharCode(byte);return btoa(text);}});
+root.render(<AmbientView input={input} seconds={0}/>);

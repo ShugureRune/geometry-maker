@@ -21,7 +21,7 @@ export function ExportPanel({ videoArtwork, version, animation, density, colorSe
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
   function snapshot(): ProjectSettings {
-    return { ...video, lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
+    return { ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...video, lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }
