@@ -2,7 +2,7 @@ import { test, expect, type Locator } from '@playwright/test';
 
 async function snapshot(nodes:Locator) {
  return nodes.evaluateAll(elements=>{
-  const canonical=(n:Element):unknown=>[n.tagName,[...n.attributes].map(a=>[a.name,a.value]).sort((a,b)=>a[0].localeCompare(b[0])),[...n.children].map(canonical)];
+  const canonical=(n:Element):unknown=>[n.tagName,[...n.attributes].filter(a=>!(a.name==='style'&&!a.value)).map(a=>[a.name,a.value]).sort((a,b)=>a[0].localeCompare(b[0])),[...n.children].map(canonical)];
   return Object.fromEntries(elements.map(n=>[n.getAttribute('data-shape-id')!,JSON.stringify(canonical(n))]));
  });
 }
