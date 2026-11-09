@@ -2,7 +2,7 @@ import type { AlgorithmVersion, Background, Ratio } from './scene';
 import type { AnimationSettings } from './animation';
 import type { ColorSettings } from './colors';
 export type AmbientSettings={enabled:boolean;mode:'growth'|'float'|'scroll'|'combined';loop:'perfect'|'evolving';speed:number;duration:number;hold:number;transition:number;transitionType:'crossfade'|'fade'|'shrink'|'reverse';autoSeed:boolean;interval:number;floatAmount:number;rotation:number;rotationSpeed:number;direction:'horizontal'|'vertical'|'diagonal';scrollSpeed:number;lowPower:boolean;exportDuration:number};
-export const ambientDefaults:AmbientSettings={enabled:false,mode:'growth',loop:'evolving',speed:1,duration:20,hold:5,transition:3,transitionType:'crossfade',autoSeed:true,interval:20,floatAmount:1,rotation:1,rotationSpeed:1,direction:'horizontal',scrollSpeed:1,lowPower:false,exportDuration:20};
+export const ambientDefaults:AmbientSettings={enabled:false,mode:'growth',loop:'evolving',speed:1,duration:14,hold:5,transition:3,transitionType:'crossfade',autoSeed:true,interval:14,floatAmount:1,rotation:1,rotationSpeed:1,direction:'horizontal',scrollSpeed:1,lowPower:false,exportDuration:20};
 export function ambientSettings(value:unknown):AmbientSettings{
  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('待機画面設定が不正です。');
  const d=value as Record<string,unknown>,s={...ambientDefaults,...Object.fromEntries(Object.keys(ambientDefaults).filter(k=>d[k]!==undefined).map(k=>[k,d[k]]))};
@@ -20,3 +20,11 @@ export function ambientClock(s:AmbientSettings,seconds:number){
  return{period,local,phase:local/period,index:s.loop==='evolving'&&s.autoSeed?cycle:0};
 }
 export const ambientVideoSeconds=(s:AmbientSettings)=>s.loop==='perfect'?s.duration/s.speed:s.exportDuration;
+
+export function ambientEnvelope(s:AmbientSettings,seconds:number,growthDuration:number,growthSpeed:number){
+ const c=ambientClock(s,seconds),transition=Math.min(s.transition,c.period*.3),hold=Math.min(s.hold,c.period*.4);
+ const grow=Math.min(growthDuration/growthSpeed,Math.max(.1,c.period-transition-hold));
+ const growing=s.mode==='growth'||s.mode==='combined';
+ const fadeStart=growing?grow+hold:c.period-transition;
+ return{progress:growing?Math.min(1,c.local/grow):1,fade:Math.max(0,Math.min(1,(c.local-fadeStart)/transition))};
+}

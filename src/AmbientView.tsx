@@ -4,11 +4,11 @@ import { generateScene, RATIOS } from './scene';
 import { densityCandidates, visibleScene } from './density';
 import { schedule, progressAt } from './animation';
 import { coloredBackground, reseedColors } from './colors';
-import { ambientClock, ambientSeed, type AmbientInput } from './ambient';
+import { ambientClock, ambientEnvelope, ambientSeed, type AmbientInput } from './ambient';
 function Tile({input,index,progress,phase,opacity=1,scale=1}:{input:AmbientInput;index:number;progress:number;phase:number;opacity?:number;scale?:number}){
  const seed=ambientSeed(input.seed,index),s=input.settings;
  const generated=useMemo(()=>{const base=generateScene(seed,input.ratio,input.version);const candidates=densityCandidates(base,seed);return{scene:visibleScene(base,candidates,input.density),cues:schedule(candidates,seed,input.version)};},[seed,input.ratio,input.version,input.density]);
- const background=useMemo(()=>input.colors?coloredBackground(input.background,reseedColors(input.colors,seed)):input.background,[input.background,input.colors,seed]);
+ const background=useMemo(()=>input.colors&&index!==0?coloredBackground(input.background,reseedColors(input.colors,seed)):input.background,[input.background,input.colors,seed]);
  const float=s.mode==='float'||s.mode==='combined';
  // A single transform moves every connected shape together, preserving junctions.
  const byId=new Map(generated.scene.shapes.map(shape=>[shape.id,shape]));
@@ -26,10 +26,8 @@ function Tile({input,index,progress,phase,opacity=1,scale=1}:{input:AmbientInput
 export function AmbientView({input,seconds}:{input:AmbientInput;seconds:number}){
  const s=input.settings,c=ambientClock(s,seconds),[width,height]=RATIOS[input.ratio];
  const cycleGrowth=s.mode==='growth'||s.mode==='combined';
- // Fit growth, requested hold and transition into a cycle even at short periods.
- const transition=Math.min(s.transition,c.period*.3),hold=Math.min(s.hold,c.period*.4),grow=Math.min(input.animation.animationDuration/ input.animation.playbackSpeed,Math.max(.1,c.period-transition-hold));
- const fade=Math.max(0,Math.min(1,(c.local-(c.period-transition))/transition));
- const progress=cycleGrowth?Math.min(1,c.local/grow):1;
+ const envelope=ambientEnvelope(s,seconds,input.animation.animationDuration,input.animation.playbackSpeed);
+ const fade=envelope.fade,progress=envelope.progress;
  const exit=cycleGrowth||s.loop==='evolving'?fade:0;
  const nextIndex=s.loop==='perfect'?0:s.autoSeed?c.index+1:0;
 
