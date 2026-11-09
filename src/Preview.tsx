@@ -10,7 +10,7 @@ function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; final
     const start=contour.growthStart??0,end=contour.growthEnd??1;
     const t=modern?Math.max(0,Math.min(1,(progress-start)/(end-start))):progress;
     if(t<=0)return null;
-    const c=modern&&contour.dashed&&t<1?trimContour(contour,t):contour;
+    const c=contour.dashed&&t<1?trimContour(contour,t):contour;
     const scale=shape.kind==='star'?t:undefined;
     if(c.circle) {
       const expand=shape.kind!=='concentric';
@@ -21,8 +21,8 @@ function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; final
         opacity={c.opacity} vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'}
         stroke={['circle','concentric'].includes(shape.kind)?undefined:'none'}/>;
     }
-    return <path key={i} pathLength={t<1&&(!modern||!contour.dashed)?1:undefined}
-      style={t<1?{...(modern&&contour.dashed?{}:{strokeDasharray:1,strokeDashoffset:1-t}),fillOpacity:finalFillOpacity*t,...(scale===undefined?{}:{transform:`scale(${scale})`})}:undefined}
+    return <path key={i} pathLength={t<1&&!contour.dashed?1:undefined}
+      style={t<1?{...(contour.dashed?{}:{strokeDasharray:1,strokeDashoffset:1-t}),fillOpacity:finalFillOpacity*t,...(scale===undefined?{}:{transform:`scale(${scale})`})}:undefined}
       vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'} d={pathData(c)}
       fill={shape.filled&&c.closed?undefined:'none'} opacity={c.opacity}
       strokeDasharray={contour.dashed?`${shape.size*.065} ${shape.size*.06}`:undefined}/>;
