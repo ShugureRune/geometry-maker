@@ -43,7 +43,7 @@ async function renderedHash(svg: Locator) {
 test('all stage-one controls and deterministic browser rendering', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('./');
+  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
   const svg = page.getByTestId('preview');
   const shapes = page.getByTestId('shapes');
   const seed = page.getByLabel('シード値', { exact: true });
@@ -97,7 +97,7 @@ test('all stage-one controls and deterministic browser rendering', async ({ page
   }
   await page.getByLabel('キャンバスの比率').selectOption('16:9');
   expect(await renderedHash(svg)).toBe(configuredPixels);
-  await page.reload();
+  await page.reload();await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
   await seed.fill('心音🌱-001');
   expect(await geometryHash(shapes)).toBe(reference);
   expect(await renderedHash(svg)).toBe(pixels);
@@ -111,7 +111,7 @@ test('all stage-one controls and deterministic browser rendering', async ({ page
 });
 
 test('desktop and narrow layouts remain usable with portrait previews', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
   for (const width of [1440, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const ratio of ['16:9', '9:16']) {
@@ -130,7 +130,7 @@ test('desktop and narrow layouts remain usable with portrait previews', async ({
 });
 
 test('light, dark and mixed backgrounds preserve geometry and deterministic contrast', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
   await page.getByLabel('シード値', { exact: true }).fill('design-6');
   const svg = page.getByTestId('preview'), shapes = page.getByTestId('shapes');
   const reference = await geometryHash(shapes);
@@ -162,7 +162,7 @@ test('light, dark and mixed backgrounds preserve geometry and deterministic cont
 test.describe('mobile touch layout', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   test('edits a portrait composition without horizontal overflow', async ({ page }) => {
-    await page.goto('./');
+    await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
     await page.getByLabel('シード値', { exact: true }).fill('neon-city');
     await page.getByLabel('キャンバスの比率').selectOption('9:16');
     await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm', '2d-v5');

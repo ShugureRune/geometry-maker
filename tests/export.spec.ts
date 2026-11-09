@@ -8,10 +8,10 @@ async function download(page: Page, button: string) {
  return {name:item.suggestedFilename(), data:await readFile((await item.path())!)};
 }
 test('downloads real PNG/SVG and restores all settings atomically',async({page})=>{
- await page.goto('./');
+ await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  await page.getByLabel('シード値',{exact:true}).fill('export-心音-001');
  await page.getByLabel('図形密度').fill('75');
- await page.getByLabel('発光強度').fill('75');
+ await page.getByLabel('発光強度').fill('200');
  await page.getByLabel('書き出し解像度',{exact:true}).selectOption('2048x2048');
  await expect(page.getByLabel('キャンバスの比率')).toHaveValue('1:1');
  await page.getByLabel('幅 (px)',{exact:true}).fill('512');
@@ -55,7 +55,7 @@ test('downloads real PNG/SVG and restores all settings atomically',async({page})
  }
 });
 test('custom resolution validation, opaque margins and high resolution limits',async({page})=>{
- await page.goto('./');
+ await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  await page.getByLabel('幅 (px)',{exact:true}).fill('255');
  await expect(page.getByRole('button',{name:'PNGを書き出す',exact:true})).toBeDisabled();
  await expect(page.locator('#resolution-feedback')).toContainText('256');

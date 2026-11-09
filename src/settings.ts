@@ -39,7 +39,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (typeof d.gradientAngle !== 'number' || !Number.isFinite(d.gradientAngle) || d.gradientAngle < 0 || d.gradientAngle > 360) throw new Error('gradientAngleは0〜360の数値が必要です。');
   if (typeof d.exportWidth !== 'number' || typeof d.exportHeight !== 'number' || resolutionError(d.exportWidth, d.exportHeight)) throw new Error(resolutionError(NaN, NaN)!);
   if(d.density!==undefined&&!validDensity(d.density))throw new Error('図形密度は0〜100%の整数で指定してください。');
-  if(d.glowIntensity!==undefined&&!validDensity(d.glowIntensity))throw new Error('発光強度は0〜100%の整数で指定してください。');
+  if(d.glowIntensity!==undefined&&!(typeof d.glowIntensity==='number'&&Number.isInteger(d.glowIntensity)&&d.glowIntensity>=0&&d.glowIntensity<=200))throw new Error('発光強度は0〜200%の整数で指定してください。');
   // Rebuild the allowlisted object; never merge arbitrary JSON into application state.
   return { ...(d.glowIntensity===undefined?{}:{glowIntensity:d.glowIntensity as number}), ...(Object.keys(d).some(k=>k.startsWith('animation')||k==='playbackSpeed'||k==='easingType')?animationSettings(d):{}), density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: d.algorithmVersion, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
     backgroundMode: d.backgroundMode, solidColor: d.solidColor, gradientColors: [...d.gradientColors] as Background['colors'],

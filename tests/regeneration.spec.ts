@@ -8,7 +8,7 @@ async function snapshot(page:Page){return page.getByTestId('shapes').evaluate(el
 test('regeneration replays a fresh deterministic clock; seed commits and randomize replay; paint/density do not',async({page})=>{
  await page.clock.install({time:new Date('2026-01-01T00:00:00Z')});
  await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
- await page.goto('./');
+ await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  const seed=page.getByLabel('シード値',{exact:true}),timeline=page.getByLabel('タイムライン',{exact:true});
  const regenerate=page.getByRole('button',{name:'同じ設定で再生成',exact:true});
  const shapes=page.getByTestId('shapes'),position=page.getByTestId('playback-position');
@@ -59,7 +59,7 @@ test('all new kinds render and grow from the same geometric contours',async({pag
 });
 
 test('old JSON keeps v4 geometry and filenames, while v5 settings round trip with animation',async({page})=>{
- await page.goto('./');
+ await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  const old={schemaVersion:1,algorithmVersion:'2d-v4',seed:'reference',aspectRatio:'16:9',backgroundMode:'solid',solidColor:'#111526',gradientColors:['#111526','#222222','#333333'],gradientAngle:135,exportWidth:512,exportHeight:288};
  await page.getByLabel('設定JSONファイル').setInputFiles({name:'old.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(old))});
  await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-v4');await expect(page.getByLabel('生成アルゴリズム')).toHaveValue('2d-v4');
@@ -74,7 +74,7 @@ test('old JSON keeps v4 geometry and filenames, while v5 settings round trip wit
 test.describe('phone regeneration',()=>{
  test.use({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  test('touch replay and reduced-motion behavior remain usable',async({page})=>{
-  await page.goto('./');await page.getByLabel('アニメーションを有効化').check();
+  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');await page.getByLabel('アニメーションを有効化').check();
   await page.getByRole('button',{name:'同じ設定で再生成',exact:true}).tap();await expect(page.getByRole('button',{name:'一時停止',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.emulateMedia({reducedMotion:'reduce'});await page.getByRole('button',{name:'ランダムシードを生成',exact:true}).tap();

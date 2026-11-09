@@ -14,5 +14,5 @@ it('glow is bounded, monotonic, role weighted and off at zero on bright/dark bac
 });
 it('JSON restores glow, accepts legacy absence and rejects invalid intensities',()=>{
  const settings={schemaVersion:1 as const,algorithmVersion:'2d-v5',seed:'s',aspectRatio:'16:9' as const,backgroundMode:'solid' as const,solidColor:bg.solid,gradientColors:bg.colors,gradientAngle:135,exportWidth:1920,exportHeight:1080};
- expect(parseSettings(settingsText(settings)).glowIntensity).toBeUndefined();for(const glowIntensity of [0,25,50,75,100])expect(parseSettings(settingsText({...settings,glowIntensity})).glowIntensity).toBe(glowIntensity);for(const glowIntensity of [-1,101,'50',NaN])expect(()=>parseSettings(JSON.stringify({...settings,glowIntensity}))).toThrow();
+ expect(parseSettings(settingsText(settings)).glowIntensity).toBeUndefined();for(const glowIntensity of [0,25,50,75,100,200])expect(parseSettings(settingsText({...settings,glowIntensity})).glowIntensity).toBe(glowIntensity);for(const glowIntensity of [-1,201,'50',NaN])expect(()=>parseSettings(JSON.stringify({...settings,glowIntensity}))).toThrow();
 });

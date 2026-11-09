@@ -12,3 +12,17 @@
 #density::-moz-range-thumb{width:20px;height:20px;border:0;border-radius:50%;background:#b09af4}
 .animation-controls label{display:block;margin:14px 0}.animation-controls select{width:100%;margin-top:8px}.animation-controls input[type=range]{height:32px}.play-buttons{display:flex;flex-wrap:wrap;gap:8px}.play-buttons button{min-height:44px;border:1px solid #575063;border-radius:6px;background:#292534;color:#eee;padding:8px}.play-buttons button:disabled{opacity:.4}
 #glow-intensity{height:44px;margin:0}
+.ui-theme-button{border:1px solid #777;border-radius:8px;padding:10px;min-height:44px;background:#292534;color:#eee}
+:root[data-theme=light]{color-scheme:light;background:#edf0f7;color:#20293b}
+[data-theme=light] .controls,[data-theme=light] .seed-card,[data-theme=light] .export-panel{background:#fff;border-color:#c6ccda}
+[data-theme=light] .topbar,[data-theme=light] footer{border-color:#c6ccda}
+[data-theme=light] input,[data-theme=light] select{background:#f6f7fb;color:#20293b;border-color:#929daf}
+[data-theme=light] button{background:#e5defa;color:#30234f;border-color:#9e91b8}
+[data-theme=light] .canvas-stage{background:#dee3ef}
+[data-theme=light] .help,[data-theme=light] .tiny-label,[data-theme=light] label,[data-theme=light] .preview-hint,[data-theme=light] .canvas-info,[data-theme=light] footer,[data-theme=light] .panel-intro p,[data-theme=light] .brand-sub,[data-theme=light] .local-note{color:#526078}
+[data-theme=light] .eyebrow,[data-theme=light] .range-label output,[data-theme=light] .algorithm{color:#644194}
+@media(max-width:720px){.topbar{gap:8px}.mode-badge{display:none}.ui-theme-button{font-size:11px;white-space:nowrap}}
+[data-theme=light] .seed-card code,[data-theme=light] .color-editor,[data-theme=light] .live-indicator,[data-theme=light] .export-panel{color:#26354b}
+[data-theme=light] .segmented{background:#e9edf5;border-color:#bac2d1}
+[data-theme=light] .segmented button[aria-pressed=true]{background:#d8caf7;color:#342151}
+[data-theme=light] input,[data-theme=light] select{background-color:#f6f7fb!important;color:#20293b!important}

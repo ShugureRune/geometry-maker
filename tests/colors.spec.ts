@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 test('seed colors, independent rerolls, locks, HEX, JSON and exports',async({page})=>{
- await page.goto('./');await page.getByLabel('カラー変更モード').selectOption('seed');
+ await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');await page.getByLabel('カラー変更モード').selectOption('seed');
  const color=(name:string)=>page.getByLabel(name,{exact:true});
  const positions=()=>page.getByTestId('shapes').locator(':scope>g').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform')));
  const initial=await positions();const primary=await color('主役色').inputValue(),support=await color('補助色').inputValue(),bg=await color('グラデーション色1').inputValue();
@@ -20,7 +20,7 @@ test('seed colors, independent rerolls, locks, HEX, JSON and exports',async({pag
 test.describe('mobile color controls',()=>{
  test.use({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  test('locks and rerolls a single slot with touch',async({page})=>{
-  await page.goto('./');await page.getByLabel('カラー変更モード').selectOption('seed');
+  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');await page.getByLabel('カラー変更モード').selectOption('seed');
   const lock=page.getByRole('button',{name:'アクセント色を固定',exact:true});await lock.tap();await expect(lock).toHaveAttribute('aria-pressed','true');
   const input=page.getByLabel('アクセント色',{exact:true});const before=await input.inputValue();
   await page.getByRole('button',{name:'アクセント色をランダム変更',exact:true}).tap();expect(await input.inputValue()).not.toBe(before);
