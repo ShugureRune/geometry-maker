@@ -1,7 +1,10 @@
+import { generateDiverseScene } from './scene-v5';
 import { contoursOf, crossesRect, polar, radians, shapeBounds, worldPoint } from './geometry.ts';
 
 /** Geometry and styling changes require a new version to preserve seed semantics. */
-export const ALGORITHM_VERSION = '2d-v4';
+export const ALGORITHM_VERSION = '2d-v5';
+export const LEGACY_ALGORITHM_VERSION = '2d-v4';
+export type AlgorithmVersion = typeof ALGORITHM_VERSION | typeof LEGACY_ALGORITHM_VERSION;
 // Retain v3's blueprint streams: polishing a seed must not replace its composition.
 const BLUEPRINT_VERSION = '2d-v3';
 export const RATIOS = {
@@ -13,12 +16,14 @@ export type Ratio = keyof typeof RATIOS;
 export type Background = { figureColors?: Partial<{primary:string;support:string;accent:string}>; mode: 'solid' | 'gradient'; solid: string; colors: [string, string, string]; angle: number };
 export type Point = { x: number; y: number };
 export type Rect = Point & { width: number; height: number };
-export const COMPOSITION_TYPES = ['central', 'diagonal', 'corners', 'asymmetric', 'frame'] as const;
+export const LEGACY_COMPOSITION_TYPES = ['central', 'diagonal', 'corners', 'asymmetric', 'frame'] as const;
+export const COMPOSITION_TYPES = [...LEGACY_COMPOSITION_TYPES, 'radial', 'concentric', 'spiral', 'modules', 'multi-anchor', 'curves', 'axes', 'polygons'] as const;
+export const NEW_SHAPE_KINDS = ['hexagon','pentagon','trapezoid','parallelogram','star','chevron','zigzag','rays','concentric','dashed-frame','semicircle','sector','compound','grid','branch-circuit','linked'] as const;
 export type CompositionType = typeof COMPOSITION_TYPES[number];
 export type Tone = 'violet' | 'mint' | 'ice' | 'neutral';
 export type Shape = {
   id: string; kind: 'triangle' | 'diamond' | 'line' | 'circuit' | 'dot' | 'circle'
-    | 'frame' | 'arc' | 'band' | 'rectangle' | 'dots' | 'cross' | 'accent';
+    | 'frame' | 'arc' | 'band' | 'rectangle' | 'dots' | 'cross' | 'accent' | typeof NEW_SHAPE_KINDS[number];
   role: 'hero' | 'support' | 'decoration' | 'accent';
   layer: 'background' | 'midground' | 'foreground';
   group: string; parent?: string;
@@ -26,15 +31,16 @@ export type Shape = {
   opacity: number; filled: boolean; strokeWidth: number; fillOpacity: number;
   glow: boolean; bleed: boolean; thickness?: number; rings?: number;
   arcStart?: number; arcSweep?: number; points?: Point[];
+  importance?: number; startDensity?: number;
 };
-export type HeroPlan = Point & { kind: 'frame' | 'arc' | 'triangle'; size: number; rotation: number; bleed: boolean; rings: number; arcStart: number; arcSweep: number };
+export type HeroPlan = Point & { kind: Shape['kind']; size: number; rotation: number; bleed: boolean; rings: number; arcStart: number; arcSweep: number };
 export type Composition = {
   type: CompositionType; direction: number; quiet: Rect; unit: number; noiseSeed: number;
   focus: Point; anchors: HeroPlan[];
   clusters: (Point & { radius: number })[];
   lanes: (Point & { length: number; thickness: number })[];
 };
-export type Scene = { version: typeof ALGORITHM_VERSION; width: number; height: number; composition: Composition; shapes: Shape[] };
+export type Scene = { version: AlgorithmVersion; width: number; height: number; composition: Composition; shapes: Shape[] };
 
 // FNV-1a over UTF-16, followed by Mulberry32. No time or global random state.
 export function seededRandom(seed: string): () => number {
@@ -96,7 +102,7 @@ function heroShape(h: HeroPlan, unit: number, i: number): Shape {
 /** Five blueprints, varied internally by the seed. No individual detail exists yet. */
 export function planComposition(seed: string, width: number, height: number): Composition {
   const random = seededRandom(`${BLUEPRINT_VERSION}\u0000plan\u0000${seed}`);
-  const type = COMPOSITION_TYPES[Math.floor(random() * COMPOSITION_TYPES.length)];
+  const type = LEGACY_COMPOSITION_TYPES[Math.floor(random() * LEGACY_COMPOSITION_TYPES.length)];
   const unit = Math.min(width, height), wide = width >= height;
   const sign = random() < 0.5 ? -1 : 1;
   const direction = type === 'diagonal' || type === 'corners' ? sign * 45
@@ -203,7 +209,7 @@ export function densityAt(plan: Composition, x: number, y: number): number {
   return falloff * Math.max(cluster * 0.9, flow * 0.75) * (0.64 + noise * 0.36);
 }
 
-export function generateScene(seed: string, ratio: Ratio): Scene {
+export function generateSceneV4(seed: string, ratio: Ratio): Scene {
   const [width, height] = RATIOS[ratio];
   const composition = planComposition(seed, width, height);
   const { unit, direction, quiet, focus } = composition;
@@ -347,5 +353,10 @@ export function generateScene(seed: string, ratio: Ratio): Scene {
   });
   const order = { background: 0, midground: 1, foreground: 2 };
   shapes.sort((a, b) => order[a.layer] - order[b.layer]);
-  return { version: ALGORITHM_VERSION, width, height, composition, shapes };
+  return { version: LEGACY_ALGORITHM_VERSION, width, height, composition, shapes };
+}
+
+/** Version dispatch is explicit: old JSON never silently adopts new geometry. */
+export function generateScene(seed: string, ratio: Ratio, version: AlgorithmVersion = ALGORITHM_VERSION): Scene {
+  return version === LEGACY_ALGORITHM_VERSION ? generateSceneV4(seed, ratio) : generateDiverseScene(seed, ratio);
 }

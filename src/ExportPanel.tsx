@@ -1,13 +1,13 @@
 import type { AnimationSettings } from './animation';
 import type { ColorSettings } from './colors';
 import { useRef, useState } from 'react';
-import { ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene';
+import { RATIOS, type AlgorithmVersion, type Background, type Ratio } from './scene';
 import { downloadBlob, pngBlob, serializeArtwork } from './export';
 import { EXPORT_PRESETS, fileStem, MAX_PNG_PIXELS, MAX_SETTINGS_BYTES, parseSettings, resolutionError, settingsText, type ProjectSettings } from './settings';
 
-type Props = { animation:AnimationSettings; density:number; colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
+type Props = { version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
   onRatio: (ratio: Ratio) => void; onRestore: (settings: ProjectSettings) => void };
-export function ExportPanel({ animation, density, colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
+export function ExportPanel({ version, animation, density, colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
   const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
@@ -17,7 +17,7 @@ export function ExportPanel({ animation, density, colorSettings, seed, ratio, ba
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
   function snapshot(): ProjectSettings {
-    return { ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed, aspectRatio: ratio,
+    return { ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }
@@ -26,7 +26,7 @@ export function ExportPanel({ animation, density, colorSettings, seed, ratio, ba
     try {
       const current = snapshot();
       if (invalid) throw new Error(invalid);
-      const stem = fileStem(current.seed);
+      const stem = fileStem(current.seed,version);
       if (format === 'json') {
         downloadBlob(new Blob([settingsText(current)], { type: 'application/json;charset=utf-8' }), `${stem}_settings.json`);
       } else {
@@ -47,7 +47,7 @@ export function ExportPanel({ animation, density, colorSettings, seed, ratio, ba
       if (file.size > MAX_SETTINGS_BYTES) throw new Error('設定JSONは64KB以下にしてください。');
       const settings = parseSettings(await file.text());
       onRestore(settings); setCustom(true); setWidth(String(settings.exportWidth)); setHeight(String(settings.exportHeight));
-      setMessage('設定を読み込み、プレビューを更新しました。');
+      setMessage(settings.algorithmVersion==='2d-v4'?'旧v4設定を読み込み、元の構図を保持しました。新版への変更は生成アルゴリズムから選べます。':'設定を読み込み、プレビューを更新しました。');
     } catch (e) { setError(e instanceof Error ? e.message : '設定を読み込めませんでした。'); }
     finally { setBusy(false); if (fileInput.current) fileInput.current.value = ''; }
   }

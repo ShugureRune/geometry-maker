@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backgroundAt, backgroundVector, contrast, inkAt, luminance, paintFor } from './paint';
-import { generateScene, type Background, type Tone } from './scene';
+import { generateSceneV4 as generateScene, type Background, type Tone } from './scene';
 import { crossesRect } from './geometry';
 
 const background: Background = { mode: 'solid', solid: '#ffffff', colors: ['#ffffff', '#808080', '#000000'], angle: 135 };

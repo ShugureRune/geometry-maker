@@ -17,9 +17,9 @@ test('downloads real PNG/SVG and restores all settings atomically',async({page})
  await page.getByLabel('高さ (px)',{exact:true}).fill('512');
  const settings=await download(page,'設定JSONを保存');
  const json=JSON.parse(settings.data.toString());
- expect(json).toMatchObject({density:75,schemaVersion:1,algorithmVersion:'2d-v4',seed:'export-心音-001',aspectRatio:'1:1',exportWidth:512,exportHeight:512});
+ expect(json).toMatchObject({density:75,schemaVersion:1,algorithmVersion:'2d-v5',seed:'export-心音-001',aspectRatio:'1:1',exportWidth:512,exportHeight:512});
  const svg=await download(page,'SVGを書き出す');
- expect(svg.name).toContain('2d-v4_seed-export-心音-001');
+ expect(svg.name).toContain('2d-v5_seed-export-心音-001');
  expect(svg.data.toString()).toContain('viewBox="0 0 1200 1200"');
  expect(svg.data.toString()).not.toContain('class="artwork"');
  const png=await download(page,'PNGを書き出す');

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { COMPOSITION_TYPES, densityAt, generateScene, RATIOS, spatialNoise, type Ratio } from './scene';
+import { LEGACY_COMPOSITION_TYPES as COMPOSITION_TYPES, densityAt, generateSceneV4 as generateScene, RATIOS, spatialNoise, type Ratio } from './scene';
 import { contoursOf, crossesRect, shapeBounds, worldPoint } from './geometry';
 
 describe('2d-v4 designed composition acceptance', () => {

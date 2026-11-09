@@ -1,0 +1,223 @@
+{
+  "baselineCommit": "1087d6401d44534aac444f05814899346979808c",
+  "comparisons": 36,
+  "equal": true,
+  "rows": [
+    {
+      "seed": "undefined-heartbeat",
+      "aspectRatio": "16:9",
+      "density": 50,
+      "sha256": "070803eae5684dee3b0605be66307ab5d36877a190260f7c257b207f7955888d"
+    },
+    {
+      "seed": "undefined-heartbeat",
+      "aspectRatio": "16:9",
+      "density": 100,
+      "sha256": "1a3f204f9ea6247eebbef06eec1ec53334896adccd03a78c9d0e77b9c30aa46d"
+    },
+    {
+      "seed": "undefined-heartbeat",
+      "aspectRatio": "9:16",
+      "density": 50,
+      "sha256": "bd890db8314e8315b9bc55016abfbc2e75de5a6f753389067f69fe09fdd4d150"
+    },
+    {
+      "seed": "undefined-heartbeat",
+      "aspectRatio": "9:16",
+      "density": 100,
+      "sha256": "698df80da48b31093df143a60babfaaaf183b31c5c363ae16f454fabc9c99ea6"
+    },
+    {
+      "seed": "undefined-heartbeat",
+      "aspectRatio": "1:1",
+      "density": 50,
+      "sha256": "ebf4cd80606b11877220d8a51fe93527e133430125e42439558da6fcb71143ac"
+    },
+    {
+      "seed": "undefined-heartbeat",
+      "aspectRatio": "1:1",
+      "density": 100,
+      "sha256": "633fcfa1bb75fd8c5dde56a602199179f2235ee57c3ec8a4931578fc1655cb2c"
+    },
+    {
+      "seed": "neon-city",
+      "aspectRatio": "16:9",
+      "density": 50,
+      "sha256": "76681788e3f39fd121e27862b1d38452c5a848fd5263aaf15d30e4963fd71655"
+    },
+    {
+      "seed": "neon-city",
+      "aspectRatio": "16:9",
+      "density": 100,
+      "sha256": "10c97ddc4dcd748a99f9b21d550ca98f1738ed97b5e6949fb319e6d933f43491"
+    },
+    {
+      "seed": "neon-city",
+      "aspectRatio": "9:16",
+      "density": 50,
+      "sha256": "9fed385ab259d75451e705839221b0274157644695d1fe1ccab8cba15cd085f6"
+    },
+    {
+      "seed": "neon-city",
+      "aspectRatio": "9:16",
+      "density": 100,
+      "sha256": "c9f0daf48ab6422a724b5f565bf948ab0282232c34dfc454a363b96b046fd550"
+    },
+    {
+      "seed": "neon-city",
+      "aspectRatio": "1:1",
+      "density": 50,
+      "sha256": "d0e851e2ed305ecabe84e19dc328e642020530d3d32c8c36e8edfefc3eff0236"
+    },
+    {
+      "seed": "neon-city",
+      "aspectRatio": "1:1",
+      "density": 100,
+      "sha256": "fd12bf4711ef837dde32746e2db9f8c0547111616de51ab01a9193d45b6af2b0"
+    },
+    {
+      "seed": "design-6",
+      "aspectRatio": "16:9",
+      "density": 50,
+      "sha256": "bf59a92233d6024a0cc5f5bec361ae84649b9c0faa006a5754f004ec92203366"
+    },
+    {
+      "seed": "design-6",
+      "aspectRatio": "16:9",
+      "density": 100,
+      "sha256": "225748c0899594fdab9b6062660162e4bf5477a5869fa87ee0f4948a1c2c5447"
+    },
+    {
+      "seed": "design-6",
+      "aspectRatio": "9:16",
+      "density": 50,
+      "sha256": "e9685804da9f8da45272195b7dda15a7be82c03457c711bc59dbcd7babce2f3c"
+    },
+    {
+      "seed": "design-6",
+      "aspectRatio": "9:16",
+      "density": 100,
+      "sha256": "c75146002b968de1b81917042c93c78fe90bc5d516da38deb20191383483a02e"
+    },
+    {
+      "seed": "design-6",
+      "aspectRatio": "1:1",
+      "density": 50,
+      "sha256": "fe3daf8afe13fdb3c99985f2d69bf502539bdb8dd47ab0adf51ce08758873e41"
+    },
+    {
+      "seed": "design-6",
+      "aspectRatio": "1:1",
+      "density": 100,
+      "sha256": "fea0c10b2e6705388419cd0e20fbae5da91b2d96482dcd3cbb640c7e502e05c8"
+    },
+    {
+      "seed": "001",
+      "aspectRatio": "16:9",
+      "density": 50,
+      "sha256": "04fe598940418391e69a5b334374cc856e9e499c6359d9b2544573fde448b7c9"
+    },
+    {
+      "seed": "001",
+      "aspectRatio": "16:9",
+      "density": 100,
+      "sha256": "09e1b4d8cafbd44b84163941a25079b465a9128861fe073fd7a27c17fd8eb7b0"
+    },
+    {
+      "seed": "001",
+      "aspectRatio": "9:16",
+      "density": 50,
+      "sha256": "b3b07399223a6e5911905667f90c9cefe5897443212e360a178c29c9c5538b86"
+    },
+    {
+      "seed": "001",
+      "aspectRatio": "9:16",
+      "density": 100,
+      "sha256": "b520de77da89deb7d46b3995e14c481f51a4d9a556569741b171ea44aa8653fe"
+    },
+    {
+      "seed": "001",
+      "aspectRatio": "1:1",
+      "density": 50,
+      "sha256": "2e3d2af9520c6dbbfada30a1175f329a5d08044ac535ed071708da12e9ebc5b5"
+    },
+    {
+      "seed": "001",
+      "aspectRatio": "1:1",
+      "density": 100,
+      "sha256": "bea3730e8418444afdec556d198bf382d225a8cc981ada4157b98fdd331f3819"
+    },
+    {
+      "seed": "reference",
+      "aspectRatio": "16:9",
+      "density": 50,
+      "sha256": "a885244e9ecdd3de25aeb019bcfcbed58bf1b97d0ccc1131031367841e00dcd3"
+    },
+    {
+      "seed": "reference",
+      "aspectRatio": "16:9",
+      "density": 100,
+      "sha256": "377491e6c2f78cb304ccee4536a71cb24eef4bf88752787d084a53e5a4c8edc0"
+    },
+    {
+      "seed": "reference",
+      "aspectRatio": "9:16",
+      "density": 50,
+      "sha256": "41ec4dd807f2f06d4919721a22eb5b6ebcb27d97e335343f02b9524657943c33"
+    },
+    {
+      "seed": "reference",
+      "aspectRatio": "9:16",
+      "density": 100,
+      "sha256": "02698b87f6f96f7226fbb9a47cdd65000fe05d42e5b1f7db686a4a47ec2e922d"
+    },
+    {
+      "seed": "reference",
+      "aspectRatio": "1:1",
+      "density": 50,
+      "sha256": "7d440aabcb6f0e6aa2d9e7edd0547fb0c97e5ab516e0f89b9d8e09df5b976b2f"
+    },
+    {
+      "seed": "reference",
+      "aspectRatio": "1:1",
+      "density": 100,
+      "sha256": "962d9755816fb1dfee5c5e4158be5518f052ab8598203517f0007051d94248ff"
+    },
+    {
+      "seed": "v4-compatibility",
+      "aspectRatio": "16:9",
+      "density": 50,
+      "sha256": "3c5cba990f97644441d05caeea71c0814b1c65a9d42e78f65c4bfd419bcffaf9"
+    },
+    {
+      "seed": "v4-compatibility",
+      "aspectRatio": "16:9",
+      "density": 100,
+      "sha256": "55a5f12ada36becc64e13b30a92150535abb7ccc1dbd61d4513c965186145a74"
+    },
+    {
+      "seed": "v4-compatibility",
+      "aspectRatio": "9:16",
+      "density": 50,
+      "sha256": "e670e930b7da60441a1d26a15db9b3d0e63f859e7c1d5687b6af680e177c6ed1"
+    },
+    {
+      "seed": "v4-compatibility",
+      "aspectRatio": "9:16",
+      "density": 100,
+      "sha256": "ff2fccd499b23ec35bea5007eceb704eaba4ca6b4762deba28723d46e8cb1431"
+    },
+    {
+      "seed": "v4-compatibility",
+      "aspectRatio": "1:1",
+      "density": 50,
+      "sha256": "1d7dc5be1bdec118bf72dbe1aa6f4625f8370fa33062b8c7ea66501ad1b98325"
+    },
+    {
+      "seed": "v4-compatibility",
+      "aspectRatio": "1:1",
+      "density": 100,
+      "sha256": "cfb2fc80b16f614a717f9c2f7122c4bf8d16bea1d046ab7bca727fd7a06fe0c7"
+    }
+  ]
+}

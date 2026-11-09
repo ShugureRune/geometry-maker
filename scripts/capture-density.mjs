@@ -7,6 +7,7 @@ const entries=[];
 try {
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:5173/');
+ await page.getByLabel('生成アルゴリズム').selectOption('2d-v4');
  for(const seed of ['undefined-heartbeat','neon-city']) {
   await page.getByLabel('シード値',{exact:true}).fill(seed);
   for(const ratio of ['16:9','9:16','1:1']) for(const density of [0,25,50,75,100]) {
