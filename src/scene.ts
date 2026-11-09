@@ -13,7 +13,7 @@ export const RATIOS = {
   'A4縦': [1050, 1485], 'A4横': [1485, 1050],
 } as const;
 export type Ratio = keyof typeof RATIOS;
-export type Background = { figureColors?: Partial<{primary:string;support:string;accent:string}>; mode: 'solid' | 'gradient'; solid: string; colors: [string, string, string]; angle: number };
+export type Background = { glowIntensity?:number; figureColors?: Partial<{primary:string;support:string;accent:string}>; mode: 'solid' | 'gradient'; solid: string; colors: [string, string, string]; angle: number };
 export type Point = { x: number; y: number };
 export type Rect = Point & { width: number; height: number };
 export const LEGACY_COMPOSITION_TYPES = ['central', 'diagonal', 'corners', 'asymmetric', 'frame'] as const;

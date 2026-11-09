@@ -56,8 +56,9 @@ export function Preview({ scene, background, growth }: { scene: Scene; backgroun
             <stop offset="100%" stopColor={paint.color} stopOpacity="0.05" />
           </linearGradient>}
           {paint.glow && <filter id={`${gradientId}-glow-${shape.id}`} filterUnits="userSpaceOnUse"
-            x={bounds.x - unit * 0.02} y={bounds.y - unit * 0.02} width={bounds.width + unit * 0.04} height={bounds.height + unit * 0.04} colorInterpolationFilters="sRGB">
-            <feGaussianBlur stdDeviation={unit * 0.004} />
+            x={bounds.x - unit * 0.035} y={bounds.y - unit * 0.035} width={bounds.width + unit * 0.07} height={bounds.height + unit * 0.07} colorInterpolationFilters="sRGB">
+            <feGaussianBlur stdDeviation={paint.blur} />
+            {background.glowIntensity!==undefined&&<feComponentTransfer><feFuncA type="linear" slope={1+background.glowIntensity/50}/></feComponentTransfer>}
           </filter>}
         </g>;
       }),[scene,background,gradientId]);
@@ -82,7 +83,7 @@ export function Preview({ scene, background, growth }: { scene: Scene; backgroun
           stroke={ink} strokeWidth={shape.strokeWidth} opacity={paint.opacity}
           fill={shape.filled || ['circuit','branch-circuit'].includes(shape.kind) ? solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
           fillOpacity={solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? 1 : shape.fillOpacity}>
-          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity="0.7"><Geometry shape={shape} progress={growth?.[shape.id]} /></g>}
+          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity={paint.glowOpacity} fill={background.glowIntensity===undefined?undefined:solidFill||['circuit','branch-circuit'].includes(shape.kind)?ink:"none"}><Geometry shape={shape} progress={growth?.[shape.id]} /></g>}
           <Geometry shape={shape} progress={growth?.[shape.id]} />
         </g>;
       })}

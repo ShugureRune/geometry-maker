@@ -1,3 +1,4 @@
+import { darkTheme } from './themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AnimationControls,usePlayback } from './AnimationControls';
 import { defaults,schedule,progressAt,type AnimationSettings } from './animation';
@@ -9,7 +10,7 @@ import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, type AlgorithmVersion, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
 
-const initialBackground: Background = {mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
+const initialBackground: Background = {glowIntensity:0,mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
 const initialColors = reseedColors({...legacyColors(initialBackground),mode:'seed'},'undefined-heartbeat');
 
 export default function App() {
@@ -78,6 +79,11 @@ export default function App() {
 
         <section className="control-section">
           <h3>配色の生成</h3>
+          <div className="play-buttons" aria-label="暗色テーマ"><button onClick={()=>applyColors(darkTheme(activeColors,seed,'night'))}>ミッドナイト</button><button onClick={()=>applyColors(darkTheme(activeColors,seed,'neon'))}>ネオンナイト</button></div>
+          <p className="help">暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</p>
+          <label className="range-label" htmlFor="glow-intensity">発光強度 <output>{background.glowIntensity??0}%</output></label>
+          <input id="glow-intensity" type="range" min="0" max="100" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
+          <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
           <label htmlFor="color-mode">カラー変更モード</label>
           <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
             <option value="manual">手動色を維持</option><option value="seed">シードに連動</option>
@@ -122,7 +128,7 @@ export default function App() {
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
             setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
             setSeed(settings.seed); setRatio(settings.aspectRatio);
-            const bg:Background={mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
+            const bg:Background={glowIntensity:settings.glowIntensity??0,mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
             setColorSettings(settings.colorSettings);
             setBackground(settings.colorSettings ? coloredBackground(bg,settings.colorSettings) : bg);
             setRegenerations(0);

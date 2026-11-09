@@ -43,6 +43,11 @@ export function inkAt(tone: Tone, background: Background, p: Point, width: numbe
 export function paintFor(shape: Shape, background: Background, width: number, height: number) {
   const light = luminance(backgroundAt(background, shape, width, height)) > 0.3;
   const opacity = light && shape.layer !== 'background' ? Math.min(1, shape.opacity * (shape.role === 'decoration' ? 1.25 : 1.12)) : shape.opacity;
-  return { opacity, color: inkAt(shape.tone, background, shape, width, height),
-    glow: shape.glow && luminance(backgroundAt(background, shape, width, height)) < 0.3 };
+  const intensity=background.glowIntensity;
+  const strength=(intensity??0)/100;
+  const weight=shape.role==='hero'||shape.role==='accent'?1:shape.role==='support'?.45:.28;
+  const glowOpacity=intensity===undefined?.7:strength*weight*(light?.22:1)*.85;
+  return { opacity:intensity!==undefined&&!light&&strength>0?Math.min(1,opacity+strength*(shape.role==='hero'?.08:.12)):opacity,
+    glowOpacity, blur:Math.min(width,height)*(intensity===undefined?.004:.001+strength*.006), color: inkAt(shape.tone, background, shape, width, height),
+    glow: intensity===undefined?shape.glow&&!light:strength>0 };
 }
