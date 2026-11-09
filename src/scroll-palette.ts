@@ -37,7 +37,8 @@ export function scrollBackgroundAt(input:AmbientInput,seconds:number):Background
  const light=stops({...input.background,...initial}).reduce((sum,c)=>sum+luminance(c),0)/stops({...input.background,...initial}).length>.3;
  function palette(index:number):PaletteBase{
   if(index===0)return initial;
-  const random=seededRandom(`${input.seed}::scroll-palette-v1:${index}`),h=random()*360,L=light?.93+random()*.035:.16+random()*.08,C=light?.025+random()*.025:.025+random()*.035;
+  const baseKey=input.background.mode==='solid'?initial.solid:initial.colors.join(':');
+  const random=seededRandom(`${input.seed}::scroll-palette-v1:${index}:${baseKey}`),h=random()*360,L=light?.93+random()*.035:.16+random()*.08,C=light?.025+random()*.025:.025+random()*.035;
   return{solid:fromLch(L,C,h),colors:[fromLch(L,C,h),fromLch(L+(light?-.025:.025),C,h+20),fromLch(L,C,h-25)]};
  }
  let a=initial,b=initial,t=0;
