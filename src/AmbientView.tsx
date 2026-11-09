@@ -52,12 +52,12 @@ export function AmbientView({input,seconds,world,scrollCamera='parent',figureCac
 }
 
 function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:number;world:ScrollWorld;camera:'parent'|'per-chunk'}){
- const {width,height}=world,s=input.settings,{cx,cy,chunks}=world.frame(seconds,s,input.scrollPath);
+ const {width,height}=world,s=input.settings,{cx,cy,groups}=world.frame(seconds,s,input.scrollPath);
  const background=useMemo(()=>scrollBackgroundAt(input,seconds),[input.background,input.colors,input.seed,input.settings,input.scrollPaletteState,s.scrollBackgroundAuto?seconds:0]);
  const painter=useMemo(()=>createFigurePainter(input,seconds,background,world.figureCache),[input.background,input.colors,input.seed,input.settings,input.scrollFigureState,background,s.scrollFigureAuto?seconds:0,world]);
- return <svg data-testid="ambient-preview" data-scroll-world="v2" data-scroll-density={s.scrollDensity} data-cache-size={world.cache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
+ return <svg data-testid="ambient-preview" data-scroll-world="v3" data-scroll-density={s.scrollDensity} data-cache-size={world.cache.size} data-group-cache-size={world.groupCache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
   <Preview scene={world.empty} background={background}/>
-  <g data-testid="scroll-camera" transform={camera==='parent'?`translate(${-cx} ${-cy})`:undefined}>{chunks.map(chunk=>{
+  <g data-testid="scroll-camera" transform={camera==='parent'?`translate(${-cx} ${-cy})`:undefined}>{groups.map(chunk=>{
    const margin=world.renderMargin;
    if(chunk.anchorX-cx < -margin||chunk.anchorX-cx > width+margin||chunk.anchorY-cy < -margin||chunk.anchorY-cy > height+margin)return null;
    const start=entryTime(chunk.anchorX/width,chunk.anchorY/height,seconds,s,input.scrollPath);
@@ -65,7 +65,7 @@ function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:nu
    const elapsed=growthSeconds(start,seconds,s,input.scrollPath);
    const progress=Math.min(1,elapsed*input.animation.playbackSpeed/input.animation.animationDuration);
    const growth=progress>=1?undefined:Object.fromEntries(chunk.scene.shapes.map(shape=>[shape.id,progressAt(chunk.cues[shape.id],progress,input.animation.easingType)]));
-   return <g key={chunk.key} data-chunk={chunk.key} data-chunk-seed={chunk.seed} data-growth-start={start} data-growth-progress={progress} data-anchor-x={chunk.anchorX-cx} data-anchor-y={chunk.anchorY-cy} transform={`translate(${chunk.anchorX-(camera==='parent'?0:cx)} ${chunk.anchorY-(camera==='parent'?0:cy)}) scale(${chunk.scale}) translate(${-chunk.localX} ${-chunk.localY})`}>
+   return <g key={chunk.key} data-group={chunk.key} data-owner-chunk={`${chunk.ownerX}:${chunk.ownerY}`} data-chunk={chunk.key} data-chunk-seed={chunk.seed} data-growth-start={start} data-growth-progress={progress} data-anchor-x={chunk.anchorX-cx} data-anchor-y={chunk.anchorY-cy} transform={`translate(${chunk.anchorX-(camera==='parent'?0:cx)} ${chunk.anchorY-(camera==='parent'?0:cy)}) rotate(${chunk.rotation}) scale(${chunk.scale}) translate(${-chunk.localX} ${-chunk.localY})`}>
     <Preview scene={chunk.scene} background={background} shapeColors={painter(chunk.scene.shapes,chunk.key)} growth={growth} transparent/>
    </g>;
   })}</g>

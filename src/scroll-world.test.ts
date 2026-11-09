@@ -5,19 +5,25 @@ import {defaults} from './animation';
 import {createScrollWorld,chunkSeed,entryTime,scrollPathAt,scrollVelocity,growthSeconds,SCROLL_CACHE_LIMIT} from './scroll-world';
 const input:AmbientInput={seed:'scroll-test',version:'2d-v5',ratio:'16:9',density:50,background:{mode:'solid',solid:'#101020',colors:['#101020','#101020','#101020'],angle:0},animation:defaults,settings:{...ambientDefaults,enabled:true,mode:'scroll'}};
 describe('deterministic infinite world',()=>{
- it('uses coordinates, never cycle count, and restores evicted chunks',()=>{
-  for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version});const first=structuredClone(world.frame(0,input.settings).chunks.find(c=>c.key==='0:0'));
-   for(let t=0;t<1000;t+=113){world.frame(t,input.settings);expect(world.cache.size).toBeLessThanOrEqual(SCROLL_CACHE_LIMIT);}
-   const restored=world.frame(0,input.settings).chunks.find(c=>c.key==='0:0');expect(restored).toEqual(first);
-   const next=world.frame(10,input.settings).chunks;expect(new Set(next.map(c=>c.seed)).size).toBe(next.length);expect(chunkSeed(input.seed,0,0)).not.toBe(chunkSeed(input.seed,1,0));expect(next.map(c=>c.scene.shapes)).not.toEqual([first?.scene.shapes]);
+ it('restores evicted chunk plans and group geometry with bounded caches',()=>{
+  for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version}),first=structuredClone(world.chunk(0,0));
+   for(const t of [0,20,100,400,900]){world.frame(t,input.settings);expect(world.cache.size).toBeLessThanOrEqual(SCROLL_CACHE_LIMIT);expect(world.groupCache.size).toBeLessThanOrEqual(SCROLL_CACHE_LIMIT);}
+   expect(world.chunk(0,0)).toEqual(first);expect(chunkSeed(input.seed,0,0)).not.toBe(chunkSeed(input.seed,1,0));
+   const frame=world.frame(0,input.settings);expect(new Set(frame.groups.map(g=>g.seed)).size).toBe(frame.groups.length);
+   const next=world.frame(.001,input.settings);for(const group of next.groups){const previous=frame.groups.find(g=>g.key===group.key);if(previous)expect(group.scene).toBe(previous.scene);}
   }
  },15000);
- it('uses identical candidates at all densities and ignores periodic seed settings',()=>{
-  const a=createScrollWorld(input),b=createScrollWorld({...input,settings:{...input.settings,scrollDensity:100}});const low=a.frame(8,input.settings).chunks,high=b.frame(8,input.settings).chunks;
-  low.forEach((c,i)=>{expect(c.scale).toBe(high[i].scale);expect(c.anchorX).toBe(high[i].anchorX);for(const shape of c.scene.shapes)expect(high[i].scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
+ it('keeps group plans, sizes and common shapes stable across density changes',()=>{
+  const a=createScrollWorld(input),b=createScrollWorld({...input,settings:{...input.settings,scrollDensity:100}}),low=a.frame(8,input.settings).groups,high=b.frame(8,input.settings).groups;
+  expect(low.length).toBeGreaterThan(0);low.forEach((g,i)=>{expect(g.scale).toBe(high[i].scale);expect(g.anchorX).toBe(high[i].anchorX);expect(g.rotation).toBe(high[i].rotation);for(const shape of g.scene.shapes)expect(high[i].scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
   expect(a.frame(30,input.settings)).toEqual(a.frame(30,{...input.settings,autoSeed:false,interval:4}));
  });
- it('caps every hero envelope so adjacent groups retain a gap',()=>{for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version});for(const chunk of world.frame(0,input.settings).chunks)for(const shape of chunk.scene.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);for(const x of [b.x,b.x+b.width])for(const y of [b.y,b.y+b.height])expect(Math.hypot(x-chunk.localX,y-chunk.localY)*chunk.scale).toBeLessThanOrEqual(world.pitch*.400001);}}});
+ it('contains hero envelopes, supports decoration-only groups and gives each group its own entry time',()=>{
+  for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version}),groups=world.frame(0,input.settings).groups;
+   expect(groups.length).toBeGreaterThan(0);for(const g of groups){if(g.kind==='detail')expect(g.scene.shapes.some(s=>s.role==='hero')).toBe(false);for(const shape of g.scene.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);for(const x of [b.x,b.x+b.width])for(const y of [b.y,b.y+b.height])expect(Math.hypot(x-g.localX,y-g.localY)*g.scale).toBeLessThanOrEqual(g.coreRadius+.00001);}}
+   const plans=[...groups,...world.frame(8,input.settings).groups],times=plans.map(g=>entryTime(g.anchorX/world.width,g.anchorY/world.height,20,input.settings)).filter(Number.isFinite);expect(new Set(times).size).toBeGreaterThan(1);
+  }
+ });
  it('enters only when the actual anchor is inside, including diagonal edges',()=>{
   const s={...input.settings,duration:4,speed:1,scrollSpeed:1};
   expect(entryTime(2,.5,1,s)).toBe(Infinity);expect(entryTime(2,.5,2,s)).toBe(2);
