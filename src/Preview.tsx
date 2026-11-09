@@ -3,6 +3,8 @@ import { contoursOf, pathData, radians, shapeBounds, worldPoint, trimContour } f
 import { gradientEndpoints, type Background, type Point, type Scene, type Shape, NEW_SHAPE_KINDS } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
 
+// All strokes and glow radii use scene units. Pixel-fixed strokes become thinner
+// when a high-resolution export is displayed at the preview size.
 function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; finalFillOpacity:number; progress?:number }) {
   const modern=(NEW_SHAPE_KINDS as readonly string[]).includes(shape.kind);
   const contours=useMemo(()=>contoursOf(shape),[shape]);
@@ -18,12 +20,12 @@ function Geometry({ shape, finalFillOpacity, progress=1 }: { shape: Shape; final
       return <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius}
         pathLength={!expand&&t<1?1:undefined}
         style={t<1?expand?{transform:`scale(${modern?t:factor})`,transformBox:'fill-box',transformOrigin:'center'}:{strokeDasharray:1,strokeDashoffset:1-t}:undefined}
-        opacity={c.opacity} vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'}
+        opacity={c.opacity}
         stroke={['circle','concentric'].includes(shape.kind)?undefined:'none'}/>;
     }
     return <path key={i} pathLength={t<1&&!contour.dashed?1:undefined}
       style={t<1?{...(contour.dashed?{}:{strokeDasharray:1,strokeDashoffset:1-t}),fillOpacity:finalFillOpacity*t,...(scale===undefined?{}:{transform:`scale(${scale})`})}:undefined}
-      vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'} d={pathData(c)}
+      d={pathData(c)}
       fill={shape.filled&&c.closed?undefined:'none'} opacity={c.opacity}
       strokeDasharray={contour.dashed?`${shape.size*.065} ${shape.size*.06}`:undefined}/>;
   })}</>;

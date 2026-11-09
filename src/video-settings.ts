@@ -20,3 +20,6 @@ export function videoTimeline(duration: number, speed: number, fps: number) {
   const frameCount = Math.ceil(seconds * fps) + 1;
   return { seconds, frameCount, encodedSeconds: frameCount / fps, timeAt: (index: number) => Math.min(index / fps, seconds) };
 }
+
+// WebCodecs bitrate must be an integer, including square resolutions at 24fps.
+export const videoBitrate = (width: number, height: number, fps: number) => Math.round(Math.min(24_000_000, Math.max(2_000_000, width * height * fps * .2)));
