@@ -41,5 +41,11 @@ function scheduleV2(shapes:Shape[],seed:string):Record<string,Cue> {
  }
  shapes.forEach(cue);
  const end=Math.max(1,...Object.values(cues).map(c=>c.start+c.duration));
- return Object.fromEntries(Object.entries(cues).map(([id,c])=>[id,{start:c.start/end,duration:c.duration/end}]));
+ return Object.fromEntries(Object.entries(cues).map(([id,c])=>{
+  const shape=byId.get(id)!;
+  const parent=shape.parent?cues[shape.parent]:undefined;
+  // Start details a little sooner without moving the other layers or their end times.
+  const advance=shape.role==='decoration'?Math.min(.2,Math.max(0,c.start-(parent?parent.start+parent.duration+.035:0))):0;
+  return [id,{start:(c.start-advance)/end,duration:(c.duration+advance)/end}];
+ }));
 }
