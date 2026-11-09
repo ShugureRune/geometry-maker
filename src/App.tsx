@@ -1,3 +1,5 @@
+import { ColorEditor } from './ColorEditor';
+import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
 import { useMemo, useRef, useState } from 'react';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
@@ -10,6 +12,14 @@ export default function App() {
   const [background, setBackground] = useState<Background>({
     mode: 'gradient', solid: '#111526', colors: ['#101b2d', '#241938', '#102a30'], angle: 135,
   });
+  const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(undefined);
+  const activeColors = colorSettings ?? legacyColors(background);
+  function applyColors(c:ColorSettings) { setColorSettings(c);setBackground(bg=>coloredBackground(bg,c)); }
+  function changeSeed(value:string) {setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
+  function editor(id:Slot,label:string) { const slot=activeColors.slots[id];return <ColorEditor label={label} value={slot.color} locked={slot.locked}
+   onColor={color=>applyColors({...activeColors,edited:[...new Set([...(activeColors.edited??[]),id])],slots:{...activeColors.slots,[id]:{...slot,color}}})}
+   onRoll={()=>applyColors(rerollColor(activeColors,seed,id))}
+   onLock={()=>applyColors({...activeColors,slots:{...activeColors.slots,[id]:{...slot,locked:!slot.locked}}})}/>; }
   const [regenerations, setRegenerations] = useState(0);
   const scene = useMemo(() => generateScene(seed, ratio), [seed, ratio, regenerations]);
 
@@ -26,7 +36,7 @@ export default function App() {
         <section className="control-section" aria-labelledby="seed-heading">
           <div className="section-heading"><h3 id="seed-heading"><span>01</span> シード</h3><span className="tiny-label">SEED</span></div>
           <label htmlFor="seed">シード値</label>
-          <div className="seed-row"><input id="seed" value={seed} onChange={e => setSeed(e.target.value)} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={() => setSeed(createRandomSeed())} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
+          <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={() => changeSeed(createRandomSeed())} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
           <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。</p>
         </section>
 
@@ -36,17 +46,26 @@ export default function App() {
             <button type="button" aria-pressed={background.mode === 'solid'} onClick={() => setBackground({ ...background, mode: 'solid' })}>単色</button>
             <button type="button" aria-pressed={background.mode === 'gradient'} onClick={() => setBackground({ ...background, mode: 'gradient' })}>グラデーション</button>
           </div>
-          {background.mode === 'solid' ? <div className="color-row"><label htmlFor="solid">背景色</label><div className="color-value"><code>{background.solid}</code><input id="solid" type="color" value={background.solid} onChange={e => setBackground({ ...background, solid: e.target.value })} /></div></div> : <>
-            <div className="gradient-swatches">{background.colors.map((color, index) => <label key={index} className="swatch">カラー {index + 1}<input type="color" aria-label={`グラデーション色${index + 1}`} value={color} onChange={e => {
-              const colors = [...background.colors] as Background['colors'];
-              colors[index] = e.target.value;
-              setBackground({ ...background, colors });
-            }} /><code>{color}</code></label>)}</div>
+          {background.mode === 'solid' ? editor('solid','背景色') : <>
+            {editor('gradient0','グラデーション色1')}{editor('gradient1','グラデーション色2')}{editor('gradient2','グラデーション色3')}
             <label className="range-label" htmlFor="angle">方向 <output htmlFor="angle">{background.angle}°</output></label>
             <input id="angle" type="range" min="0" max="360" value={background.angle} onChange={e => setBackground({ ...background, angle: Number(e.target.value) })} />
           </>}
         </section>
 
+        <section className="control-section">
+          <h3>配色の生成</h3>
+          <label htmlFor="color-mode">カラー変更モード</label>
+          <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
+            <option value="manual">手動色を維持</option><option value="seed">シードに連動</option>
+          </select>
+          <label htmlFor="color-appearance">自動配色の明暗</label>
+          <select id="color-appearance" value={activeColors.appearance} onChange={e=>applyColors(reseedColors({...activeColors,appearance:e.target.value as ColorSettings['appearance']},seed))}>
+            <option value="seed">シードで決定</option><option value="light">明るい背景向け</option><option value="dark">暗い背景向け</option>
+          </select>
+          {editor('primary','主役色')}{editor('support','補助色')}{editor('accent','アクセント色')}
+          <p className="help">手動色を維持が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
+        </section>
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
           <div className="section-heading"><h3 id="ratio-heading"><span>03</span> 縦横比</h3><span className="tiny-label">ASPECT RATIO</span></div>
           <label htmlFor="ratio">キャンバスの比率</label>
@@ -66,10 +85,12 @@ export default function App() {
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{ALGORITHM_VERSION}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
-        <ExportPanel seed={seed} ratio={ratio} background={background} artwork={() => artworkRef.current?.querySelector('svg') ?? null}
+        <ExportPanel colorSettings={activeColors} seed={seed} ratio={ratio} background={background} artwork={() => artworkRef.current?.querySelector('svg') ?? null}
           onRatio={setRatio} onRestore={settings => {
             setSeed(settings.seed); setRatio(settings.aspectRatio);
-            setBackground({ mode: settings.backgroundMode, solid: settings.solidColor, colors: settings.gradientColors, angle: settings.gradientAngle });
+            const bg:Background={mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
+            setColorSettings(settings.colorSettings);
+            setBackground(settings.colorSettings ? coloredBackground(bg,settings.colorSettings) : bg);
             setRegenerations(0);
           }} />
       </section>

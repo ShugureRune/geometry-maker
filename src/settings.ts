@@ -1,3 +1,4 @@
+import { validateColors, type ColorSettings } from './colors';
 import { ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene';
 
 export const MIN_SIZE = 256;
@@ -12,7 +13,7 @@ export const EXPORT_PRESETS = [
   { width: 2048, height: 2048, ratio: '1:1' },
 ] as const;
 export type ProjectSettings = {
-  schemaVersion: 1; algorithmVersion: string; seed: string; aspectRatio: Ratio;
+  colorSettings?: ColorSettings; schemaVersion: 1; algorithmVersion: string; seed: string; aspectRatio: Ratio;
   backgroundMode: Background['mode']; solidColor: string; gradientColors: Background['colors']; gradientAngle: number;
   exportWidth: number; exportHeight: number;
 };
@@ -36,7 +37,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (typeof d.gradientAngle !== 'number' || !Number.isFinite(d.gradientAngle) || d.gradientAngle < 0 || d.gradientAngle > 360) throw new Error('gradientAngleは0〜360の数値が必要です。');
   if (typeof d.exportWidth !== 'number' || typeof d.exportHeight !== 'number' || resolutionError(d.exportWidth, d.exportHeight)) throw new Error(resolutionError(NaN, NaN)!);
   // Rebuild the allowlisted object; never merge arbitrary JSON into application state.
-  return { schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
+  return { ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
     backgroundMode: d.backgroundMode, solidColor: d.solidColor, gradientColors: [...d.gradientColors] as Background['colors'],
     gradientAngle: d.gradientAngle, exportWidth: d.exportWidth, exportHeight: d.exportHeight };
 }

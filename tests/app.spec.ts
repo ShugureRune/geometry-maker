@@ -82,7 +82,7 @@ test('all stage-one controls and deterministic browser rendering', async ({ page
   await page.getByRole('button', { name: 'グラデーション', exact: true }).click();
   for (let i = 1; i <= 3; i++) {
     const color = ['#112233', '#334455', '#556677'][i - 1];
-    await page.getByLabel(`グラデーション色${i}`).fill(color);
+    await page.getByLabel(`グラデーション色${i}`,{exact:true}).fill(color);
     await expect(svg.locator('stop').nth(i - 1)).toHaveAttribute('stop-color', color);
   }
   await page.getByLabel('方向').fill('270');
@@ -149,7 +149,7 @@ test('light, dark and mixed backgrounds preserve geometry and deterministic cont
   expect(await geometryHash(shapes)).toBe(reference);
   await page.getByRole('button', { name: 'グラデーション', exact: true }).click();
   for (const [i, color] of ['#ffffff', '#a9a0b0', '#111526'].entries()) {
-    await page.getByLabel(`グラデーション色${i + 1}`).fill(color);
+    await page.getByLabel(`グラデーション色${i + 1}`,{exact:true}).fill(color);
   }
   await page.getByLabel('方向').fill('45');
   expect(await geometryHash(shapes)).toBe(reference);

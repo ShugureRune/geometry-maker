@@ -1,5 +1,7 @@
 # 幾何学メーカー — 第2段階（画像・設定の保存）
 
+シード連動配色と各色の再抽選・固定を追加しました。[操作・互換性](docs/SEEDED-COLORS.md)を参照してください。
+
 この開発ブランチ `feat/stage2-export-settings` はv4を基準に、PNG／SVG書き出し・設定JSON保存／読込・カスタム解像度を追加しています。生成処理は変更していません。[第2段階の使い方・検証結果・制約](docs/STAGE2.md)を参照してください。main／GitHub Pages本番には未反映です。
 
 React + TypeScript + Vite / SVG の、バックエンド不要のWebアプリです。
