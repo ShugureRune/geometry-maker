@@ -26,3 +26,6 @@
 [data-theme=light] .segmented{background:#e9edf5;border-color:#bac2d1}
 [data-theme=light] .segmented button[aria-pressed=true]{background:#d8caf7;color:#342151}
 [data-theme=light] input,[data-theme=light] select{background-color:#f6f7fb!important;color:#20293b!important}
+
+/* Keep the desktop preview at its content height, independent of the sidebar. */
+@media(min-width:721px){.workspace{grid-template-rows:max-content 1fr;align-items:start}.canvas-stage{flex:none;min-height:0}}
