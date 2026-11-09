@@ -144,6 +144,7 @@ test('light, dark and mixed backgrounds preserve geometry and deterministic cont
   await page.getByRole('button', { name: '同じ設定で再生成' }).click();
   expect(await renderedHash(svg)).toBe(lightPixels);
   await page.getByLabel('背景色', { exact: true }).fill('#111526');
+  await page.getByLabel('発光強度').fill('50');
   await expect(hero).toHaveAttribute('stroke', await page.getByLabel('主役色',{exact:true}).inputValue());
   expect(await shapes.locator('[data-glow="true"]').count()).toBeGreaterThan(0);
   expect(await geometryHash(shapes)).toBe(reference);

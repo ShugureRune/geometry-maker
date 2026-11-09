@@ -16,6 +16,7 @@ test('growth start, seek, completion, playback and complete exports',async({page
  await page.getByTestId('preview').screenshot({path:'test-results/growth/complete.png'});
  const fullPending=page.waitForEvent('download');await page.getByRole('button',{name:'PNGを書き出す',exact:true}).click();const full=await fullPending;expect((await readFile((await full.path())!)).equals(partialPNG)).toBe(true);
  await page.getByLabel('成長時間（秒）').fill('1');await page.getByLabel('再生速度',{exact:true}).selectOption('4');await page.getByRole('button',{name:'最初から再生',exact:true}).click();await expect(page.getByTestId('playback-position')).toContainText('100%');
+ await page.getByLabel('成長時間（秒）').fill('8');await page.getByLabel('再生速度',{exact:true}).selectOption('1');
  await page.getByLabel('タイムライン',{exact:true}).fill('200');await page.getByRole('button',{name:'再生',exact:true}).click();await page.getByRole('button',{name:'一時停止',exact:true}).click();const pos=await page.getByTestId('playback-position').textContent();await page.waitForTimeout(150);expect(await page.getByTestId('playback-position').textContent()).toBe(pos);
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
