@@ -92,6 +92,7 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
     shapes.push(s);return s;
   }
   const detail=seededRandom(`2d-v5:details:${seed}`);
+  const branchRoots:Point[]=[];
   for(const h of heroes) {
     const round=circular.has(type),prefix=h.id;
     // A low contrast echo and a small family of matching planes build depth.
@@ -145,15 +146,22 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
     const phase=Math.floor(rayRandom()*contours.length);
     const rayOrder=radial?Array.from({length:contours.length},(_,i)=>(phase+(i%4)*3+Math.floor(i/4))%contours.length):[];
     const rayLoads=new Map<number,number>();
+    const components=h.kind==='linked'?[contours[0],contours[2]]:[contours[0]];
+    const centers=components.map(c=>({x:c.points.reduce((n,p)=>n+p.x,0)/c.points.length,y:c.points.reduce((n,p)=>n+p.y,0)/c.points.length}));
+    const branchCount=radial||h.kind==='linked'?6:Math.min(6,outline.length);
     // Real connections start at an exact vertex/sample of the parent outline.
-    for(let i=0;i<6;i++) {
-      const ray=radial?contours[(phase+i*2)%contours.length].points:outline;
-      const index=radial?1:Math.floor(i*outline.length/6),local=ray[index],anchor=worldPoint(h,local);
-      const outward=Math.atan2(anchor.y-h.y,anchor.x-h.x)*180/Math.PI;
+    for(let i=0;i<branchCount;i++) {
+      const component=h.kind==='linked'?i%2:0;
+      const ray=radial?contours[(phase+i*2)%contours.length].points:components[component].points;
+      const index=radial?1:Math.floor((h.kind==='linked'?Math.floor(i/2):i)*ray.length/(h.kind==='linked'?3:branchCount)),local=ray[index],anchor=worldPoint(h,local);
+      const center=h.kind==='linked'?worldPoint(h,centers[component]):h;
+      if(branchRoots.some(p=>Math.hypot(p.x-anchor.x,p.y-anchor.y)<unit*.015))continue;
+      const outward=Math.atan2(anchor.y-center.y,anchor.x-center.x)*180/Math.PI;
       const branch=make('branch-circuit','support',anchor,unit*(.12+detail()*.1),outward,`${prefix}-branch-${i}`);
       branch.filled=false;branch.tone=i%2?'mint':'ice';branch.opacity=.6;
-      const circuit=add(branch,h,35+i%2*5);
+      const circuit=add(branch,h,35+(h.kind==='linked'?Math.floor(i/2)%2:i%2)*5);
       if(circuit) {
+        branchRoots.push(anchor);
         const end=worldPoint(circuit,contoursOf(circuit)[0].points.at(-1)!);
         const node=make(choose(detail,['hexagon','circle','pentagon']),'decoration',end,unit*.009,outward,`${prefix}-node-${i}`);
         node.filled=false;add(node,circuit,45);
@@ -164,16 +172,18 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
       :round?['circle','dots','star','rays','semicircle']:['chevron','dots','zigzag','pentagon','cross'];
     for(let i=0;i<48;i++) {
       const rayIndex=radial?rayOrder[i%rayOrder.length]:0;
-      const edgePoints=radial?contours[rayIndex].points:outline;
-      const edge=radial?0:Math.floor(detail()*outline.length),a=edgePoints[edge],b=edgePoints[(edge+1)%edgePoints.length],t=detail();
+      const component=h.kind==='linked'?i%2:0;
+      const edgePoints=radial?contours[rayIndex].points:components[component].points;
+      const edge=radial?0:Math.floor(detail()*edgePoints.length),a=edgePoints[edge],b=edgePoints[(edge+1)%edgePoints.length],t=detail();
       const p=worldPoint(h,{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
-      const angle=Math.atan2(p.y-h.y,p.x-h.x)*180/Math.PI;
+      const center=h.kind==='linked'?worldPoint(h,centers[component]):h;
+      const angle=Math.atan2(p.y-center.y,p.x-center.x)*180/Math.PI;
       const delta=polar(unit*(radial?.01+detail()*.065:.045+detail()*.19),angle);
       const kind=choose(detail,smallKinds),size=unit*(kind==='dots'?.05:kind==='grid'?.034:.012+detail()*.02);
       const s=make(kind,'decoration',{x:p.x+delta.x,y:p.y+delta.y},size,kind==='dots'?0:round?angle:direction,`${prefix}-detail-${i}`);
       s.filled=kind==='dots'||kind==='star'||kind==='chevron';s.rings=2;s.opacity=.4+detail()*.2;s.tone=i%3?'ice':'mint';
       s.layer=i%4===0?'background':'foreground';
-      const threshold=i<14?45+i%2*5:55+Math.floor(detail()*10)*5;
+      const threshold=i<14?45+(h.kind==='linked'?Math.floor(i/2)%2:i%2)*5:55+Math.floor(detail()*10)*5;
       if(!radial||(rayLoads.get(rayIndex)??0)<4){
         if(add(s,h,threshold)&&radial)rayLoads.set(rayIndex,(rayLoads.get(rayIndex)??0)+1);
       }
