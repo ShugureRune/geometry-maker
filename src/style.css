@@ -10,3 +10,4 @@
 #density::-webkit-slider-thumb{appearance:none;width:20px;height:20px;margin-top:-8px;border-radius:50%;background:#b09af4}
 #density::-moz-range-track{height:4px;border-radius:2px;background:#575063}
 #density::-moz-range-thumb{width:20px;height:20px;border:0;border-radius:50%;background:#b09af4}
+.animation-controls label{display:block;margin:14px 0}.animation-controls select{width:100%;margin-top:8px}.animation-controls input[type=range]{height:32px}.play-buttons{display:flex;flex-wrap:wrap;gap:8px}.play-buttons button{min-height:44px;border:1px solid #575063;border-radius:6px;background:#292534;color:#eee;padding:8px}.play-buttons button:disabled{opacity:.4}
