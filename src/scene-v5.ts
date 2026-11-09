@@ -139,10 +139,16 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
       const halo=make(type==='radial'?'rays':'concentric','support',h,h.size*1.48,h.rotation+15,`${prefix}-halo`);
       halo.rings=3;halo.layer='background';halo.opacity=.23;halo.bleed=true;add(halo,h,40);
     }
-    const outline=contoursOf(h)[0].points;
+    const contours=contoursOf(h),outline=contours[0].points;
+    const radial=h.kind==='rays';
+    const rayRandom=seededRandom(`v5:ray-attachments:${seed}:${h.id}`);
+    const phase=Math.floor(rayRandom()*contours.length);
+    const rayOrder=radial?Array.from({length:contours.length},(_,i)=>(phase+(i%4)*3+Math.floor(i/4))%contours.length):[];
+    const rayLoads=new Map<number,number>();
     // Real connections start at an exact vertex/sample of the parent outline.
     for(let i=0;i<6;i++) {
-      const index=Math.floor(i*outline.length/6),local=outline[index],anchor=worldPoint(h,local);
+      const ray=radial?contours[(phase+i*2)%contours.length].points:outline;
+      const index=radial?1:Math.floor(i*outline.length/6),local=ray[index],anchor=worldPoint(h,local);
       const outward=Math.atan2(anchor.y-h.y,anchor.x-h.x)*180/Math.PI;
       const branch=make('branch-circuit','support',anchor,unit*(.12+detail()*.1),outward,`${prefix}-branch-${i}`);
       branch.filled=false;branch.tone=i%2?'mint':'ice';branch.opacity=.6;
@@ -157,15 +163,20 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
     const smallKinds:readonly Shape['kind'][]=type==='modules'?['grid','hexagon','cross','dots']
       :round?['circle','dots','star','rays','semicircle']:['chevron','dots','zigzag','pentagon','cross'];
     for(let i=0;i<48;i++) {
-      const edge=Math.floor(detail()*outline.length),a=outline[edge],b=outline[(edge+1)%outline.length],t=detail();
+      const rayIndex=radial?rayOrder[i%rayOrder.length]:0;
+      const edgePoints=radial?contours[rayIndex].points:outline;
+      const edge=radial?0:Math.floor(detail()*outline.length),a=edgePoints[edge],b=edgePoints[(edge+1)%edgePoints.length],t=detail();
       const p=worldPoint(h,{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
       const angle=Math.atan2(p.y-h.y,p.x-h.x)*180/Math.PI;
-      const delta=polar(unit*(.045+detail()*.19),angle);
+      const delta=polar(unit*(radial?.01+detail()*.065:.045+detail()*.19),angle);
       const kind=choose(detail,smallKinds),size=unit*(kind==='dots'?.05:kind==='grid'?.034:.012+detail()*.02);
       const s=make(kind,'decoration',{x:p.x+delta.x,y:p.y+delta.y},size,kind==='dots'?0:round?angle:direction,`${prefix}-detail-${i}`);
       s.filled=kind==='dots'||kind==='star'||kind==='chevron';s.rings=2;s.opacity=.4+detail()*.2;s.tone=i%3?'ice':'mint';
       s.layer=i%4===0?'background':'foreground';
-      add(s,h,i<14?45+i%2*5:55+Math.floor(detail()*10)*5);
+      const threshold=i<14?45+i%2*5:55+Math.floor(detail()*10)*5;
+      if(!radial||(rayLoads.get(rayIndex)??0)<4){
+        if(add(s,h,threshold)&&radial)rayLoads.set(rayIndex,(rayLoads.get(rayIndex)??0)+1);
+      }
     }
     // One precise, bright contour segment per hero, rather than ubiquitous glow.
     for(let i=0;i<outline.length;i++) {

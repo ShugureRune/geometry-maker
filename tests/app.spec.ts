@@ -7,7 +7,7 @@ import { RATIOS } from '../src/scene';
 async function geometryHash(shapes: Locator) {
   const geometry = await shapes.evaluate(element => {
     function record(node: Element): unknown {
-      const attributes = [...node.attributes].filter(a => !['stroke', 'fill', 'opacity', 'filter', 'fill-opacity', 'data-glow'].includes(a.name)).map(a => [a.name,
+      const attributes = [...node.attributes].filter(a => !(a.name==='style'&&!a.value) && !['stroke', 'fill', 'opacity', 'filter', 'fill-opacity', 'data-glow'].includes(a.name)).map(a => [a.name,
         a.value.replace(/url\(#.*?-(hero-\d+|glow)\)/g, 'url(#$1)')]).sort((a, b) => a[0].localeCompare(b[0]));
       return [node.tagName, attributes, [...node.children].filter(child => !child.hasAttribute('filter')).map(record)];
     }
