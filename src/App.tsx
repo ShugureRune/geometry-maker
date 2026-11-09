@@ -126,7 +126,7 @@ export default function App() {
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>
       <div className="export-area">
-        <ExportPanel version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             setDensity(settings.density ?? 50);
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
