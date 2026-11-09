@@ -63,7 +63,7 @@ export default function App() {
           <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</p>
           <label htmlFor="algorithm-version">生成アルゴリズム</label>
           <select id="algorithm-version" value={version} onChange={e=>setVersion(e.target.value as AlgorithmVersion)}>
-            <option value={ALGORITHM_VERSION}>v5 — 多様な構図と図形</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — 旧構図を保持</option>
+            <option value={ALGORITHM_VERSION}>v5 — 拡張モード</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — クラシックモード</option>
           </select>
           {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。</p>}
         </section>
