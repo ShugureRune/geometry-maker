@@ -2,7 +2,7 @@ import { seededRandom, type Shape, type AlgorithmVersion } from './scene';
 export const EASINGS = ['linear','ease-in','ease-out','ease-in-out','ease-out-in'] as const;
 export type Easing = typeof EASINGS[number];
 export type AnimationSettings = { animationEnabled:boolean; animationDuration:number; playbackSpeed:number; easingType:Easing };
-export const defaults:AnimationSettings={animationEnabled:false,animationDuration:8,playbackSpeed:1,easingType:'ease-in-out'};
+export const defaults:AnimationSettings={animationEnabled:false,animationDuration:6,playbackSpeed:1,easingType:'ease-in-out'};
 export function animationSettings(d:Record<string,unknown>):AnimationSettings {
  const a={...defaults,...Object.fromEntries(Object.keys(defaults).filter(k=>d[k]!==undefined).map(k=>[k,d[k]]))};
  if(typeof a.animationEnabled!=='boolean'||!Number.isFinite(a.animationDuration)||a.animationDuration<1||a.animationDuration>30||!Number.isFinite(a.playbackSpeed)||a.playbackSpeed<.25||a.playbackSpeed>4||!EASINGS.includes(a.easingType))throw new Error('アニメーション設定が不正です。');
