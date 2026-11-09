@@ -3,10 +3,10 @@ import { contoursOf, pathData, radians, shapeBounds, worldPoint } from './geomet
 import { gradientEndpoints, type Background, type Point, type Scene, type Shape } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
 
-function Geometry({ shape }: { shape: Shape }) {
+function Geometry({ shape, progress=1 }: { shape: Shape; progress?:number }) {
   return <>{contoursOf(shape).map((c, i) => c.circle
-    ? <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} stroke={shape.kind === 'circle' ? undefined : 'none'} />
-    : <path key={i} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} d={pathData(c)} fill={shape.filled && c.closed ? undefined : 'none'}
+    ? <circle style={progress<1?{transform:`scale(${Math.max(0,Math.min(1,progress*1.4-i*.025))})`,transformBox:"fill-box",transformOrigin:"center"}:undefined} key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} stroke={shape.kind === 'circle' ? undefined : 'none'} />
+    : <path pathLength={progress<1?1:undefined} style={progress<1?{strokeDasharray:1,strokeDashoffset:1-progress,fillOpacity:progress}:undefined} key={i} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} d={pathData(c)} fill={shape.filled && c.closed ? undefined : 'none'}
       opacity={c.opacity} strokeDasharray={c.dashed ? `${shape.size * 0.065} ${shape.size * 0.06}` : undefined} />)}</>;
 }
 function localPoint(shape: Shape, p: Point): Point {
@@ -14,7 +14,7 @@ function localPoint(shape: Shape, p: Point): Point {
   return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
 }
 
-export function Preview({ scene, background }: { scene: Scene; background: Background }) {
+export function Preview({ scene, background, growth }: { scene: Scene; background: Background; growth?:Record<string,number> }) {
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
@@ -53,7 +53,7 @@ export function Preview({ scene, background }: { scene: Scene; background: Backg
     </defs>
     <rect data-testid="background" width={width} height={height} fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
-      {scene.shapes.map(shape => {
+      {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
         const solidFill = ['dot', 'dots', 'accent'].includes(shape.kind);
         const ink = background.mode === 'gradient' ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
@@ -63,8 +63,8 @@ export function Preview({ scene, background }: { scene: Scene; background: Backg
           stroke={ink} strokeWidth={shape.strokeWidth} opacity={paint.opacity}
           fill={shape.filled || shape.kind === 'circuit' ? solidFill || shape.kind === 'circuit' ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
           fillOpacity={solidFill || shape.kind === 'circuit' ? 1 : shape.fillOpacity}>
-          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity="0.7"><Geometry shape={shape} /></g>}
-          <Geometry shape={shape} />
+          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity="0.7"><Geometry shape={shape} progress={growth?.[shape.id]} /></g>}
+          <Geometry shape={shape} progress={growth?.[shape.id]} />
         </g>;
       })}
     </g>

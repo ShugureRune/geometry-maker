@@ -21,6 +21,7 @@ describe('portable, versioned settings', () => {
   const {density:_,...legacy}=valid; expect(parseSettings(JSON.stringify(legacy)).density).toBe(50);
   for(const density of [0,25,50,75,100])expect(parseSettings(settingsText({...valid,density})).density).toBe(density);
  });
+ it('round trips animation settings with legacy compatibility',()=>{const a={...valid,animationEnabled:true,animationDuration:12,playbackSpeed:2,easingType:'ease-out-in' as const};expect(parseSettings(settingsText(a))).toEqual(a);expect(parseSettings(settingsText(valid)).animationEnabled).toBeUndefined();expect(()=>parseSettings(JSON.stringify({...a,animationDuration:31}))).toThrow();});
  it('keeps resolutions bounded and filenames safe', () => {
   expect(resolutionError(256,8192)).toBeNull();expect(resolutionError(NaN,256)).not.toBeNull();
   expect(fileStem('../a/b:*?')).not.toMatch(/[/:*?]/);expect(fileStem('')).toContain('seed-empty');

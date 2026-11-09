@@ -1,3 +1,4 @@
+import { animationSettings,type AnimationSettings } from './animation';
 import { validDensity } from './density';
 import { validateColors, type ColorSettings } from './colors';
 import { ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene';
@@ -13,7 +14,7 @@ export const EXPORT_PRESETS = [
   { width: 1080, height: 1350, ratio: '4:5' },
   { width: 2048, height: 2048, ratio: '1:1' },
 ] as const;
-export type ProjectSettings = {
+export type ProjectSettings = Partial<AnimationSettings> & {
   density?:number; colorSettings?: ColorSettings; schemaVersion: 1; algorithmVersion: string; seed: string; aspectRatio: Ratio;
   backgroundMode: Background['mode']; solidColor: string; gradientColors: Background['colors']; gradientAngle: number;
   exportWidth: number; exportHeight: number;
@@ -39,7 +40,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (typeof d.exportWidth !== 'number' || typeof d.exportHeight !== 'number' || resolutionError(d.exportWidth, d.exportHeight)) throw new Error(resolutionError(NaN, NaN)!);
   if(d.density!==undefined&&!validDensity(d.density))throw new Error('図形密度は0〜100%の整数で指定してください。');
   // Rebuild the allowlisted object; never merge arbitrary JSON into application state.
-  return { density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
+  return { ...(Object.keys(d).some(k=>k.startsWith('animation')||k==='playbackSpeed'||k==='easingType')?animationSettings(d):{}), density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
     backgroundMode: d.backgroundMode, solidColor: d.solidColor, gradientColors: [...d.gradientColors] as Background['colors'],
     gradientAngle: d.gradientAngle, exportWidth: d.exportWidth, exportHeight: d.exportHeight };
 }

@@ -1,0 +1,21 @@
+import {test,expect} from '@playwright/test';
+import {mkdir} from 'node:fs/promises';
+test('growth start, seek, completion, playback and complete exports',async({page})=>{
+ await page.goto('./');const shapes=page.getByTestId('shapes');
+ const count=await shapes.locator(':scope > g').count();
+ await page.getByLabel('アニメーションを有効化').check();
+ await expect(shapes.locator(':scope > g')).toHaveCount(0);
+ await mkdir('docs/growth',{recursive:true});await page.getByTestId('preview').screenshot({path:'docs/growth/start.png'});
+ await page.getByLabel('タイムライン',{exact:true}).fill('500');
+ expect(await shapes.locator(':scope > g').count()).toBeGreaterThan(0);
+ expect(await shapes.locator('[style*="stroke-dashoffset"]').count()).toBeGreaterThan(0);
+ await page.getByTestId('preview').screenshot({path:'docs/growth/middle.png'});
+ const pending=page.waitForEvent('download');await page.getByRole('button',{name:'SVGを書き出す',exact:true}).click();const file=await pending;const {readFile}=await import('node:fs/promises');const svg=await readFile((await file.path())!,'utf8');expect(svg).not.toContain('stroke-dashoffset');expect(svg.match(/data-shape-id=/g)?.length).toBe(count);
+ const pngPending=page.waitForEvent('download');await page.getByRole('button',{name:'PNGを書き出す',exact:true}).click();const png=await pngPending;const partialPNG=await readFile((await png.path())!);
+ await page.getByRole('button',{name:'完成状態を表示',exact:true}).click();await expect(shapes.locator(':scope > g')).toHaveCount(count);expect(await shapes.locator('[style*="stroke-dashoffset"]').count()).toBe(0);
+ await page.getByTestId('preview').screenshot({path:'docs/growth/complete.png'});
+ const fullPending=page.waitForEvent('download');await page.getByRole('button',{name:'PNGを書き出す',exact:true}).click();const full=await fullPending;expect((await readFile((await full.path())!)).equals(partialPNG)).toBe(true);
+ await page.getByLabel('成長時間（秒）').fill('1');await page.getByLabel('再生速度',{exact:true}).selectOption('4');await page.getByRole('button',{name:'最初から再生',exact:true}).click();await expect(page.getByTestId('playback-position')).toContainText('100%');
+ await page.getByLabel('タイムライン',{exact:true}).fill('200');await page.getByRole('button',{name:'再生',exact:true}).click();await page.getByRole('button',{name:'一時停止',exact:true}).click();const pos=await page.getByTestId('playback-position').textContent();await page.waitForTimeout(150);expect(await page.getByTestId('playback-position').textContent()).toBe(pos);
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
