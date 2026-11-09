@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator } from './ui-test';
 
 async function snapshot(nodes:Locator) {
  return nodes.evaluateAll(elements=>{

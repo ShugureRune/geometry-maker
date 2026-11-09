@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './ui-test';
 test('fill approaches its inherited final opacity without a completion jump, with and without glow',async({page})=>{
  await page.goto('/tests/fixtures/fill.html');
  for(const glow of [0,100]){

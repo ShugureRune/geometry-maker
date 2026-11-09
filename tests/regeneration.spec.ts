@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './ui-test';
 import {readFile} from 'node:fs/promises';
 import {NEW_SHAPE_KINDS} from '../src/scene';
 async function snapshot(page:Page){return page.getByTestId('shapes').evaluate(element=>{

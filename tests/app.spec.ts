@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator } from './ui-test';
 import { createHash } from 'node:crypto';
 import { RATIOS } from '../src/scene';
 

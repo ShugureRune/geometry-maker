@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './ui-test';
 test('partial two/three-ring arcs preserve dash gaps throughout growth with and without glow',async({page})=>{
  await page.goto('/tests/fixtures/arcs.html');
  for(const glow of [0,100])for(const progress of [.25,.9,.95,.99,1]){
