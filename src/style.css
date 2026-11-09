@@ -40,3 +40,4 @@
 .ambient-controls input[type=number]{background:#11141a;color:#e3e5ee;border:1px solid #3a3e49;border-radius:7px}[data-theme=light] .ambient-controls input[type=number]{background:#fff;color:#192136;border-color:#8c97b5}
 .ambient-toolbar button{background:#292534;color:#e3d9ff;border:1px solid #65587e;border-radius:7px;padding:6px 8px;font-size:12px}
 .ambient-stage>p{position:absolute;top:8px;left:8px;right:8px;padding:8px;background:#111e;color:#fff;font-size:12px;z-index:1}.ambient-hidden>p{display:none}
+.app:has(.ambient-hidden){max-width:none}.app:has(.ambient-hidden) .workspace{min-height:100dvh}.app:has(.ambient-hidden) .canvas-stage{height:100dvh;background:#111526;border-radius:0}.app:has(.ambient-hidden) .canvas-frame{height:100%;aspect-ratio:auto!important;max-width:none}
