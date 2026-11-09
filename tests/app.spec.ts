@@ -138,13 +138,13 @@ test('light, dark and mixed backgrounds preserve geometry and deterministic cont
   await page.getByLabel('背景色', { exact: true }).fill('#faf8ff');
   await expect(shapes.locator('[data-glow="true"]')).toHaveCount(0);
   const hero = shapes.locator(':scope > [data-role="hero"]').first();
-  await expect(hero).toHaveAttribute('stroke', '#704096');
+  await expect(hero).toHaveAttribute('stroke', await page.getByLabel('主役色',{exact:true}).inputValue());
   expect(await geometryHash(shapes)).toBe(reference);
   const lightPixels = await renderedHash(svg);
   await page.getByRole('button', { name: '同じ設定で再生成' }).click();
   expect(await renderedHash(svg)).toBe(lightPixels);
   await page.getByLabel('背景色', { exact: true }).fill('#111526');
-  await expect(hero).toHaveAttribute('stroke', '#ba9bff');
+  await expect(hero).toHaveAttribute('stroke', await page.getByLabel('主役色',{exact:true}).inputValue());
   expect(await shapes.locator('[data-glow="true"]').count()).toBeGreaterThan(0);
   expect(await geometryHash(shapes)).toBe(reference);
   await page.getByRole('button', { name: 'グラデーション', exact: true }).click();

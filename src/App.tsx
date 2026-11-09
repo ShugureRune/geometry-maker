@@ -5,14 +5,15 @@ import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
 
+const initialBackground: Background = {mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
+const initialColors = reseedColors({...legacyColors(initialBackground),mode:'seed'},'undefined-heartbeat');
+
 export default function App() {
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState('undefined-heartbeat');
   const [ratio, setRatio] = useState<Ratio>('16:9');
-  const [background, setBackground] = useState<Background>({
-    mode: 'gradient', solid: '#111526', colors: ['#101b2d', '#241938', '#102a30'], angle: 135,
-  });
-  const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(undefined);
+  const [background, setBackground] = useState<Background>(()=>coloredBackground(initialBackground,initialColors));
+  const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
   const activeColors = colorSettings ?? legacyColors(background);
   function applyColors(c:ColorSettings) { setColorSettings(c);setBackground(bg=>coloredBackground(bg,c)); }
   function changeSeed(value:string) {setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
@@ -64,7 +65,7 @@ export default function App() {
             <option value="seed">シードで決定</option><option value="light">明るい背景向け</option><option value="dark">暗い背景向け</option>
           </select>
           {editor('primary','主役色')}{editor('support','補助色')}{editor('accent','アクセント色')}
-          <p className="help">手動色を維持が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
+          <p className="help">シード連動が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
         </section>
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
           <div className="section-heading"><h3 id="ratio-heading"><span>03</span> 縦横比</h3><span className="tiny-label">ASPECT RATIO</span></div>
