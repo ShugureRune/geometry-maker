@@ -29,3 +29,9 @@
 
 /* Keep the desktop preview at its content height, independent of the sidebar. */
 @media(min-width:721px){.workspace{grid-template-rows:max-content 1fr;align-items:start}.canvas-stage{flex:none;min-height:0}}
+
+.video-panel { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border, #7778); }
+.video-panel summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.video-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
+.video-panel label { display: grid; gap: 8px; }
+.video-panel progress { width: 100%; margin-top: 16px; accent-color: #b69cf8; }

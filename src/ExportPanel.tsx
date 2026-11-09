@@ -1,3 +1,6 @@
+import { VideoPanel } from './VideoPanel';
+import { videoDefaults, videoSettings, type VideoSettings } from './video-settings';
+import type { VideoArtwork } from './video-frame';
 import type { AnimationSettings } from './animation';
 import type { ColorSettings } from './colors';
 import { useRef, useState } from 'react';
@@ -5,10 +8,11 @@ import { RATIOS, type AlgorithmVersion, type Background, type Ratio } from './sc
 import { downloadBlob, pngBlob, serializeArtwork } from './export';
 import { EXPORT_PRESETS, fileStem, MAX_PNG_PIXELS, MAX_SETTINGS_BYTES, parseSettings, resolutionError, settingsText, type ProjectSettings } from './settings';
 
-type Props = { version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
+type Props = { videoArtwork: VideoArtwork; version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
   onRatio: (ratio: Ratio) => void; onRestore: (settings: ProjectSettings) => void };
-export function ExportPanel({ version, animation, density, colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
+export function ExportPanel({ videoArtwork, version, animation, density, colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
+  const [video, setVideo] = useState<VideoSettings>({...videoDefaults});
   const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
@@ -17,7 +21,7 @@ export function ExportPanel({ version, animation, density, colorSettings, seed, 
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
   function snapshot(): ProjectSettings {
-    return { glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
+    return { ...video, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }
@@ -46,7 +50,7 @@ export function ExportPanel({ version, animation, density, colorSettings, seed, 
     try {
       if (file.size > MAX_SETTINGS_BYTES) throw new Error('設定JSONは64KB以下にしてください。');
       const settings = parseSettings(await file.text());
-      onRestore(settings); setCustom(true); setWidth(String(settings.exportWidth)); setHeight(String(settings.exportHeight));
+      onRestore(settings); setVideo(videoSettings(settings)); setCustom(true); setWidth(String(settings.exportWidth)); setHeight(String(settings.exportHeight));
       setMessage(settings.algorithmVersion==='2d-v4'?'旧v4設定を読み込み、元の構図を保持しました。新版への変更は生成アルゴリズムから選べます。':'設定を読み込み、プレビューを更新しました。');
     } catch (e) { setError(e instanceof Error ? e.message : '設定を読み込めませんでした。'); }
     finally { setBusy(false); if (fileInput.current) fileInput.current.value = ''; }
@@ -77,5 +81,6 @@ export function ExportPanel({ version, animation, density, colorSettings, seed, 
     <input ref={fileInput} type="file" accept=".json,application/json" aria-label="設定JSONファイル" hidden disabled={busy} onChange={e => void restore(e.target.files?.[0])} />
     {error && <p className="export-error" role="alert">{error}</p>}
     <p className="export-message" role="status" aria-live="polite">{message}</p>
+    <VideoPanel settings={video} onChange={setVideo} artwork={videoArtwork} />
   </section>;
 }
