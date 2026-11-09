@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateScene, RATIOS, type Ratio } from './scene';
+import { generateSceneV4 as generateScene, RATIOS, type Ratio } from './scene';
 import { paintFor } from './paint';
 
 describe('v4 balance refinements', () => {

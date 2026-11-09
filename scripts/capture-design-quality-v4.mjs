@@ -2,7 +2,7 @@
 import { chromium } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { generateScene } from '../src/scene.ts';
+import { generateSceneV4 as generateScene } from '../src/scene.ts';
 
 const output = resolve('docs/design-quality-v4');
 const seeds = ["undefined-heartbeat","neon-city","design-6","001","49060097aa1f2c12","5eaff93cc8149127"];
@@ -20,6 +20,7 @@ try {
   page.on('pageerror', e => errors.push(e.message));
   if (process.env.SHEETS_ONLY !== '1') for (const version of ['before', 'after']) {
     await page.goto(urls[version]);
+    if (version === 'after' && await page.getByLabel('生成アルゴリズム').count()) await page.getByLabel('生成アルゴリズム').selectOption('2d-v4');
     const art = page.getByTestId('preview');
     await art.waitFor();
     const expected = version === 'before' ? '2d-v3' : '2d-v4';

@@ -1,13 +1,32 @@
-import { useId } from 'react';
-import { contoursOf, pathData, radians, shapeBounds, worldPoint } from './geometry';
-import { gradientEndpoints, type Background, type Point, type Scene, type Shape } from './scene';
+import { useId, useMemo } from 'react';
+import { contoursOf, pathData, radians, shapeBounds, worldPoint, trimContour } from './geometry';
+import { gradientEndpoints, type Background, type Point, type Scene, type Shape, NEW_SHAPE_KINDS } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
 
 function Geometry({ shape, progress=1 }: { shape: Shape; progress?:number }) {
-  return <>{contoursOf(shape).map((c, i) => c.circle
-    ? <circle style={progress<1?{transform:`scale(${Math.max(0,Math.min(1,progress*1.4-i*.025))})`,transformBox:"fill-box",transformOrigin:"center"}:undefined} key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} stroke={shape.kind === 'circle' ? undefined : 'none'} />
-    : <path pathLength={progress<1?1:undefined} style={progress<1?{strokeDasharray:1,strokeDashoffset:1-progress,fillOpacity:progress}:undefined} key={i} vectorEffect={shape.role === 'hero' || shape.role === 'accent' ? undefined : 'non-scaling-stroke'} d={pathData(c)} fill={shape.filled && c.closed ? undefined : 'none'}
-      opacity={c.opacity} strokeDasharray={c.dashed ? `${shape.size * 0.065} ${shape.size * 0.06}` : undefined} />)}</>;
+  const modern=(NEW_SHAPE_KINDS as readonly string[]).includes(shape.kind);
+  const contours=useMemo(()=>contoursOf(shape),[shape]);
+  return <>{contours.map((contour,i)=>{
+    const start=contour.growthStart??0,end=contour.growthEnd??1;
+    const t=modern?Math.max(0,Math.min(1,(progress-start)/(end-start))):progress;
+    if(t<=0)return null;
+    const c=modern&&contour.dashed&&t<1?trimContour(contour,t):contour;
+    const scale=shape.kind==='star'?t:undefined;
+    if(c.circle) {
+      const expand=shape.kind!=='concentric';
+      const factor=Math.max(0,Math.min(1,progress*1.4-i*.025));
+      return <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius}
+        pathLength={!expand&&t<1?1:undefined}
+        style={t<1?expand?{transform:`scale(${modern?t:factor})`,transformBox:'fill-box',transformOrigin:'center'}:{strokeDasharray:1,strokeDashoffset:1-t}:undefined}
+        opacity={c.opacity} vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'}
+        stroke={['circle','concentric'].includes(shape.kind)?undefined:'none'}/>;
+    }
+    return <path key={i} pathLength={t<1&&(!modern||!contour.dashed)?1:undefined}
+      style={t<1?{...(modern&&contour.dashed?{}:{strokeDasharray:1,strokeDashoffset:1-t}),fillOpacity:t,...(scale===undefined?{}:{transform:`scale(${scale})`})}:undefined}
+      vectorEffect={shape.role==='hero'||shape.role==='accent'?undefined:'non-scaling-stroke'} d={pathData(c)}
+      fill={shape.filled&&c.closed?undefined:'none'} opacity={c.opacity}
+      strokeDasharray={contour.dashed?`${shape.size*.065} ${shape.size*.06}`:undefined}/>;
+  })}</>;
 }
 function localPoint(shape: Shape, p: Point): Point {
   const dx = p.x - shape.x, dy = p.y - shape.y, angle = radians(-shape.rotation);
@@ -20,16 +39,8 @@ export function Preview({ scene, background, growth }: { scene: Scene; backgroun
   const unit = Math.min(width, height);
   const colorAt = (shape: Shape, point: Point) => background.figureColors?.[shape.role === 'hero' ? 'primary' : shape.role === 'accent' ? 'accent' : 'support'] ?? inkAt(shape.tone, background, point, width, height);
   const vector = backgroundVector(background, width, height);
-  return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
-    data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
-    xmlns="http://www.w3.org/2000/svg" overflow="hidden">
-    {background.mode === 'gradient' && <defs>
-      <linearGradient data-testid="background-gradient" id={gradientId} {...gradientEndpoints(background.angle)}>
-        {background.colors.map((color, i) => <stop key={i} offset={`${i * 50}%`} stopColor={color} />)}
-      </linearGradient>
-    </defs>}
-    <defs>
-      {scene.shapes.map(shape => {
+  // Static gradients and bounds do not need recomputing on every animation frame.
+  const definitions=useMemo(()=>scene.shapes.map(shape => {
         const start = localPoint(shape, vector.start), end = localPoint(shape, vector.end);
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
         const bounds = shapeBounds({ ...shape, x: 0, y: 0, rotation: 0 });
@@ -49,8 +60,16 @@ export function Preview({ scene, background, growth }: { scene: Scene; backgroun
             <feGaussianBlur stdDeviation={unit * 0.004} />
           </filter>}
         </g>;
-      })}
-    </defs>
+      }),[scene,background,gradientId]);
+  return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
+    data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
+    xmlns="http://www.w3.org/2000/svg" overflow="hidden">
+    {background.mode === 'gradient' && <defs>
+      <linearGradient data-testid="background-gradient" id={gradientId} {...gradientEndpoints(background.angle)}>
+        {background.colors.map((color, i) => <stop key={i} offset={`${i * 50}%`} stopColor={color} />)}
+      </linearGradient>
+    </defs>}
+    <defs>{definitions}</defs>
     <rect data-testid="background" width={width} height={height} fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
@@ -61,8 +80,8 @@ export function Preview({ scene, background, growth }: { scene: Scene; backgroun
           data-group={shape.group} data-parent={shape.parent} data-glow={paint.glow || undefined}
           transform={`translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
           stroke={ink} strokeWidth={shape.strokeWidth} opacity={paint.opacity}
-          fill={shape.filled || shape.kind === 'circuit' ? solidFill || shape.kind === 'circuit' ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
-          fillOpacity={solidFill || shape.kind === 'circuit' ? 1 : shape.fillOpacity}>
+          fill={shape.filled || ['circuit','branch-circuit'].includes(shape.kind) ? solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
+          fillOpacity={solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? 1 : shape.fillOpacity}>
           {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity="0.7"><Geometry shape={shape} progress={growth?.[shape.id]} /></g>}
           <Geometry shape={shape} progress={growth?.[shape.id]} />
         </g>;

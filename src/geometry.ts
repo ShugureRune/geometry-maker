@@ -1,6 +1,6 @@
 import type { Point, Rect, Shape } from './scene';
 
-export type Contour = { points: Point[]; closed: boolean; opacity?: number; dashed?: boolean;
+export type Contour = { points: Point[]; closed: boolean; opacity?: number; dashed?: boolean; growthStart?: number; growthEnd?: number;
   circle?: { x: number; y: number; radius: number }; arc?: { radius: number; start: number; sweep: number } };
 export const radians = (angle: number) => angle * Math.PI / 180;
 export const polar = (radius: number, angle: number): Point => ({ x: Math.cos(radians(angle)) * radius, y: Math.sin(radians(angle)) * radius });
@@ -18,6 +18,40 @@ export function contoursOf(s: Shape): Contour[] {
       const p = polar(radius, i * 360 / 32); return { x: p.x + x, y: p.y + y };
     }), true), circle: { x, y, radius },
   });
+  const polygon = (sides:number, radius=size, center:Point={x:0,y:0}) => path(Array.from({length:sides},(_,i)=>{const p=polar(radius,-90+i*360/sides);return {x:center.x+p.x,y:center.y+p.y};}),true);
+  if (s.kind === 'branch-circuit') {
+    const trunk=s.points ?? [{x:0,y:0},{x:size*.35,y:0},{x:size*.55,y:-size*.2},{x:size,y:-size*.2}];
+    const junction=trunk[1], second=trunk[2];
+    return [{...path(trunk),growthEnd:.65},
+      {...path([junction,{x:junction.x+size*.2,y:junction.y+size*.2},{x:size*.85,y:junction.y+size*.2}]),growthStart:.3},
+      {...path([second,{x:second.x,y:second.y-size*.3},{x:second.x+size*.22,y:second.y-size*.3}]),growthStart:.55},
+      {...circle(trunk.at(-1)!.x,trunk.at(-1)!.y,s.strokeWidth*1.7),growthStart:.9}];
+  }
+  switch(s.kind) {
+    case 'hexagon': return [polygon(6), ...(s.rings && s.rings>1?[{...polygon(6,size*.86),opacity:.4,growthStart:.2}]:[])];
+    case 'pentagon': return [polygon(5), ...(s.rings && s.rings>1?[{...polygon(5,size*.85),opacity:.4,growthStart:.2}]:[])];
+    case 'trapezoid': return [path([{x:-size*.52,y:-size*.55},{x:size*.52,y:-size*.55},{x:size,y:size*.55},{x:-size,y:size*.55}],true)];
+    case 'parallelogram': return [path([{x:-size*.55,y:-size*.48},{x:size,y:-size*.48},{x:size*.55,y:size*.48},{x:-size,y:size*.48}],true)];
+    case 'star': return [path(Array.from({length:10},(_,i)=>polar(size*(i%2?.46:1),-90+i*36)),true)];
+    case 'chevron': return [path([{x:-size,y:-size*.6},{x:0,y:-size*.6},{x:size,y:0},{x:0,y:size*.6},{x:-size,y:size*.6},{x:0,y:0}],true)];
+    case 'zigzag': return [path(Array.from({length:7},(_,i)=>({x:-size+i*size/3,y:i%2?size*.17:-size*.17})))];
+    case 'rays': return Array.from({length:12},(_,i)=>({...path([polar(size*.2,i*30),polar(size,i*30)]),growthStart:i/24}));
+    case 'concentric': return Array.from({length:s.rings??3},(_,i)=>({...circle(0,0,size*(.45+i*.55/Math.max(1,(s.rings??3)-1))),opacity:.55+i*.15,growthStart:i*.16}));
+    case 'dashed-frame': return [{...path([{x:-size,y:-size*.65},{x:size,y:-size*.65},{x:size,y:size*.65},{x:-size,y:size*.65}],true),dashed:true}];
+    case 'semicircle': { const start=s.arcStart??-180; return [{...path(Array.from({length:33},(_,i)=>polar(size,start+i*180/32))),arc:{radius:size,start,sweep:180}}]; }
+    case 'sector': {const start=s.arcStart??-120,sweep=s.arcSweep??110;return [path([{x:0,y:0},...Array.from({length:33},(_,i)=>polar(size,start+i*sweep/32))],true)];}
+    case 'compound': return [{...polygon(6),growthEnd:.45},{...polygon(3,size*.55),growthStart:.45,growthEnd:.75},{...polygon(6,size*.28),growthStart:.75}];
+    case 'linked': {
+      const left=polygon(6,size*.43,{x:-size*.52,y:0}),right=polygon(5,size*.43,{x:size*.52,y:0});
+      const crossings=(points:Point[])=>points.flatMap((p,i)=>{
+        const next=points[(i+1)%points.length];
+        return (p.y<=0&&next.y>0)||(next.y<=0&&p.y>0)?[p.x+(next.x-p.x)*(-p.y)/(next.y-p.y)]:[];
+      });
+      const a={x:Math.max(...crossings(left.points)),y:0},b={x:Math.min(...crossings(right.points)),y:0};
+      return [{...left,growthEnd:.4},{...path([a,b]),growthStart:.4,growthEnd:.6},{...right,growthStart:.6}];
+    }
+    case 'grid': return Array.from({length:10},(_,i)=>{const offset=(-.8+i%5*.4)*size;return {...path(i<5?[{x:offset,y:-size},{x:offset,y:size}]:[{x:-size,y:offset},{x:size,y:offset}]),growthStart:i*.045};});
+  }
   if (s.points) return [path(s.points), ...(s.kind === 'circuit' ? [circle(s.points.at(-1)!.x, s.points.at(-1)!.y, s.strokeWidth * 1.7)] : [])];
   switch (s.kind) {
     case 'frame': return Array.from({ length: s.rings ?? 2 }, (_, i) => ({
@@ -99,4 +133,20 @@ export function pathData(c: Contour): string {
     return `M ${first.x},${first.y} A ${c.arc.radius},${c.arc.radius} 0 ${Math.abs(c.arc.sweep) > 180 ? 1 : 0} ${c.arc.sweep > 0 ? 1 : 0} ${end.x},${end.y}`;
   }
   return c.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ') + (c.closed ? ' Z' : '');
+}
+
+/** Trim a contour by arc length, shared by SVG growth and geometry tests. */
+export function trimContour(c:Contour,progress:number):Contour {
+  const t=Math.max(0,Math.min(1,progress));
+  if(t>=1)return c;
+  if(c.arc){const sweep=c.arc.sweep*t;const end=polar(c.arc.radius,c.arc.start+sweep);return {...c,points:[c.points[0],end],closed:false,arc:{...c.arc,sweep}};}
+  const points=c.closed?[...c.points,c.points[0]]:c.points;
+  const lengths=points.slice(1).map((p,i)=>Math.hypot(p.x-points[i].x,p.y-points[i].y));
+  let remaining=lengths.reduce((a,b)=>a+b,0)*t;
+  const visible=[points[0]];
+  for(let i=0;i<lengths.length;i++){
+    if(remaining>=lengths[i]){visible.push(points[i+1]);remaining-=lengths[i];}
+    else {const r=lengths[i]?remaining/lengths[i]:0;visible.push({x:points[i].x+(points[i+1].x-points[i].x)*r,y:points[i].y+(points[i+1].y-points[i].y)*r});break;}
+  }
+  return {...c,points:visible,closed:false};
 }

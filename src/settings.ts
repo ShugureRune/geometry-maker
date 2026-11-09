@@ -1,7 +1,7 @@
 import { animationSettings,type AnimationSettings } from './animation';
 import { validDensity } from './density';
 import { validateColors, type ColorSettings } from './colors';
-import { ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene';
+import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene';
 
 export const MIN_SIZE = 256;
 export const MAX_SIZE = 8192;
@@ -30,7 +30,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('設定JSONはオブジェクトで指定してください。');
   const d = data as Record<string, unknown>;
   if (d.schemaVersion !== 1) throw new Error('未対応の設定スキーマです（schemaVersion: 1が必要）。');
-  if (d.algorithmVersion !== ALGORITHM_VERSION) throw new Error(`未対応のアルゴリズム版です。このアプリは${ALGORITHM_VERSION}に対応しています。`);
+  if (d.algorithmVersion !== ALGORITHM_VERSION && d.algorithmVersion !== LEGACY_ALGORITHM_VERSION) throw new Error(`未対応のアルゴリズム版です。このアプリは${LEGACY_ALGORITHM_VERSION} / ${ALGORITHM_VERSION}に対応しています。`);
   if (typeof d.seed !== 'string' || d.seed.length > 4096) throw new Error('seedは4096文字以下の文字列が必要です。');
   if (typeof d.aspectRatio !== 'string' || !Object.hasOwn(RATIOS, d.aspectRatio)) throw new Error('aspectRatioに対応する縦横比を指定してください。');
   if (d.backgroundMode !== 'solid' && d.backgroundMode !== 'gradient') throw new Error('backgroundModeはsolidまたはgradientが必要です。');
@@ -40,7 +40,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (typeof d.exportWidth !== 'number' || typeof d.exportHeight !== 'number' || resolutionError(d.exportWidth, d.exportHeight)) throw new Error(resolutionError(NaN, NaN)!);
   if(d.density!==undefined&&!validDensity(d.density))throw new Error('図形密度は0〜100%の整数で指定してください。');
   // Rebuild the allowlisted object; never merge arbitrary JSON into application state.
-  return { ...(Object.keys(d).some(k=>k.startsWith('animation')||k==='playbackSpeed'||k==='easingType')?animationSettings(d):{}), density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: ALGORITHM_VERSION, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
+  return { ...(Object.keys(d).some(k=>k.startsWith('animation')||k==='playbackSpeed'||k==='easingType')?animationSettings(d):{}), density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: d.algorithmVersion, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
     backgroundMode: d.backgroundMode, solidColor: d.solidColor, gradientColors: [...d.gradientColors] as Background['colors'],
     gradientAngle: d.gradientAngle, exportWidth: d.exportWidth, exportHeight: d.exportHeight };
 }

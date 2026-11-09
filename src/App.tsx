@@ -7,7 +7,7 @@ import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, 
 import { useMemo, useRef, useState } from 'react';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
-import { ALGORITHM_VERSION, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
+import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, type AlgorithmVersion, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
 
 const initialBackground: Background = {mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
 const initialColors = reseedColors({...legacyColors(initialBackground),mode:'seed'},'undefined-heartbeat');
@@ -15,6 +15,8 @@ const initialColors = reseedColors({...legacyColors(initialBackground),mode:'see
 export default function App() {
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState('undefined-heartbeat');
+  const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
+  const committedSeed=useRef(seed);
   const [ratio, setRatio] = useState<Ratio>('16:9');
   const [background, setBackground] = useState<Background>(()=>coloredBackground(initialBackground,initialColors));
   const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
@@ -27,13 +29,16 @@ export default function App() {
    onLock={()=>applyColors({...activeColors,slots:{...activeColors.slots,[id]:{...slot,locked:!slot.locked}}})}/>; }
   const [regenerations, setRegenerations] = useState(0);
   const [density,setDensity] = useState(50);
-  const baseScene = useMemo(() => generateScene(seed, ratio), [seed, ratio, regenerations]);
+  const baseScene = useMemo(() => generateScene(seed, ratio, version), [seed, ratio, version]);
   const candidates = useMemo(()=>densityCandidates(baseScene,seed),[baseScene,seed]);
   const scene = useMemo(()=>visibleScene(baseScene,candidates,density),[baseScene,candidates,density]);
 
   const [animation,setAnimation]=useState<AnimationSettings>(defaults);
   const playback=usePlayback(animation);
-  const cues=useMemo(()=>schedule(candidates,seed),[candidates,seed]);
+  const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
+  function replayOnRegenerate(){if(animation.animationEnabled)playback.restart(true);}
+  function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
+  function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
   function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
@@ -49,8 +54,13 @@ export default function App() {
         <section className="control-section" aria-labelledby="seed-heading">
           <div className="section-heading"><h3 id="seed-heading"><span>01</span> シード</h3><span className="tiny-label">SEED</span></div>
           <label htmlFor="seed">シード値</label>
-          <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={() => changeSeed(createRandomSeed())} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
-          <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。</p>
+          <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} onBlur={commitSeed} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing&&e.keyCode!==229)commitSeed();}} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={randomizeSeed} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
+          <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</p>
+          <label htmlFor="algorithm-version">生成アルゴリズム</label>
+          <select id="algorithm-version" value={version} onChange={e=>setVersion(e.target.value as AlgorithmVersion)}>
+            <option value={ALGORITHM_VERSION}>v5 — 多様な構図と図形</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — 旧構図を保持</option>
+          </select>
+          {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。</p>}
         </section>
 
         <section className="control-section" aria-labelledby="background-heading">
@@ -91,10 +101,10 @@ export default function App() {
         <section className="control-section">
           <label className="range-label" htmlFor="density">図形密度 <output htmlFor="density">{density}%</output></label>
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
-          <p className="help">0%は背景のみ。50%がv4標準。主役の位置を保って図形量を調整します。</p>
+          <p className="help">0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。</p>
         </section>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
-        <button type="button" className="generate-button" onClick={() => setRegenerations(n => n + 1)}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
+        <button type="button" className="generate-button" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
       </aside>
 
@@ -102,14 +112,15 @@ export default function App() {
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
         <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(58vh * ${scene.width / scene.height}))` }}><Preview scene={scene} background={background} growth={growth} /></div></div>
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
-        <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{ALGORITHM_VERSION}</span></div>
+        <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>
       <div className="export-area">
-        <ExportPanel density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             setDensity(settings.density ?? 50);
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
+            setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
             setSeed(settings.seed); setRatio(settings.aspectRatio);
             const bg:Background={mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
             setColorSettings(settings.colorSettings);
@@ -118,6 +129,6 @@ export default function App() {
           }} />
       </div>
     </main>
-    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第1段階 · 2D基本機能</span></footer>
+    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第3.5段階 · 2D成長と多様性</span></footer>
   </div>;
 }

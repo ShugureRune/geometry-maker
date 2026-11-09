@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateScene, RATIOS, type Ratio } from './scene';
+import { generateSceneV4 as generateScene, RATIOS, type Ratio } from './scene';
 import { densityCandidates, visibleScene } from './density';
 import { crossesRect } from './geometry';
 
