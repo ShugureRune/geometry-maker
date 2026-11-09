@@ -1,3 +1,4 @@
+import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
 import { useMemo, useRef, useState } from 'react';
@@ -22,7 +23,10 @@ export default function App() {
    onRoll={()=>applyColors(rerollColor(activeColors,seed,id))}
    onLock={()=>applyColors({...activeColors,slots:{...activeColors.slots,[id]:{...slot,locked:!slot.locked}}})}/>; }
   const [regenerations, setRegenerations] = useState(0);
-  const scene = useMemo(() => generateScene(seed, ratio), [seed, ratio, regenerations]);
+  const [density,setDensity] = useState(50);
+  const baseScene = useMemo(() => generateScene(seed, ratio), [seed, ratio, regenerations]);
+  const candidates = useMemo(()=>densityCandidates(baseScene,seed),[baseScene,seed]);
+  const scene = useMemo(()=>visibleScene(baseScene,candidates,density),[baseScene,candidates,density]);
 
   return <div className="app">
     <header className="topbar">
@@ -76,6 +80,11 @@ export default function App() {
           <p className="help">図形の形を保ったまま、構図を調整します。</p>
         </section>
 
+        <section className="control-section">
+          <label className="range-label" htmlFor="density">図形密度 <output htmlFor="density">{density}%</output></label>
+          <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
+          <p className="help">0%は背景のみ。50%がv4標準。主役の位置を保って図形量を調整します。</p>
+        </section>
         <button type="button" className="generate-button" onClick={() => setRegenerations(n => n + 1)}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
       </aside>
@@ -88,8 +97,9 @@ export default function App() {
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>
       <div className="export-area">
-        <ExportPanel colorSettings={activeColors} seed={seed} ratio={ratio} background={background} artwork={() => artworkRef.current?.querySelector('svg') ?? null}
+        <ExportPanel density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} artwork={() => artworkRef.current?.querySelector('svg') ?? null}
           onRatio={setRatio} onRestore={settings => {
+            setDensity(settings.density ?? 50);
             setSeed(settings.seed); setRatio(settings.aspectRatio);
             const bg:Background={mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
             setColorSettings(settings.colorSettings);

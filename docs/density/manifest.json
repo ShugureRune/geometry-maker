@@ -1,0 +1,212 @@
+[
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "density": 0,
+    "name": "undefined-heartbeat-16x9-0.png",
+    "count": 0
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "density": 25,
+    "name": "undefined-heartbeat-16x9-25.png",
+    "count": 4
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "density": 50,
+    "name": "undefined-heartbeat-16x9-50.png",
+    "count": 54
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "density": 75,
+    "name": "undefined-heartbeat-16x9-75.png",
+    "count": 77
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "16:9",
+    "density": 100,
+    "name": "undefined-heartbeat-16x9-100.png",
+    "count": 97
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "density": 0,
+    "name": "undefined-heartbeat-9x16-0.png",
+    "count": 0
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "density": 25,
+    "name": "undefined-heartbeat-9x16-25.png",
+    "count": 4
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "density": 50,
+    "name": "undefined-heartbeat-9x16-50.png",
+    "count": 48
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "density": 75,
+    "name": "undefined-heartbeat-9x16-75.png",
+    "count": 70
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "9:16",
+    "density": 100,
+    "name": "undefined-heartbeat-9x16-100.png",
+    "count": 96
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "1:1",
+    "density": 0,
+    "name": "undefined-heartbeat-1x1-0.png",
+    "count": 0
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "1:1",
+    "density": 25,
+    "name": "undefined-heartbeat-1x1-25.png",
+    "count": 4
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "1:1",
+    "density": 50,
+    "name": "undefined-heartbeat-1x1-50.png",
+    "count": 46
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "1:1",
+    "density": 75,
+    "name": "undefined-heartbeat-1x1-75.png",
+    "count": 61
+  },
+  {
+    "seed": "undefined-heartbeat",
+    "ratio": "1:1",
+    "density": 100,
+    "name": "undefined-heartbeat-1x1-100.png",
+    "count": 74
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "density": 0,
+    "name": "neon-city-16x9-0.png",
+    "count": 0
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "density": 25,
+    "name": "neon-city-16x9-25.png",
+    "count": 4
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "density": 50,
+    "name": "neon-city-16x9-50.png",
+    "count": 53
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "density": 75,
+    "name": "neon-city-16x9-75.png",
+    "count": 69
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "16:9",
+    "density": 100,
+    "name": "neon-city-16x9-100.png",
+    "count": 80
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "9:16",
+    "density": 0,
+    "name": "neon-city-9x16-0.png",
+    "count": 0
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "9:16",
+    "density": 25,
+    "name": "neon-city-9x16-25.png",
+    "count": 4
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "9:16",
+    "density": 50,
+    "name": "neon-city-9x16-50.png",
+    "count": 52
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "9:16",
+    "density": 75,
+    "name": "neon-city-9x16-75.png",
+    "count": 66
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "9:16",
+    "density": 100,
+    "name": "neon-city-9x16-100.png",
+    "count": 77
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "density": 0,
+    "name": "neon-city-1x1-0.png",
+    "count": 0
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "density": 25,
+    "name": "neon-city-1x1-25.png",
+    "count": 4
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "density": 50,
+    "name": "neon-city-1x1-50.png",
+    "count": 46
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "density": 75,
+    "name": "neon-city-1x1-75.png",
+    "count": 61
+  },
+  {
+    "seed": "neon-city",
+    "ratio": "1:1",
+    "density": 100,
+    "name": "neon-city-1x1-100.png",
+    "count": 72
+  }
+]

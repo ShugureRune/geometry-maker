@@ -10,13 +10,14 @@ async function download(page: Page, button: string) {
 test('downloads real PNG/SVG and restores all settings atomically',async({page})=>{
  await page.goto('./');
  await page.getByLabel('シード値',{exact:true}).fill('export-心音-001');
+ await page.getByLabel('図形密度').fill('75');
  await page.getByLabel('書き出し解像度',{exact:true}).selectOption('2048x2048');
  await expect(page.getByLabel('キャンバスの比率')).toHaveValue('1:1');
  await page.getByLabel('幅 (px)',{exact:true}).fill('512');
  await page.getByLabel('高さ (px)',{exact:true}).fill('512');
  const settings=await download(page,'設定JSONを保存');
  const json=JSON.parse(settings.data.toString());
- expect(json).toMatchObject({schemaVersion:1,algorithmVersion:'2d-v4',seed:'export-心音-001',aspectRatio:'1:1',exportWidth:512,exportHeight:512});
+ expect(json).toMatchObject({density:75,schemaVersion:1,algorithmVersion:'2d-v4',seed:'export-心音-001',aspectRatio:'1:1',exportWidth:512,exportHeight:512});
  const svg=await download(page,'SVGを書き出す');
  expect(svg.name).toContain('2d-v4_seed-export-心音-001');
  expect(svg.data.toString()).toContain('viewBox="0 0 1200 1200"');
@@ -37,11 +38,13 @@ test('downloads real PNG/SVG and restores all settings atomically',async({page})
  },{svg:svg.data.toString('base64'),png:png.data.toString('base64')});
  expect(equal).toBe(true);
  await page.getByLabel('シード値',{exact:true}).fill('changed');
+ await page.getByLabel('図形密度').fill('0');
  await page.getByRole('button',{name:'単色',exact:true}).click();
  await page.getByLabel('幅 (px)',{exact:true}).fill('700');
  await page.getByLabel('設定JSONファイル').setInputFiles({name:'settings.json',mimeType:'application/json',buffer:settings.data});
  await expect(page.getByTestId('current-seed')).toHaveText('export-心音-001');
  await expect(page.getByLabel('幅 (px)',{exact:true})).toHaveValue('512');
+ await expect(page.getByLabel('図形密度')).toHaveValue('75');
  const restored=await download(page,'設定JSONを保存');expect(JSON.parse(restored.data.toString())).toEqual(json);
  const repeat=await download(page,'PNGを書き出す');expect(repeat.data.equals(png.data)).toBe(true);
  for(const buffer of [Buffer.from('{bad'),Buffer.from(JSON.stringify({...json,algorithmVersion:'2d-v3'})),Buffer.from('{}')]){
