@@ -86,6 +86,8 @@ export default function App() {
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{ALGORITHM_VERSION}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
+      </section>
+      <div className="export-area">
         <ExportPanel colorSettings={activeColors} seed={seed} ratio={ratio} background={background} artwork={() => artworkRef.current?.querySelector('svg') ?? null}
           onRatio={setRatio} onRestore={settings => {
             setSeed(settings.seed); setRatio(settings.aspectRatio);
@@ -94,7 +96,7 @@ export default function App() {
             setBackground(settings.colorSettings ? coloredBackground(bg,settings.colorSettings) : bg);
             setRegenerations(0);
           }} />
-      </section>
+      </div>
     </main>
     <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第1段階 · 2D基本機能</span></footer>
   </div>;
