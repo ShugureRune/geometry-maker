@@ -7,7 +7,7 @@ async function snapshot(nodes:Locator) {
  });
 }
 test('density preserves hero geometry, candidate positions and colors across ratios',async({page})=>{
- await page.goto('./');
+ await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  const slider=page.getByLabel('図形密度');
  await expect(slider).toHaveValue('50');
  await expect(slider).toHaveAttribute('step','5');
@@ -50,7 +50,7 @@ test('density preserves hero geometry, candidate positions and colors across rat
 test.describe('touch density control',()=>{
  test.use({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  test('updates via touch on a phone-sized screen',async({page})=>{
-  await page.goto('./');
+  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
   const slider=page.getByLabel('図形密度');
   await slider.fill('0');await slider.scrollIntoViewIfNeeded();
   const b=(await slider.boundingBox())!;expect(b.height).toBeGreaterThanOrEqual(44);

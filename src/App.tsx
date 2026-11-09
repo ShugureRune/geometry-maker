@@ -5,17 +5,20 @@ import { defaults,schedule,progressAt,type AnimationSettings } from './animation
 import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, type AlgorithmVersion, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
 
-const initialBackground: Background = {glowIntensity:0,mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
-const initialColors = reseedColors({...legacyColors(initialBackground),mode:'seed'},'undefined-heartbeat');
+const initialBackground: Background = {glowIntensity:100,mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
+
 
 export default function App() {
   const artworkRef = useRef<HTMLDivElement>(null);
-  const [seed, setSeed] = useState('undefined-heartbeat');
+  const [seed, setSeed] = useState(createRandomSeed);
+  const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
+  const [uiTheme,setUiTheme]=useState(()=>{try{return localStorage.getItem('geometry-ui-theme')==='light'?'light':'dark';}catch{return 'dark';}});
+  useEffect(()=>{document.documentElement.dataset.theme=uiTheme;try{localStorage.setItem('geometry-ui-theme',uiTheme);}catch{}},[uiTheme]);
   const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
   const committedSeed=useRef(seed);
   const [ratio, setRatio] = useState<Ratio>('16:9');
@@ -34,8 +37,9 @@ export default function App() {
   const candidates = useMemo(()=>densityCandidates(baseScene,seed),[baseScene,seed]);
   const scene = useMemo(()=>visibleScene(baseScene,candidates,density),[baseScene,candidates,density]);
 
-  const [animation,setAnimation]=useState<AnimationSettings>(defaults);
+  const [animation,setAnimation]=useState<AnimationSettings>({...defaults,animationEnabled:true});
   const playback=usePlayback(animation);
+  useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
   function replayOnRegenerate(){if(animation.animationEnabled)playback.restart(true);}
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
@@ -45,7 +49,7 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
-      <div className="mode-badge"><span /> 2D STUDIO <span className="version">v0.1</span></div>
+      <button className="ui-theme-button" onClick={()=>setUiTheme(t=>t==='dark'?'light':'dark')} aria-label="UIテーマ切り替え">{uiTheme==='dark'?'ライトモード':'ダークモード'}</button><div className="mode-badge"><span /> 2D STUDIO <span className="version">v0.1</span></div>
     </header>
 
     <main className="workspace">
@@ -82,7 +86,7 @@ export default function App() {
           <div className="play-buttons" aria-label="暗色テーマ"><button onClick={()=>applyColors(darkTheme(activeColors,seed,'night'))}>ミッドナイト</button><button onClick={()=>applyColors(darkTheme(activeColors,seed,'neon'))}>ネオンナイト</button></div>
           <p className="help">暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</p>
           <label className="range-label" htmlFor="glow-intensity">発光強度 <output>{background.glowIntensity??0}%</output></label>
-          <input id="glow-intensity" type="range" min="0" max="100" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
+          <input id="glow-intensity" type="range" min="0" max="200" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
           <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
           <label htmlFor="color-mode">カラー変更モード</label>
           <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
