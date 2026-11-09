@@ -35,7 +35,7 @@ function localPoint(shape: Shape, p: Point): Point {
   return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
 }
 
-export function Preview({ scene, background, growth, motion }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string> }) {
+export function Preview({ scene, background, growth, motion, transparent=false }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean }) {
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
@@ -66,14 +66,14 @@ export function Preview({ scene, background, growth, motion }: { scene: Scene; b
       }),[scene,background,gradientId]);
   return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
     data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
-    xmlns="http://www.w3.org/2000/svg" overflow="hidden">
+    xmlns="http://www.w3.org/2000/svg" overflow={transparent?"visible":"hidden"}>
     {background.mode === 'gradient' && <defs>
       <linearGradient data-testid="background-gradient" id={gradientId} {...gradientEndpoints(background.angle)}>
         {background.colors.map((color, i) => <stop key={i} offset={`${i * 50}%`} stopColor={color} />)}
       </linearGradient>
     </defs>}
     <defs>{definitions}</defs>
-    <rect data-testid="background" width={width} height={height} fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />
+    {!transparent&&<rect data-testid="background" width={width} height={height} fill={background.mode === 'solid' ? background.solid : `url(#${gradientId})`} />}
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};

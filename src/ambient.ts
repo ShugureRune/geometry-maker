@@ -11,7 +11,7 @@ export function ambientSettings(value:unknown):AmbientSettings{
  for(const [key,min,max] of [['speed',.25,4],['duration',4,120],['hold',0,60],['transition',.5,15],['interval',4,120],['floatAmount',0,5],['rotation',0,5],['rotationSpeed',1,4],['scrollSpeed',.25,4],['exportDuration',1,120]] as const)if(typeof s[key]!=='number'||!Number.isFinite(s[key])||s[key]<min||s[key]>max)throw new Error('待機画面の数値が範囲外です。');
  return s;
 }
-export type AmbientInput={seed:string;version:AlgorithmVersion;ratio:Ratio;density:number;background:Background;colors?:ColorSettings;animation:AnimationSettings;settings:AmbientSettings};
+export type AmbientInput={scrollPath?:import('./scroll-world').ScrollLeg[];seed:string;version:AlgorithmVersion;ratio:Ratio;density:number;background:Background;colors?:ColorSettings;animation:AnimationSettings;settings:AmbientSettings};
 export const ambientSeed=(seed:string,index:number)=>index===0?seed:`${seed}::ambient:${index}`;
 export function ambientClock(s:AmbientSettings,seconds:number){
  const period=s.loop==='perfect'?s.duration:s.interval;

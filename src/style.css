@@ -46,3 +46,6 @@
 
 .category-navigation svg{width:24px;height:24px}@media(max-width:720px){.preview-panel{--preview-height:48vh}}
 [data-theme=light] .category-navigation button{background:#f0edf8;color:#493863;border-color:#b9afc9}.category-panel .section-heading h3 span{display:none}
+
+/* Full-height range targets keep ambient controls usable without a mobile keyboard. */
+.ambient-range{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;margin:14px 0;align-items:center;min-width:0}.ambient-range label{margin:0;font-size:12px}.ambient-range output{font-size:12px;font-variant-numeric:tabular-nums;color:#c6b4f5}.ambient-range input[type=range]{grid-column:1/-1;width:100%;min-width:0;height:44px;margin:0;touch-action:pan-y;background:transparent}[data-theme=light] .ambient-range output{color:#64418e}

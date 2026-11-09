@@ -1,3 +1,4 @@
+import {createScrollWorld,entryTime,growthSeconds,type ScrollWorld} from './scroll-world';
 import { useMemo } from 'react';
 import { Preview } from './Preview';
 import { generateScene, RATIOS } from './scene';
@@ -23,7 +24,9 @@ function Tile({input,index,progress,phase,opacity=1,scale=1}:{input:AmbientInput
 
  return <g opacity={opacity} transform={transform}><Preview scene={generated.scene} background={background} motion={motion} growth={progress>=1?undefined:Object.fromEntries(generated.scene.shapes.map(shape=>[shape.id,progressAt(generated.cues[shape.id],progress,input.animation.easingType)]))}/></g>;
 }
-export function AmbientView({input,seconds}:{input:AmbientInput;seconds:number}){
+export function AmbientView({input,seconds,world}:{input:AmbientInput;seconds:number;world?:ScrollWorld}){
+ const localWorld=useMemo(()=>input.settings.mode==='scroll'&&input.settings.loop==='evolving'&&!world?createScrollWorld(input):undefined,[input.seed,input.ratio,input.version,input.density,input.settings.mode,input.settings.loop,world]);
+ if(input.settings.mode==='scroll'&&input.settings.loop==='evolving')return <ChunkScroll input={input} seconds={seconds} world={(world??localWorld)!}/>;
  const s=input.settings,c=ambientClock(s,seconds),[width,height]=RATIOS[input.ratio];
  const cycleGrowth=s.mode==='growth'||s.mode==='combined';
  const envelope=ambientEnvelope(s,seconds,input.animation.animationDuration,input.animation.playbackSpeed);
@@ -40,5 +43,22 @@ export function AmbientView({input,seconds}:{input:AmbientInput;seconds:number})
    <Tile input={input} index={c.index} progress={s.transitionType==='reverse'&&exit>0?1-exit:progress} phase={c.phase} opacity={1} scale={s.transitionType==='shrink'?1-exit*.08:1}/>
    {exit>0&&<Tile input={input} index={nextIndex} progress={cycleGrowth?0:1} phase={0} opacity={exit}/>}
   </>}
+ </svg>;
+}
+
+function ChunkScroll({input,seconds,world}:{input:AmbientInput;seconds:number;world:ScrollWorld}){
+ const {width,height}=world,s=input.settings,{cx,cy,chunks}=world.frame(seconds,s,input.scrollPath);
+ return <svg data-testid="ambient-preview" data-scroll-world="v1" data-cache-size={world.cache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
+  <Preview scene={world.empty} background={input.background}/>
+  {chunks.map(chunk=>{
+   const start=entryTime(chunk.anchorX/width,chunk.anchorY/height,seconds,s,input.scrollPath);
+   if(!Number.isFinite(start))return null;
+   const elapsed=growthSeconds(start,seconds,s,input.scrollPath);
+   const progress=Math.min(1,elapsed*input.animation.playbackSpeed/input.animation.animationDuration);
+   const growth=progress>=1?undefined:Object.fromEntries(chunk.scene.shapes.map(shape=>[shape.id,progressAt(chunk.cues[shape.id],progress,input.animation.easingType)]));
+   return <g key={chunk.key} data-chunk={chunk.key} data-chunk-seed={chunk.seed} data-growth-start={start} data-growth-progress={progress} data-anchor-x={chunk.anchorX-cx} data-anchor-y={chunk.anchorY-cy} transform={`translate(${chunk.anchorX-cx} ${chunk.anchorY-cy}) scale(${chunk.scale}) translate(${-chunk.localX} ${-chunk.localY})`}>
+    <Preview scene={chunk.scene} background={input.background} growth={growth} transparent/>
+   </g>;
+  })}
  </svg>;
 }

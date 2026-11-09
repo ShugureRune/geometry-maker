@@ -19,7 +19,7 @@ export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
   const lastGlow=useRef(100);
   const [ambient,setAmbient]=useState({...ambientDefaults});
-  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower);
+  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient);
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState(createRandomSeed);
   const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
@@ -153,7 +153,7 @@ export default function App() {
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={category!=='export'}>
           <h2 className="category-title">書き出し</h2>
       <div className="export-area">
-        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
             setDensity(settings.density ?? 50);
