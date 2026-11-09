@@ -32,7 +32,12 @@ function readable(color:string,samples:string[],light:boolean){
 }
 /** One small role palette per frame; interpolation is reused for shared variant pairs. */
 export function createFigurePainter(input:AmbientInput,seconds:number,background:Background,cache:FigureColorCache):FigurePainter{
- const s=input.settings;if(!s.scrollFigureAuto&&!s.scrollAutoFigureColors)return()=>undefined;
+ const s=input.settings;
+ if(!s.scrollFigureAuto&&!s.scrollAutoFigureColors){
+  if(!(['primary','support','accent'] as const).some(role=>input.colors?.slots[role].locked))return()=>undefined;
+  const manual=new WeakMap<Shape[],Record<string,string>>();
+  return shapes=>{let result=manual.get(shapes);if(!result){result=Object.fromEntries(shapes.flatMap(shape=>{const role=shape.role==='hero'?'primary':shape.role==='accent'?'accent':'support',slot=input.colors?.slots[role];return slot?.locked?[[shape.id,slot.color]]:[];}));manual.set(shapes,result);}return result;};
+ }
  const reference=s.scrollAutoFigureColors?background:input.background;
  const rolePalette=s.scrollAutoFigureColors?scrollRolePalette(input,background).figureColors:input.background.figureColors;
  const samples=stops(reference),light=samples.reduce((sum,c)=>sum+luminance(c),0)/samples.length>.3;
