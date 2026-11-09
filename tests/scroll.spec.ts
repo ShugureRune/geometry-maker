@@ -40,7 +40,7 @@ for t in [0,1,3,10]:
 });
 test('phone sliders retain settings, camera position, playback, and JSON',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('./');await page.getByLabel('自動待機画面を有効化').check();await page.getByLabel('待機アニメーション').selectOption('scroll');await page.getByText('待機画面の詳細設定',{exact:true}).click();
- await expect(page.locator('.ambient-controls input[type=number]')).toHaveCount(0);await expect(page.locator('.ambient-range input[type=range]')).toHaveCount(12);
+ await expect(page.locator('.ambient-controls input[type=number]')).toHaveCount(0);await expect(page.locator('.ambient-range input[type=range]')).toHaveCount(13);
  await page.getByRole('button',{name:'待機画面を一時停止',exact:true}).click();const before=await page.getByTestId('ambient-preview').getAttribute('data-scroll-world');expect(before).toBe('v2');
  for(const slider of await page.locator('.ambient-range input').all()){await slider.fill(await slider.getAttribute('max')||'1');await expect(slider).toHaveValue(await slider.getAttribute('max')||'1');const box=(await slider.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(44);}
  await page.getByRole('button',{name:'待機画面を停止',exact:true}).click();await page.getByRole('button',{name:'待機画面を再生',exact:true}).click();await page.waitForTimeout(300);await page.getByRole('button',{name:'待機画面を一時停止',exact:true}).click();

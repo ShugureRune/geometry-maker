@@ -1,3 +1,4 @@
+import {createFigureColorCache} from './scroll-figure-colors';
 import {generateScene,RATIOS,seededRandom,type Scene} from './scene';
 import {shapeBounds} from './geometry';
 import {densityCandidates,visibleScene} from './density';
@@ -60,7 +61,7 @@ export function createScrollWorld(input:AmbientInput){
   cache.set(key,value);while(cache.size>SCROLL_CACHE_LIMIT)cache.delete(cache.keys().next().value!);
   return value;
  }
- return{width,height,pitch,renderMargin:unit*.82,empty,cache,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
+ return{figureCache:createFigureColorCache(),width,height,pitch,renderMargin:unit*.82,empty,cache,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
   const camera=scrollPathAt(s,time,path),cx=camera.x*width,cy=camera.y*height;
   const chunks:ScrollChunk[]=[];
   // One complete group radius of overscan; generated before anchor entry.

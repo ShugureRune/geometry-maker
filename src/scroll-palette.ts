@@ -27,7 +27,7 @@ export function mixColor(a:string,b:string,t:number){
 }
 export function paletteSource(input:Pick<AmbientInput,'background'|'colors'>){const b=input.background;return JSON.stringify([b.mode,b.solid,b.colors,...(['solid','gradient0','gradient1','gradient2'] as const).map(id=>input.colors?.slots[id].locked??false)]);}
 const baseOf=(bg:Background):PaletteBase=>({solid:bg.solid,colors:[...bg.colors]});
-function stops(bg:Background){return bg.mode==='solid'?[bg.solid]:[bg.colors[0],...bg.colors.slice(0,2).flatMap((c,i)=>{const a=rgb(c),b=rgb(bg.colors[i+1]);const mid='#'+a.map((v,j)=>Math.round((v+b[j])*127.5).toString(16).padStart(2,'0')).join('');return[mid,bg.colors[i+1]];})];}
+export function stops(bg:Background){return bg.mode==='solid'?[bg.solid]:[bg.colors[0],...bg.colors.slice(0,2).flatMap((c,i)=>{const a=rgb(c),b=rgb(bg.colors[i+1]);const mid='#'+a.map((v,j)=>Math.round((v+b[j])*127.5).toString(16).padStart(2,'0')).join('');return[mid,bg.colors[i+1]];})];}
 export function scrollBackgroundAt(input:AmbientInput,seconds:number):Background{
  const s=input.settings,source=paletteSource(input),frozen=s.scrollFrozen?.source===source?s.scrollFrozen:undefined;
  const state=input.scrollPaletteState?.source===source&&input.scrollPaletteState.automatic===s.scrollBackgroundAuto?input.scrollPaletteState:undefined;
@@ -54,7 +54,9 @@ export function scrollBackgroundAt(input:AmbientInput,seconds:number):Background
 }
 /** Unified role palette derived from the actual background, including locked stops. */
 export function scrollPaletteAt(input:AmbientInput,seconds:number):Background{
- const background=scrollBackgroundAt(input,seconds);
+ return scrollRolePalette(input,scrollBackgroundAt(input,seconds));
+}
+export function scrollRolePalette(input:AmbientInput,background:Background):Background{
  if(!input.settings.scrollAutoFigureColors)return background;
  const samples=stops(background),average=samples.reduce((sum,c)=>sum+luminance(c),0)/samples.length;
  const reference=background.mode==='solid'?background.solid:background.colors[1],lch=toLch(reference),fallback=seededRandom(input.seed+'::scroll-harmony-v1')()*Math.PI*2;

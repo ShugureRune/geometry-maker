@@ -1,3 +1,4 @@
+import {createFigureColorCache} from './scroll-figure-colors';
 import {createScrollWorld} from './scroll-world';
 import { AmbientView } from './AmbientView';
 import type { AmbientInput } from './ambient';
@@ -11,11 +12,12 @@ export type VideoArtwork = { ambient?:AmbientInput; scene: Scene; candidates: Sh
 export function createVideoRenderer(input: VideoArtwork) {
   const { scene, candidates, seed, background, animation, ambient } = structuredClone(input);
   const world=ambient?.settings.mode==='scroll'&&ambient.settings.loop==='evolving'?createScrollWorld(ambient):undefined;
+  const figureCache=createFigureColorCache();
   const cues = schedule(candidates, seed, scene.version);
   return (seconds: number, width: number, height: number) => {
     const time = seconds >= animation.animationDuration / animation.playbackSpeed ? 1 : Math.max(0, seconds * animation.playbackSpeed / animation.animationDuration);
     const growth = time >= 1 || (!animation.animationEnabled && time > 0) ? undefined : Object.fromEntries(scene.shapes.map(shape => [shape.id, progressAt(cues[shape.id], time, animation.easingType)]));
-    const markup = renderToStaticMarkup(ambient?.settings.enabled?<AmbientView input={ambient} seconds={seconds} world={world}/>:<Preview scene={scene} background={background} growth={growth} />);
+    const markup = renderToStaticMarkup(ambient?.settings.enabled?<AmbientView input={ambient} seconds={seconds} world={world} figureCache={figureCache}/>:<Preview scene={scene} background={background} growth={growth} />);
     const svg = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement as unknown as SVGSVGElement;
     return serializeArtwork(svg, width, height, background.mode === 'solid' ? background.solid : background.colors[0]);
   };
