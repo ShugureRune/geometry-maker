@@ -59,3 +59,8 @@ export function celestialSpin(kind: CelestialKind, seconds: number, rotationAmou
   const rate = kind === 'neutron-star' ? 7.5 : kind === 'star' ? .13 : kind === 'moon' ? .36 : .22;
   return Math.max(0, seconds) * rate * rotationAmount;
 }
+
+export const CELESTIAL_LABELS: Record<CelestialKind, string> = {
+  star: '光る恒星', planet: '惑星（非発光）', 'ringed-planet': 'リング付き惑星',
+  moon: '衛星', 'black-hole': 'ブラックホール', 'neutron-star': '中性子星（双方向ビーム）',
+};
