@@ -89,6 +89,26 @@ describe('deterministic infinite world',()=>{
   expect(entryTime(2,2,2,{...s,direction:'diagonal'})).toBe(2);
   expect(entryTime(2,4,8,{...s,direction:'diagonal'})).toBe(Infinity);
  });
+ it('moves figures at any on-screen angle (0 to 360) without stretching diagonal angles on portrait layouts',()=>{
+  const rate=2/4;
+  const base={...input.settings,mode:'scroll' as const,loop:'evolving' as const,duration:4,speed:1,scrollSpeed:1};
+  for(const [angle,dx,dy] of [[0,-1,0],[90,0,-1],[180,1,0],[270,0,1],[360,-1,0]] as const){
+   const v=scrollVelocity({...base,scrollAngle:angle},'16:9');
+   expect(v.vx*1600).toBeCloseTo(dx*rate*1600,6);
+   expect(v.vy*900).toBeCloseTo(dy*rate*1600,6);
+  }
+  const diag=scrollVelocity({...base,scrollAngle:45},'9:16');
+  expect(diag.vx*900).toBeCloseTo(diag.vy*1600,6);
+  const original=scrollVelocity(base);
+  expect(original).toEqual({vx:rate,vy:0});
+  const early=scrollPathAt({...base,scrollAngle:0},2,undefined,'16:9');
+  const first={time:0,x:0,y:0,...scrollVelocity({...base,scrollAngle:0},'16:9'),speed:1};
+  const next={time:2,x:early.x,y:early.y,...scrollVelocity({...base,scrollAngle:90},'16:9'),speed:1};
+  expect(scrollPathAt({...base,scrollAngle:90},2,[first,next],'16:9').x).toBe(early.x);
+  expect(scrollPathAt({...base,scrollAngle:90},3,[first,next],'16:9').x).toBe(early.x);
+  expect(scrollPathAt({...base,scrollAngle:90},3,[first,next],'16:9').y).toBeLessThan(early.y);
+  expect(entryTime(-.5,.5,3,{...base,scrollAngle:0},undefined,'16:9')).toBeLessThanOrEqual(3);
+ });
  it('keeps position and growth continuous across velocity changes and supports returning',()=>{
   const s=input.settings,v=scrollVelocity(s),first={time:0,x:0,y:0,...v,speed:1};const before=scrollPathAt(s,3,[first]);
   const next={time:3,x:before.x,y:before.y,vx:0,vy:.5,speed:2},path=[first,next];
