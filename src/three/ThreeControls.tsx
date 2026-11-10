@@ -1,4 +1,13 @@
 import type {ThreeSettings} from './settings';
+import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,type ThreeKind} from './model';
+
+export const THREE_KIND_LABELS: Record<ThreeKind,string> = {
+  sphere:'球体',cube:'立方体',torus:'トーラス',
+  icosahedron:'正二十面体',dodecahedron:'正十二面体',
+  octahedron:'正八面体',tetrahedron:'正四面体',
+  cylinder:'円柱',cone:'円すい',capsule:'カプセル',
+  prism:'三角柱',pyramid:'四角すい','torus-knot':'トーラスノット',
+};
 
 type Props = {settings: ThreeSettings; onChange: (settings: ThreeSettings) => void};
 export function ThreeRange({id, label, value, min, max, step = .05, unit = '', onChange}: {
@@ -12,7 +21,26 @@ export function ThreeRange({id, label, value, min, max, step = .05, unit = '', o
 export function ThreeShapeControls({settings, onChange}: Props) {
   return <section className="control-section three-controls">
     <h3>3D構図 · 3d-v1</h3>
-    <p className="help">球体・立方体・トーラス・正四面体・正八面体・正十二面体・正二十面体をシードから生成します。2Dの生成アルゴリズムとは独立しています。</p>
+    <p className="help">13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</p>
+    <fieldset className="three-kind-fieldset"><legend>生成する3D図形（${(settings.enabledKinds??THREE_KINDS).length}/13種類）</legend>
+      <div className="three-kind-presets">
+        <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_KINDS]})}>全種類</button>
+        <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_CLASSIC_KINDS]})}>従来の7種類</button>
+        <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_NEW_KINDS]})}>新しい6種類</button>
+      </div>
+      <div className="three-kind-grid" role="group" aria-label="生成する3D図形">
+        {THREE_KINDS.map(kind=><label key={kind} className="three-kind-check">
+          <input type="checkbox" checked={(settings.enabledKinds??THREE_KINDS).includes(kind)} aria-label={`${THREE_KIND_LABELS[kind]}を生成`}
+            onChange={event=>{
+              const enabled=settings.enabledKinds??THREE_KINDS;
+              onChange({...settings,enabledKinds:event.target.checked?
+                THREE_KINDS.filter(k=>k===kind||enabled.includes(k)):enabled.filter(k=>k!==kind)});
+            }}/>
+          <span>{THREE_KIND_LABELS[kind]}</span>
+        </label>)}
+      </div>
+      {(settings.enabledKinds??THREE_KINDS).length===0&&<p className="help" role="status">すべてOFFです。1種類以上選ぶと図形が表示されます。</p>}
+    </fieldset>
     <label htmlFor="three-quality">3D描画品質</label>
     <select id="three-quality" value={settings.quality} onChange={event => onChange({...settings, quality: event.target.value as ThreeSettings['quality']})}>
       <option value="auto">自動（スマホは軽量）</option><option value="low">軽量</option><option value="high">高品質</option>
