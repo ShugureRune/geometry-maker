@@ -8,7 +8,7 @@ export type AmbientSettings={scrollFigureAuto:boolean;scrollFigureInterval:numbe
 export const ambientDefaults:AmbientSettings={scrollFigureAuto:true,scrollFigureInterval:6,scrollFigurePhase:0,scrollDensity:100,scrollBackgroundAuto:false,scrollBackgroundInterval:12,scrollAutoFigureColors:true,enabled:false,mode:'growth',loop:'evolving',speed:1,duration:14,hold:5,transition:3,transitionType:'crossfade',autoSeed:true,interval:14,floatAmount:1,rotation:1,rotationSpeed:1,direction:'horizontal',scrollSpeed:1,lowPower:false,exportDuration:20};
 export function ambientSettings(value:unknown):AmbientSettings{
  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('待機画面設定が不正です。');
- const d=value as Record<string,unknown>,s={...ambientDefaults,...Object.fromEntries(Object.keys(ambientDefaults).filter(k=>d[k]!==undefined).map(k=>[k,d[k]]))};
+ const d=value as Record<string,unknown>,s:AmbientSettings={...ambientDefaults,...Object.fromEntries(Object.keys(ambientDefaults).filter(k=>d[k]!==undefined).map(k=>[k,d[k]]))};
  if(d.scrollFigureAuto===undefined&&d.scrollAutoFigureColors===false)s.scrollFigureAuto=false;
  if(d.scrollAngle!==undefined){if(typeof d.scrollAngle!=='number'||!Number.isInteger(d.scrollAngle)||d.scrollAngle<0||d.scrollAngle>360)throw new Error('スクロール角度は0〜360°で指定してください。');s.scrollAngle=d.scrollAngle;}
  if(!['growth','float','scroll','combined'].includes(s.mode)||!['perfect','evolving'].includes(s.loop)||!['crossfade','fade','shrink','reverse'].includes(s.transitionType)||!['horizontal','vertical','diagonal'].includes(s.direction))throw new Error('待機画面のモードが不正です。');
