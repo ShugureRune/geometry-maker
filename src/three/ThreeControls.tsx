@@ -1,6 +1,7 @@
 import type {ThreeSettings} from './settings';
 import {visibilityDefaults,type ThreeVisibilitySettings} from './visibility';
 import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,type ThreeKind} from './model';
+import {CELESTIAL_KINDS, CELESTIAL_LABELS, celestialDefaults} from './celestial';
 
 export const THREE_KIND_LABELS: Record<ThreeKind,string> = {
   sphere:'球体',cube:'立方体',torus:'トーラス',
@@ -20,6 +21,7 @@ export function ThreeRange({id, label, value, min, max, step = .05, unit = '', o
   </div>;
 }
 export function ThreeShapeControls({settings, onChange}: Props) {
+  const celestial = settings.celestial ?? celestialDefaults;
   return <section className="control-section three-controls">
     <h3>3D構図 · 3d-v1</h3>
     <p className="help">13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</p>
@@ -41,6 +43,29 @@ export function ThreeShapeControls({settings, onChange}: Props) {
         </label>)}
       </div>
       {(settings.enabledKinds??THREE_KINDS).length===0&&<p className="help" role="status">すべてOFFです。1種類以上選ぶと図形が表示されます。</p>}
+    </fieldset>
+    <fieldset className="three-kind-fieldset">
+      <legend>天体（6種類）</legend>
+      <label className="three-checkbox"><input type="checkbox" aria-label="3D天体を表示" checked={celestial.enabled}
+        onChange={event => onChange({...settings, celestial: {...celestial, enabled: event.target.checked}})}/>
+        3D空間に天体を追加
+      </label>
+      <div className="three-kind-presets">
+        <button type="button" onClick={() => onChange({...settings, enabledKinds: [],
+          celestial: {...celestial, enabled: true, kinds: [...CELESTIAL_KINDS]}})}>天体のみ表示</button>
+        <button type="button" onClick={() => onChange({...settings, enabledKinds: [...THREE_KINDS],
+          celestial: {...celestial, enabled: true, kinds: [...CELESTIAL_KINDS]}})}>図形＋天体</button>
+      </div>
+      <div className="three-kind-grid" role="group" aria-label="生成する天体">
+        {CELESTIAL_KINDS.map(kind => <label key={kind} className="three-kind-check">
+          <input type="checkbox" checked={celestial.kinds.includes(kind)} aria-label={CELESTIAL_LABELS[kind] + 'を生成'}
+            onChange={event => onChange({...settings, celestial: {...celestial, enabled: true,
+              kinds: event.target.checked ? CELESTIAL_KINDS.filter(k => k === kind || celestial.kinds.includes(k)) :
+                celestial.kinds.filter(k => k !== kind)}})}/>
+          <span>{CELESTIAL_LABELS[kind]}</span>
+        </label>)}
+      </div>
+      <p className="help">5種類の主要天体はほぼ同じ直径、衛星は惑星の約1/4です。ブラックホールには軽量な疑似重力レンズ、中性子星には高速回転する2方向のビームを付けます。天体は既存の13種類と独立して表示されます。</p>
     </fieldset>
     <label htmlFor="three-quality">3D描画品質</label>
     <select id="three-quality" value={settings.quality} onChange={event => onChange({...settings, quality: event.target.value as ThreeSettings['quality']})}>
