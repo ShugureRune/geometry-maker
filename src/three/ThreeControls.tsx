@@ -1,6 +1,6 @@
 import type {ThreeSettings} from './settings';
 import {visibilityDefaults,type ThreeVisibilitySettings} from './visibility';
-import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,type ThreeKind} from './model';
+import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,THREE_SPACING_DEFAULT,type ThreeKind} from './model';
 import {CELESTIAL_KINDS, CELESTIAL_LABELS, celestialDefaults} from './celestial';
 
 export const THREE_KIND_LABELS: Record<ThreeKind,string> = {
@@ -25,6 +25,9 @@ export function ThreeShapeControls({settings, onChange}: Props) {
   return <section className="control-section three-controls">
     <h3>3D構図 · 3d-v1</h3>
     <p className="help">13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</p>
+    <ThreeRange id="three-spacing" label="図形同士の距離" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
+      min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
+    <p className="help">100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</p>
     <fieldset className="three-kind-fieldset"><legend>生成する3D図形（${(settings.enabledKinds??THREE_KINDS).length}/13種類）</legend>
       <div className="three-kind-presets">
         <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_KINDS]})}>全種類</button>
