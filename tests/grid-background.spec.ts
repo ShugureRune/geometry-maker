@@ -1,0 +1,52 @@
+import {test,expect} from './ui-test';
+import {readFile} from 'node:fs/promises';
+
+test('2D grid controls, SVG/PNG export, JSON round-trip, and 3D isolation',async({page})=>{
+  await page.goto('./');
+  const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+  await nav.getByRole('button',{name:'背景',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'2Dグリッド背景'})).toBeVisible();
+  const toggle=page.getByLabel('グリッド背景を有効化');
+  await toggle.check();
+  await expect(page.getByTestId('grid-background')).toHaveAttribute('data-grid-type','line');
+  await page.getByLabel('種類',{exact:true}).selectOption('dot');
+  await page.getByLabel('間隔').fill('80');
+  await page.getByLabel('不透明度').fill('50');
+  await page.getByLabel('回転角度').fill('20');
+  await page.getByLabel('グリッドの色').selectOption('custom');
+  await page.getByLabel('カスタム色').fill('#ff3355');
+  await expect(page.getByTestId('grid-background')).toHaveAttribute('data-grid-type','dot');
+  const before=await page.getByTestId('shapes').evaluate(node=>node.outerHTML);
+  await nav.getByRole('button',{name:'図形',exact:true}).click();
+  await page.getByLabel('シード値').fill('stable-grid-test');
+  const withSeed=await page.getByTestId('shapes').evaluate(node=>node.outerHTML);
+  await nav.getByRole('button',{name:'背景',exact:true}).click();
+  await toggle.uncheck();
+  await expect(page.getByTestId('grid-background')).toHaveCount(0);
+  await toggle.check();
+  expect(await page.getByTestId('shapes').evaluate(node=>node.outerHTML)).toBe(withSeed);
+  expect(before).not.toBe('');
+
+  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
+  const saved=page.waitForEvent('download');
+  await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
+  const data=await readFile((await (await saved).path())!);
+  const project=JSON.parse(data.toString());
+  expect(project.gridBackground.type).toBe('dot');
+  expect(project.gridBackground.spacing).toBe(80);
+  await page.getByLabel('設定JSONファイル').setInputFiles({name:'grid.json',mimeType:'application/json',buffer:data});
+  await nav.getByRole('button',{name:'背景',exact:true}).click();
+  await expect(page.getByLabel('グリッド背景を有効化')).toBeChecked();
+
+  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
+  const svgDownload=page.waitForEvent('download');
+  await page.getByRole('button',{name:'SVGを書き出す',exact:true}).click();
+  const svg=(await readFile((await (await svgDownload).path())!)).toString();
+  expect(svg).toContain('data-testid="grid-background"');
+  expect(svg).toContain('#ff3355');
+  const pngDownload=page.waitForEvent('download');
+  await page.getByRole('button',{name:'PNGを書き出す',exact:true}).click();
+  expect(await (await pngDownload).failure()).toBeNull();
+  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
+  await expect(page.getByTestId('grid-background')).toHaveCount(0);
+});
