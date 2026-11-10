@@ -3,7 +3,7 @@ import {useEffect, useMemo, useRef, type RefObject} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {AdditiveBlending, CanvasTexture, DoubleSide, Group, SRGBColorSpace} from 'three';
 import {seededRandom} from '../scene';
-import {celestialSpin, type CelestialBody, type CelestialKind} from './celestial';
+import {celestialSpin, type CelestialBody} from './celestial';
 import type {ThreeSettings} from './settings';
 import {threeVisibility, visibilityDefaults} from './visibility';
 
@@ -205,7 +205,3 @@ export function CelestialObjectMesh({body, low, seconds, settings}: {
   </group>;
 }
 
-export const CELESTIAL_LABELS: Record<CelestialKind, string> = {
-  star: '光る恒星', planet: '惑星（非発光）', 'ringed-planet': 'リング付き惑星',
-  moon: '衛星', 'black-hole': 'ブラックホール', 'neutron-star': '中性子星（双方向ビーム）',
-};
