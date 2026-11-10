@@ -240,3 +240,54 @@ test('13 solid kinds are individually selectable, save to 3D JSON, and render wi
   for(const name of kinds)await expect(page.getByLabel(name+'を生成')).toBeChecked();
   expect(Number(await preview.getAttribute('data-object-count'))).toBe(allCount);
 });
+
+test('3D figures fade, scale and disappear without changing IDs, and preserve paused PNG and JSON',async({page})=>{
+  await start(page);
+  const preview=page.getByTestId('three-preview');
+  const count=await preview.getAttribute('data-object-count');
+  const before=digest(await png(page));
+  await category(page,'アニメーション');
+  await page.getByLabel('出現・消失アニメーションを有効化').check();
+  await expect(preview).toHaveAttribute('data-visibility-enabled','true');
+  await page.locator('#three-visibility-mode').selectOption('fade-scale');
+  await page.locator('#three-visibility-duration').fill('8');
+  await page.locator('#three-visibility-ratio').fill('50');
+  await page.getByLabel('主役図形は常に表示').uncheck();
+  await page.getByLabel('図形ごとにタイミングをずらす').uncheck();
+  await expect(preview).toHaveAttribute('data-visibility-mode','fade-scale');
+  expect(await preview.getAttribute('data-object-count')).toBe(count);
+  const disappeared=digest(await png(page));
+  expect(disappeared).not.toBe(before);
+  await category(page,'アニメーション');
+  await page.locator('#three-visibility-mode').selectOption('scale');
+  await expect(preview).toHaveAttribute('data-visibility-mode','scale');
+  await page.locator('#three-visibility-mode').selectOption('fade');
+  await expect(preview).toHaveAttribute('data-visibility-mode','fade');
+  await page.locator('#three-visibility-mode').selectOption('fade-scale');
+  await category(page,'装飾');
+  await page.getByLabel('ネオン線画を有効化').check();
+  await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await expect(preview).toHaveAttribute('data-neon-mode','lines');
+  const paused=digest(await png(page));
+  await page.waitForTimeout(180);
+  expect(digest(await png(page))).toBe(paused);
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  const bytes=await readFile((await (await pending).path())!);
+  const project=JSON.parse(bytes.toString());
+  expect(project.settings.visibilityAnimation).toMatchObject({
+    enabled:true,mode:'fade-scale',duration:8,visibleRatio:.5,stagger:false,keepPrimaryVisible:false,
+  });
+  await category(page,'アニメーション');
+  await page.getByLabel('出現・消失アニメーションを有効化').uncheck();
+  await expect(preview).toHaveAttribute('data-visibility-enabled','false');
+  await category(page,'書き出し');
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({name:'appearance.json',mimeType:'application/json',buffer:bytes});
+  await category(page,'アニメーション');
+  await expect(page.getByLabel('出現・消失アニメーションを有効化')).toBeChecked();
+  await expect(page.locator('#three-visibility-mode')).toHaveValue('fade-scale');
+  await expect(preview).toHaveAttribute('data-object-count',count!);
+  await expect(page.getByRole('button',{name:'3D PNGを書き出す',exact:true})).toBeEnabled();
+  expect(digest(await png(page))).toBe(paused);
+});
