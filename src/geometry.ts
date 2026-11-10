@@ -30,6 +30,37 @@ export function contoursOf(s: Shape): Contour[] {
   switch(s.kind) {
     case 'hexagon': return [polygon(6), ...(s.rings && s.rings>1?[{...polygon(6,size*.86),opacity:.4,growthStart:.2}]:[])];
     case 'pentagon': return [polygon(5), ...(s.rings && s.rings>1?[{...polygon(5,size*.85),opacity:.4,growthStart:.2}]:[])];
+    case 'octagon': return [polygon(8), ...(s.rings && s.rings>1?[{...polygon(8,size*.77),opacity:.55,growthStart:.3}]:[])];
+    case 'crescent': {
+      // Outer moon limb, followed by its concave inner edge: a single silhouette.
+      const outer=Array.from({length:41},(_,i)=>polar(size,65+230*i/40));
+      const inner=Array.from({length:33},(_,i)=>{const t=i/32;
+        return {x:size*(Math.cos(65*Math.PI/180)-.55*Math.sin(Math.PI*t)),y:size*(-Math.sin(65*Math.PI/180)+2*Math.sin(65*Math.PI/180)*t)};});
+      return [path([...outer,...inner],true)];
+    }
+    case 'gear': {
+      const teeth=12,points=Array.from({length:teeth*4},(_,i)=>polar(size*(i%4===1||i%4===2?1:.79),-90+i*360/(teeth*4)));
+      return [path(points,true),{...circle(0,0,size*.38),growthStart:.65,opacity:.76}];
+    }
+    case 'capsule': {
+      const r=size*.43,half=size*.56;
+      const right=Array.from({length:17},(_,i)=>({x:half+r*Math.cos(radians(-90+i*180/16)),y:r*Math.sin(radians(-90+i*180/16))}));
+      const left=Array.from({length:17},(_,i)=>({x:-half+r*Math.cos(radians(90+i*180/16)),y:r*Math.sin(radians(90+i*180/16))}));
+      return [path([...right,...left],true)];
+    }
+    case 'wave': return [0,1].map((row)=>({
+      ...path(Array.from({length:33},(_,i)=>({x:-size+i*size/16,y:size*(.28*Math.sin(i*Math.PI/8)+row*.37-.18)}))),
+      growthStart:row*.35,growthEnd:row===0?.72:1,opacity:row===0?1:.54
+    }));
+    case 'orbit': {
+      const ellipse=path(Array.from({length:48},(_,i)=>({x:size*Math.cos(i*2*Math.PI/48),y:size*.57*Math.sin(i*2*Math.PI/48)})),true);
+      return [{...ellipse,growthEnd:.68},{...circle(size*.75,size*.37,size*.095),growthStart:.7},
+        {...circle(-size*.75,-size*.38,size*.065),growthStart:.83}];
+    }
+    case 'burst': return [path(Array.from({length:24},(_,i)=>polar(size*(i%2===0?1:.49),-90+i*15)),true)];
+    case 'shield': return [path([{x:-size*.76,y:-size*.8},{x:0,y:-size},{x:size*.76,y:-size*.8},
+      {x:size*.75,y:size*.08},{x:size*.49,y:size*.68},{x:0,y:size},
+      {x:-size*.49,y:size*.68},{x:-size*.75,y:size*.08}],true)];
     case 'trapezoid': return [path([{x:-size*.52,y:-size*.55},{x:size*.52,y:-size*.55},{x:size,y:size*.55},{x:-size,y:size*.55}],true)];
     case 'parallelogram': return [path([{x:-size*.55,y:-size*.48},{x:size,y:-size*.48},{x:size*.55,y:size*.48},{x:-size,y:size*.48}],true)];
     case 'star': return [path(Array.from({length:10},(_,i)=>polar(size*(i%2?.46:1),-90+i*36)),true)];
