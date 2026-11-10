@@ -1,6 +1,7 @@
 import {describe,expect,it} from 'vitest';
-import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyIsAnimated,skyPalette,skySeedNumber,validateSky,type SkyEffectKind} from './sky-settings';
 import {skyFragmentShader,retroFloorFragmentShader} from './sky-shaders';
+import {DIGITAL_GLYPHS,DIGITAL_ATLAS_COLUMNS,DIGITAL_GLYPH_PIXELS} from './digital-glyphs';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
@@ -63,6 +64,44 @@ describe('eight procedural 3D sky presets',()=>{
     expect(retroFloorFragmentShader).toContain('uniform float uDensity;');
     expect(retroFloorFragmentShader).toContain('5.0/max(.25,density)');
   });
+  it('stores three independent editable colors for every preset without changing other modes',()=>{
+    for(const kind of SKY_KINDS.filter(k=>k!=='classic') as SkyEffectKind[]){
+      const base={...skyDefaults,kind};
+      expect(skyPalette(base)).toEqual(SKY_PALETTES[kind]);
+      const colors={base:'#102030',primary:'#40a0bb',accent:'#ffeedd'};
+      const colored=validateSky({...base,palettes:{[kind]:colors}});
+      expect(skyPalette(colored)).toEqual(colors);
+      const other=SKY_KINDS.filter(k=>k!=='classic'&&k!==kind)[0] as SkyEffectKind;
+      expect(skyPalette({...colored,kind:other})).toEqual(SKY_PALETTES[other]);
+      expect(skyPalette({...colored,kind})).toEqual(colors);
+      expect(skyPalette(validateSky({...colored,palettes:{[kind]:colors}}))).toEqual(colors);
+    }
+    const edits=validateSky({...skyDefaults,kind:'galaxy',palettes:{
+      galaxy:{base:'#AaBBcC',primary:'#102030',accent:'#445566'},
+      digital:{base:'#112233',primary:'#abcdef',accent:'#fedcba'},
+    }});
+    expect(edits.palettes?.galaxy?.base).toBe('#aabbcc');
+    expect(skyPalette(edits).primary).toBe('#102030');
+    expect(skyPalette({...edits,kind:'digital'}).accent).toBe('#fedcba');
+    for(const bad of [
+      {...skyDefaults,palettes:[]},
+      {...skyDefaults,palettes:{classic:SKY_PALETTES.starfield}},
+      {...skyDefaults,palettes:{evil:SKY_PALETTES.starfield}},
+      {...skyDefaults,palettes:{galaxy:{...SKY_PALETTES.galaxy,accent:'red'}}},
+      {...skyDefaults,palettes:{galaxy:{...SKY_PALETTES.galaxy,base:'#xxx'}}},
+      {...skyDefaults,palettes:{galaxy:undefined}},
+    ])expect(()=>validateSky(bad)).toThrow();
+  });
+  it('rasterizes sixteen actual hex characters rather than fake rectangle glyphs',()=>{
+    expect(DIGITAL_GLYPHS).toBe('0123456789ABCDEF');
+    expect(DIGITAL_GLYPHS.length).toBe(16);
+    expect(DIGITAL_ATLAS_COLUMNS).toBe(4);
+    expect(DIGITAL_GLYPH_PIXELS).toBe(64);
+    expect(skyFragmentShader).toContain('texture2D(uGlyphAtlas,atlasUV).a');
+    expect(skyFragmentShader).not.toContain('float pixel=(1.0-smoothstep');
+    expect(skyFragmentShader).toContain('uniform vec3 uSkyPrimary;');
+    expect(retroFloorFragmentShader).toContain('uniform vec3 uRetroColor;');
+  });
   it('saves/restores every sky preset with existing 3D settings, preserving legacy projects',()=>{
     const base:ThreeProject={
       kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:'3d-v1',seed:'sky-test',
@@ -81,6 +120,14 @@ describe('eight procedural 3D sky presets',()=>{
       expect(restored.settings.floorGrid).toEqual(threeDefaults.floorGrid);
       expect(restored.settings.celestial).toEqual(threeDefaults.celestial);
     }
+    const custom=threeProjectText({...base,settings:{...base.settings,sky:{
+      ...skyDefaults,kind:'nebula',palettes:{
+        nebula:{base:'#0b0d1e',primary:'#7a31cc',accent:'#27aaf1'},
+        digital:{base:'#03110b',primary:'#31fa80',accent:'#ffffff'},
+      },
+    }}});
+    expect(parseThreeProject(custom).settings.sky?.palettes?.nebula?.primary).toBe('#7a31cc');
+    expect(parseThreeProject(custom).settings.sky?.palettes?.digital?.accent).toBe('#ffffff');
     const {sky:_,...previousSettings}=base.settings;
     expect(parseThreeProject(JSON.stringify({...base,settings:previousSettings})).settings.sky).toEqual(skyDefaults);
     expect(()=>parseThreeProject(JSON.stringify({...base,settings:{...base.settings,sky:{...skyDefaults,kind:'not-a-mode'}}}))).toThrow();
