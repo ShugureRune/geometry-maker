@@ -3,6 +3,8 @@ export type GridAnimationSettings = {
   enabled: boolean;
   mode: 'scroll' | 'rotate' | 'pulse';
   duration: number;
+  /** Optional for backward compatibility with older grid JSON. */
+  speed?: number;
   direction: 'right' | 'left' | 'up' | 'down' | 'diagonal';
   reverse: boolean;
 };
@@ -10,6 +12,7 @@ export const gridAnimationDefaults: GridAnimationSettings = {
   enabled: false,
   mode: 'scroll',
   duration: 8,
+  speed: 1,
   direction: 'right',
   reverse: false,
 };
@@ -48,25 +51,41 @@ export function validateGridAnimation(value: unknown): GridAnimationSettings {
      typeof a.duration!=='number'||!Number.isFinite(a.duration)||a.duration<2||a.duration>30||
      !['right','left','up','down','diagonal'].includes(String(a.direction))||typeof a.reverse!=='boolean')
     throw new Error('グリッドアニメーションの設定が不正です。');
+  if(a.speed!==undefined&&(!Number.isFinite(a.speed)||typeof a.speed!=='number'||a.speed<.1||a.speed>10))
+    throw new Error('グリッドのスクロール速度は0.1〜10倍で指定してください。');
   return {enabled:a.enabled,mode:a.mode as GridAnimationSettings['mode'],
-    duration:a.duration,direction:a.direction as GridAnimationSettings['direction'],reverse:a.reverse};
+    duration:a.duration,direction:a.direction as GridAnimationSettings['direction'],reverse:a.reverse,
+    ...(a.speed===undefined?{}:{speed:a.speed as number})};
 }
 
-/** Pure clock-based loop; same timestamp and settings always produce identical frames. */
-export function gridAnimationFrame(grid:GridBackgroundSettings,seconds=0){
+/** Pure timestamp-based motion. Modulo happens in pattern-local coordinates,
+ * so grid movement remains continuous at every lattice boundary, including arbitrary
+ * figure angles and rotated patterns. No per-frame SVG animations or timers. */
+export function gridAnimationFrame(grid:GridBackgroundSettings,seconds=0,figureAngle?:number){
   const animation=grid.animation??gridAnimationDefaults;
   const safeSeconds=Number.isFinite(seconds)?Math.max(0,seconds):0;
   const phase=animation.enabled?(safeSeconds%animation.duration)/animation.duration:0;
   let moveX=0,moveY=0,rotation=grid.rotation,opacityMultiplier=1;
   if(animation.enabled&&animation.mode==='scroll'){
-    const delta=phase*grid.spacing;
-    switch(animation.direction){
-      case 'left':moveX=-delta;break;
-      case 'up':moveY=-delta;break;
-      case 'down':moveY=delta;break;
-      case 'diagonal':moveX=delta;moveY=delta;break;
-      default:moveX=delta;
+    const travel=safeSeconds*(animation.speed??1)*grid.spacing/animation.duration;
+    let dx=0,dy=0;
+    if(figureAngle!==undefined){
+      const angle=figureAngle*Math.PI/180;
+      dx=travel*Math.cos(angle);dy=travel*Math.sin(angle);
+    }else{
+      // Legacy settings remain reproducible for older callers.
+      switch(animation.direction){
+        case 'left':dx=-travel;break;
+        case 'up':dy=-travel;break;
+        case 'down':dy=travel;break;
+        case 'diagonal':dx=travel;dy=travel;break;
+        default:dx=travel;
+      }
     }
+    const r=grid.rotation*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
+    const wrap=(n:number)=>{const x=n%grid.spacing;return Math.abs(x)<1e-10?0:+x.toFixed(9);};
+    moveX=wrap(dx*c+dy*sn);
+    moveY=wrap(-dx*sn+dy*c);
   }else if(animation.enabled&&animation.mode==='rotate'){
     rotation+=(animation.reverse?-1:1)*phase*360;
   }else if(animation.enabled&&animation.mode==='pulse'){
@@ -75,9 +94,10 @@ export function gridAnimationFrame(grid:GridBackgroundSettings,seconds=0){
   return {moveX,moveY,rotation,opacityMultiplier};
 }
 
-/** Ensures regular video exports include at least one complete animated grid cycle. */
+/** Ensures regular video exports capture a full loop even with slower grid speed. */
 export function gridAnimationSeconds(grid?:GridBackgroundSettings):number {
-  return grid?.enabled&&grid.animation?.enabled?grid.animation.duration:0;
+  const a=grid?.animation;
+  return grid?.enabled&&a?.enabled?a.mode==='scroll'?a.duration/(a.speed??1):a.duration:0;
 }
 
 /** Other grid settings remain backward-compatible when animation is absent. */
