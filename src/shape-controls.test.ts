@@ -93,6 +93,19 @@ describe('v5 shape kind selection and replacement',()=>{
   }
   expect(count).toBeGreaterThan(0);
  },30000);
+ it('generates a usable scene with each individual kind as the only allowed kind',()=>{
+  for(const allowed of ALL_SHAPE_KINDS){
+   for(const ratio of ['16:9','1:1','9:16'] as Ratio[]){
+    for(let i=0;i<5;i++){
+     const scene=generateScene('only-kind-'+i,ratio,'2d-v5',[allowed]);
+     expect(scene.shapes.length).toBeGreaterThan(0);
+     expect(scene.shapes.some(s=>s.role==='hero')).toBe(true);
+     expect(scene.shapes.every(s=>s.kind===allowed)).toBe(true);
+     expect(scene.composition.quiet.width*scene.composition.quiet.height/(scene.width*scene.height)).toBeGreaterThan(.01);
+    }
+   }
+  }
+ },30000);
  it('round trips shape selections in settings JSON while retaining old files',()=>{
   const base={schemaVersion:1 as const,algorithmVersion:'2d-v5',seed:'shape-setting',aspectRatio:'16:9' as const,
    backgroundMode:'solid' as const,solidColor:'#101820',gradientColors:['#123456','#234567','#345678'] as [string,string,string],
