@@ -28,9 +28,13 @@ test('create, drag, directly edit and export a title from the live canvas',async
  const second=await title.boundingBox();
  if(!second)throw new Error('Title disappeared after drag');
  await page.mouse.click(second.x+second.width/2,second.y+second.height/2);
- await expect(mini).toBeVisible();
- await mini.getByLabel('文字の内容').fill('移動できた！');
- await mini.getByRole('button',{name:'詳細設定'}).click();
+ await expect(page.getByTestId('text-selection')).toBeVisible();
+ await page.mouse.dblclick(second.x+second.width/2,second.y+second.height/2);
+ const inline=page.getByTestId('inline-text-editor');
+ await expect(inline).toBeVisible();
+ await inline.getByLabel('文字をその場で編集').fill('移動できた！');
+ await inline.getByLabel('文字をその場で編集').press('ControlOrMeta+Enter');
+ await page.getByRole('navigation',{name:'設定カテゴリー'}).getByRole('button',{name:'文字',exact:true}).click();
  await expect(page.locator('#panel-text')).toBeVisible();
  await expect(page.getByLabel('表示する文字')).toHaveValue('移動できた！');
  await expect(page.getByTestId('current-seed')).toHaveText(initialSeed??'');
@@ -72,10 +76,12 @@ test('outline-only neon can be dragged and edited in the ambient preview',async(
  const current=await sharp.boundingBox();
  if(!current)throw new Error('Moved neon title disappeared');
  await page.mouse.click(current.x+current.width/2,current.y+current.height/2);
- const popup=page.getByRole('group',{name:'プレビュー上で文字を編集'});
- await expect(popup).toBeVisible();
- await popup.getByLabel('文字の内容').fill('光る枠線');
- await popup.getByRole('button',{name:'編集を終了'}).click();
+ await expect(page.getByTestId('text-selection')).toBeVisible();
+ await page.mouse.dblclick(current.x+current.width/2,current.y+current.height/2);
+ const inline=page.getByTestId('inline-text-editor');
+ await expect(inline).toBeVisible();
+ await inline.getByLabel('文字をその場で編集').fill('光る枠線');
+ await inline.getByLabel('文字をその場で編集').press('ControlOrMeta+Enter');
  await expect(ambient.getByTestId('text-overlay')).toContainText('光る枠線');
 });
 
@@ -105,9 +111,12 @@ test('touch drag and tap can edit an outline title on a narrow portrait canvas',
   const movedBox=await sharp.boundingBox();
   if(!movedBox)throw new Error('Moved touch title disappeared');
   await page.touchscreen.tap(movedBox.x+movedBox.width/2,movedBox.y+movedBox.height/2);
-  const editor=page.getByRole('group',{name:'プレビュー上で文字を編集'});
+  await expect(page.getByTestId('text-selection')).toBeVisible();
+  await page.touchscreen.tap(movedBox.x+movedBox.width/2,movedBox.y+movedBox.height/2);
+  const editor=page.getByTestId('inline-text-editor');
   await expect(editor).toBeVisible();
-  await editor.getByLabel('文字の内容').fill('スマホ編集OK');
+  await editor.getByLabel('文字をその場で編集').fill('スマホ編集OK');
+  await editor.getByLabel('文字をその場で編集').press('ControlOrMeta+Enter');
   await expect(page.getByTestId('preview').getByTestId('text-overlay')).toContainText('スマホ編集OK');
  }finally{await context.close();}
 });
