@@ -18,7 +18,7 @@ export function createVideoRenderer(input: VideoArtwork) {
   return (seconds: number, width: number, height: number) => {
     const time = seconds >= animation.animationDuration / animation.playbackSpeed ? 1 : Math.max(0, seconds * animation.playbackSpeed / animation.animationDuration);
     const growth = time >= 1 || (!animation.animationEnabled && time > 0) ? undefined : Object.fromEntries(scene.shapes.map(shape => [shape.id, progressAt(cues[shape.id], time, animation.easingType)]));
-    const markup = renderToStaticMarkup(ambient?.settings.enabled?<AmbientView input={ambient} seconds={seconds} world={world} figureCache={figureCache}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={seconds} />);
+    const markup = renderToStaticMarkup(ambient?.settings.enabled?<AmbientView input={ambient} seconds={seconds} world={world} figureCache={figureCache}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={seconds} gridSeconds={seconds} />);
     const svg = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement as unknown as SVGSVGElement;
     return serializeArtwork(svg, width, height, background.mode === 'solid' ? background.solid : background.colors[0]);
   };

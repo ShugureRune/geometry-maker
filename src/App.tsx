@@ -10,6 +10,7 @@ import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
 import {GridBackgroundControls} from './GridBackgroundControls';
 import {gridBackgroundDefaults} from './grid-background';
+import {useGridClock} from './useGridClock';
 import {ImagePaletteControls} from './ImagePaletteControls';
 import {TextControls} from './TextControls';
 import {useTextEntrancePreview} from './preview-text-animation';
@@ -61,6 +62,7 @@ export default function App() {
   const committedSeed=useRef(seed);
   const [ratio, setRatio] = useState<Ratio>('16:9');
   const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
+  const gridSeconds=useGridClock(renderMode==='2d'&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
   const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
   const activeColors = colorSettings ?? legacyColors(background);
   // Old manual 2D settings may omit figureColors intentionally. In 3D the
@@ -112,7 +114,7 @@ export default function App() {
    replayOnRegenerate();
   }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
-  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background} textOverlay={textOverlay}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
+  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background} textOverlay={textOverlay} gridSeconds={gridSeconds}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
@@ -271,7 +273,7 @@ export default function App() {
         <div className="canvas-stage">
           {renderMode==='2d'?<PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
-              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds}/>}
+              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds}/>}
             </div>
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>

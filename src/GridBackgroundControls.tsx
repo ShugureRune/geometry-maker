@@ -1,7 +1,9 @@
-import type {GridBackgroundSettings} from './grid-background';
+import {gridAnimationDefaults,type GridAnimationSettings,type GridBackgroundSettings} from './grid-background';
 
 export function GridBackgroundControls({value,onChange}:{value:GridBackgroundSettings;onChange:(value:GridBackgroundSettings)=>void}) {
   const update=(patch:Partial<GridBackgroundSettings>)=>onChange({...value,...patch});
+  const motion=value.animation??gridAnimationDefaults;
+  const updateMotion=(patch:Partial<GridAnimationSettings>)=>update({animation:{...motion,...patch}});
   const range=(id:string,label:string,min:number,max:number,step:number,key:'spacing'|'thickness'|'opacity'|'glow'|'rotation',suffix='')=>
     <><label className="range-label" htmlFor={id}>{label} <output htmlFor={id}>{value[key]}{suffix}</output></label>
     <input id={id} type="range" min={min} max={max} step={step} value={value[key]} onChange={event=>update({[key]:Number(event.target.value)})}/></>;
@@ -26,6 +28,23 @@ export function GridBackgroundControls({value,onChange}:{value:GridBackgroundSet
       {value.colorMode==='custom'&&<label htmlFor="grid-color">カスタム色
         <input id="grid-color" type="color" value={value.color} onChange={event=>update({color:event.target.value})}/>
       </label>}
+      <fieldset className="grid-animation-settings"><legend>グリッドアニメーション</legend>
+        <label className="glow-toggle"><input type="checkbox" checked={motion.enabled} onChange={event=>updateMotion({enabled:event.target.checked})}/> グリッドアニメーションを有効化</label>
+        {motion.enabled&&<>
+          <label htmlFor="grid-animation-mode">動き方</label>
+          <select id="grid-animation-mode" value={motion.mode} onChange={event=>updateMotion({mode:event.target.value as GridAnimationSettings['mode']})}>
+            <option value="scroll">スクロール</option><option value="rotate">回転</option><option value="pulse">明滅</option>
+          </select>
+          <label className="range-label" htmlFor="grid-animation-duration">1周期の長さ <output htmlFor="grid-animation-duration">{motion.duration}秒</output></label>
+          <input id="grid-animation-duration" type="range" min="2" max="30" step="1" value={motion.duration} onChange={event=>updateMotion({duration:Number(event.target.value)})}/>
+          {motion.mode==='scroll'&&<><label htmlFor="grid-animation-direction">スクロール方向</label>
+            <select id="grid-animation-direction" value={motion.direction} onChange={event=>updateMotion({direction:event.target.value as GridAnimationSettings['direction']})}>
+              <option value="right">右</option><option value="left">左</option><option value="up">上</option><option value="down">下</option><option value="diagonal">右下斜め</option>
+            </select></>}
+          {motion.mode==='rotate'&&<label className="glow-toggle"><input type="checkbox" checked={motion.reverse} onChange={event=>updateMotion({reverse:event.target.checked})}/> 反時計回り</label>}
+          <p className="help">図形の成長とは独立してループします。動画・待機画面にも反映されます。</p>
+        </>}
+      </fieldset>
     </>}
     <p className="help">背景色の上・図形の下に描画します。SVG・PNG・動画の書き出しにも反映されます。</p>
   </section>;

@@ -1,5 +1,6 @@
 import { ambientVideoSeconds } from './ambient';
 import {textEntranceEnd} from './text-entrance';
+import {gridAnimationSeconds} from './grid-background';
 import { createVideoRenderer, drawVideoFrame, type VideoArtwork } from './video-frame';
 import { videoBitrate, videoSettings, videoTimeline, type VideoSettings } from './video-settings';
 export const videoAvailable = () => typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
@@ -40,7 +41,7 @@ async function encodeVideo(input:VideoArtwork,requested:VideoSettings,signal:Abo
   const isAmbient=snapshot.ambient?.settings.enabled;
   const seconds=isAmbient?ambientVideoSeconds(snapshot.ambient!.settings):0;
   const ambientFrames=Math.max(1,Math.round(seconds*fps));
-  const timeline = isAmbient?{frameCount:ambientFrames,timeAt:(i:number)=>i*seconds/ambientFrames}:videoTimeline(Math.max(snapshot.animation.animationDuration/snapshot.animation.playbackSpeed,textEntranceEnd(snapshot.textOverlay)), 1, fps);
+  const timeline = isAmbient?{frameCount:ambientFrames,timeAt:(i:number)=>i*seconds/ambientFrames}:videoTimeline(Math.max(snapshot.animation.animationDuration/snapshot.animation.playbackSpeed,textEntranceEnd(snapshot.textOverlay),gridAnimationSeconds(snapshot.background.grid)), 1, fps);
   // Cancel immediately, including while awaiting encoder backpressure.
   const cancel = () => { void output.cancel().catch(() => {}); };
   signal.addEventListener('abort', cancel, { once: true });

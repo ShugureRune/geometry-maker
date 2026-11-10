@@ -2,6 +2,7 @@ import {canStreamVideo,pickVideoFile} from './video-file';
 import type {VideoDestination} from './video';
 import { ambientVideoSeconds } from './ambient';
 import {textEntranceEnd} from './text-entrance';
+import {gridAnimationSeconds} from './grid-background';
 import { useEffect, useRef, useState } from 'react';
 import { downloadBlob } from './export';
 import { EXPORT_PRESETS, fileStem } from './settings';
@@ -16,7 +17,8 @@ export function VideoPanel({ settings, onChange, artwork }: { settings: VideoSet
   const { exportVideoWidth: width, exportVideoHeight: height, exportVideoFps: fps } = settings;
   const invalid = videoResolutionError(width, height);
   const longAmbient=!!artwork.ambient?.settings.enabled&&ambientVideoSeconds(artwork.ambient.settings)>30&&!disk;
-  const timeline = videoTimeline(Math.max(artwork.animation.animationDuration/artwork.animation.playbackSpeed,textEntranceEnd(artwork.textOverlay)),1,fps);
+  const gridSeconds=gridAnimationSeconds(artwork.background.grid);
+  const timeline = videoTimeline(Math.max(artwork.animation.animationDuration/artwork.animation.playbackSpeed,textEntranceEnd(artwork.textOverlay),gridSeconds),1,fps);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
     if (!open || invalid) return;
@@ -60,7 +62,7 @@ export function VideoPanel({ settings, onChange, artwork }: { settings: VideoSet
       <label htmlFor="video-fps">動画FPS</label><select id="video-fps" value={fps} onChange={e => onChange({ ...settings, exportVideoFps: Number(e.target.value) as VideoSettings['exportVideoFps'] })}>{[24, 30, 60].map(f => <option key={f} value={f}>{f} fps</option>)}</select>
     </fieldset>
     <p className={invalid ? 'export-error' : 'help'}>{invalid || '256〜4096pxの偶数、合計8,388,608画素まで。現在の構図を維持し、比率が異なる場合は背景色の余白を追加します。'}</p>
-    <p className="help">長さ：約{(artwork.ambient?.settings.enabled?ambientVideoSeconds(artwork.ambient.settings):timeline.encodedSeconds).toFixed(2)}秒{artwork.ambient?.settings.enabled?'（待機画面）':'（図形の成長と文字の登場を最後まで収録）'}。{!artwork.ambient?.settings.enabled&&!artwork.animation.animationEnabled && 'アニメーションOFF：最初の背景フレーム以降は完成状態を保持します。'}</p>
+    <p className="help">長さ：約{(artwork.ambient?.settings.enabled?ambientVideoSeconds(artwork.ambient.settings):timeline.encodedSeconds).toFixed(2)}秒{artwork.ambient?.settings.enabled?'（待機画面）':'（図形の成長・文字・グリッドの動きを収録）'}。{!artwork.ambient?.settings.enabled&&!artwork.animation.animationEnabled&&!gridSeconds && 'アニメーションOFF：最初の背景フレーム以降は完成状態を保持します。'}</p>
     {!videoAvailable() ? <p className="export-error">このブラウザはWebCodecs動画エンコードに未対応です。PCの最新Chrome/Edgeをお試しください。</p> : supported === false && !invalid ? <p className="export-error">選択した形式・解像度のエンコードに未対応です。別の形式・解像度をお試しください。</p> : null}
     <div className="export-actions"><button type="button" disabled={busy || !!invalid || longAmbient || supported !== true} onClick={() => void save()}>動画を書き出す</button>{busy && <button type="button" onClick={() => controller.current?.abort()}>動画書き出しをキャンセル</button>}</div>
     {busy && <><progress aria-label="動画書き出し進捗" value={progress} max="1" /><p>{Math.floor(progress * 100)}%</p></>}
