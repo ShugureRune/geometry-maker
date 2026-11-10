@@ -40,6 +40,17 @@ describe('safe 3D styles and standalone settings',()=>{
       expect(()=>validateThreeSettings({...threeDefaults,enabledKinds})).toThrow();
     expect(validateThreeSettings({...threeDefaults,enabledKinds:[]}).enabledKinds).toEqual([]);
   });
+  it('round-trips 3D appearance settings and defaults older saved projects to disabled',()=>{
+    const visibilityAnimation={enabled:true,mode:'fade-scale' as const,duration:16,visibleRatio:.4,stagger:false,keepPrimaryVisible:false};
+    const configured={...project,settings:{...project.settings,visibilityAnimation}};
+    expect(parseThreeProject(threeProjectText(configured)).settings.visibilityAnimation).toEqual(visibilityAnimation);
+    const {visibilityAnimation:_,...oldSettings}=project.settings;
+    const older=parseThreeProject(JSON.stringify({...project,settings:oldSettings}));
+    expect(older.settings.visibilityAnimation).toMatchObject({enabled:false,mode:'fade-scale'});
+    for(const patch of [{visibleRatio:1},{duration:0},{mode:'teleport'},{enabled:'yes'},{keepPrimaryVisible:null}]){
+      expect(()=>parseThreeProject(JSON.stringify({...project,settings:{...project.settings,visibilityAnimation:{...visibilityAnimation,...patch}}}))).toThrow();
+    }
+  });
   it('round trips camera, paused time, colors, style and output size without unsafe properties',()=>{
     expect(parseThreeProject(threeProjectText(project))).toEqual(project);
     const parsed=parseThreeProject(JSON.stringify({...project,unknown:'ignored',settings:{...project.settings,unexpected:'ignored'}}));
