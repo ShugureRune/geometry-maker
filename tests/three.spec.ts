@@ -292,3 +292,63 @@ test('3D figures fade, scale and disappear without changing IDs, and preserve pa
   await expect(page.getByRole('button',{name:'3D PNGを書き出す',exact:true})).toBeEnabled();
   expect(digest(await png(page))).toBe(paused);
 });
+
+test('3D floor perspective grid renders in PNG, works with neon, and round-trips in 3D JSON', async ({page}) => {
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  const original=digest(await png(page));
+  const preview=page.getByTestId('three-preview');
+  const shapeCount=await preview.getAttribute('data-object-count');
+  await category(page,'背景');
+  await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toBeVisible();
+  await expect(preview).toHaveAttribute('data-floor-grid','off');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  await expect(preview).toHaveAttribute('data-floor-grid','on');
+  await page.locator('#floor-grid-opacity').fill('.9');
+  await page.locator('#floor-grid-thickness').fill('3');
+  await page.locator('#floor-grid-spacing').fill('2');
+  await page.locator('#floor-grid-scroll').fill('2.5');
+  const withGrid=digest(await png(page));
+  expect(withGrid).not.toBe(original);
+  await category(page,'背景');
+  await page.locator('#floor-grid-hex').fill('#ff4499');
+  const pink=digest(await png(page));
+  expect(pink).not.toBe(withGrid);
+  await category(page,'背景');
+  await page.locator('#floor-grid-glow').fill('160');
+  const glowing=digest(await png(page));
+  expect(glowing).not.toBe(pink);
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  await expect(preview).toHaveAttribute('data-neon-mode','transparent');
+  const neonGrid=digest(await png(page));
+  expect(neonGrid).not.toBe(glowing);
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  const bytes=await readFile((await (await pending).path())!);
+  const project=JSON.parse(bytes.toString());
+  expect(project.settings.floorGrid).toMatchObject({
+    enabled:true,color:'#ff4499',opacity:.9,thickness:3,spacing:2,glow:160,scrollSpeed:2.5,
+  });
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').uncheck();
+  await expect(preview).toHaveAttribute('data-floor-grid','off');
+  expect(digest(await png(page))).not.toBe(neonGrid);
+  await category(page,'書き出し');
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+    name:'floor-grid.json',mimeType:'application/json',buffer:bytes,
+  });
+  await expect(preview).toHaveAttribute('data-floor-grid','on');
+  await category(page,'背景');
+  await expect(page.getByLabel('3D床グリッドを有効化')).toBeChecked();
+  await expect(page.locator('#floor-grid-scroll')).toHaveValue('2.5');
+  await expect(preview).toHaveAttribute('data-object-count',shapeCount!);
+  expect(digest(await png(page))).toBe(neonGrid);
+  await page.getByRole('button',{name:'2Dモード',exact:true}).click();
+  await expect(page.getByTestId('preview')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

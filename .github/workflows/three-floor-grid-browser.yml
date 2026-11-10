@@ -1,0 +1,37 @@
+name: 3D floor grid browser checks
+
+on:
+  pull_request:
+    paths:
+      - 'src/three/FloorGrid.tsx'
+      - 'src/three/FloorGridControls.tsx'
+      - 'src/three/floor-grid.ts'
+      - 'src/three/settings.ts'
+      - 'src/three/ThreePreview.tsx'
+      - 'tests/three.spec.ts'
+      - '.github/workflows/three-floor-grid-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  floor-grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Test perspective floor rendering, neon, PNG and JSON restore
+        run: npx playwright test tests/three.spec.ts --grep "3D floor perspective grid"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: perspective-floor-grid-failures
+          path: test-results/
+          retention-days: 7
