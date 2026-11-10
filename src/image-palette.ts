@@ -21,7 +21,7 @@ const hex=(c:RGB)=>'#'+[c.r,c.g,c.b].map(v=>clamp(v).toString(16).padStart(2,'0'
 const mix=(a:RGB,b:RGB,t:number):RGB=>({
  r:a.r*(1-t)+b.r*t,g:a.g*(1-t)+b.g*t,b:a.b*(1-t)+b.b*t
 });
-const black={r:9,g:13,b:24},white={r:250,g:250,b:255};
+const black={r:0,g:0,b:0},white={r:255,g:255,b:255};
 const dist=(a:RGB,b:RGB)=>{
  const r=(a.r+b.r)/2,dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;
  return (2+r/256)*dr*dr+4*dg*dg+(2+(255-r)/256)*db*db;
@@ -98,15 +98,21 @@ export function extractImagePalette(pixels:Uint8ClampedArray):ImagePalette{
  const swatches=selected.slice(0,8).map(hex);
  const secondary=found.slice(1).find(e=>dist(e.color,dominant)>900)?.color??mix(dominant,luminance(dominant)>.45?black:white,.36);
  const tertiary=found.slice(2).find(e=>dist(e.color,secondary)>900)?.color??mix(secondary,luminance(dominant)>.45?black:white,.3);
+ // Select the ink from the actual dominant pixel first. A gradient spanning
+ // both dark and light backgrounds can make *every* figure color unreadable.
+ // Limit later stops to a brightness range compatible with the selected ink.
+ const ink=contrastRatio(hex(white),hex(dominant))>=contrastRatio(hex(black),hex(dominant))?white:black;
+ function readableStop(target:RGB,amount:number){
+  let t=amount;
+  while(t>.001&&contrastRatio(hex(ink),hex(mix(dominant,target,t)))<4.55)t*=.65;
+  return hex(mix(dominant,target,t));
+ }
  const gradient:[string,string,string]=[
-  hex(dominant),hex(mix(dominant,secondary,.48)),hex(mix(dominant,tertiary,.4))
+  hex(dominant),readableStop(secondary,.48),readableStop(tertiary,.4)
  ];
- // If the source lacks sufficiently distinct high-contrast colors, move its
- // actual source hues toward readable light/dark inks rather than making strokes
- // disappear into the dominant backdrop.
+ // If the source lacks high-contrast colors, brighten/darken its actual hues
+ // rather than letting the selected strokes disappear into the backdrop.
  const minContrast=(c:RGB)=>Math.min(...gradient.map(bg=>contrastRatio(hex(c),bg)));
- // Choose the ink with the strongest *minimum* contrast across the full gradient.
- const ink=minContrast(white)>=minContrast(black)?white:black;
  const figures:RGB[]=[];
  const candidates=selected.slice(1).concat([selected[0],secondary,tertiary]);
  for(const candidate of candidates){
