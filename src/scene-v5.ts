@@ -6,15 +6,15 @@ const choose = <T,>(random:()=>number, values:readonly T[]):T => values[Math.flo
 const clamp = (v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const circular = new Set<CompositionType>(['radial','concentric','spiral','curves']);
 const heroesFor:Record<CompositionType,readonly Shape['kind'][]> = {
-  central:['hexagon','pentagon','compound','frame'], diagonal:['chevron','parallelogram','hexagon','triangle'],
-  corners:['sector','semicircle','hexagon','arc'], asymmetric:['trapezoid','pentagon','star','linked'],
-  frame:['dashed-frame','compound','concentric','frame'], radial:['rays','hexagon','compound'],
-  concentric:['concentric','arc','semicircle'], spiral:['pentagon','star','concentric'],
-  modules:['hexagon','dashed-frame','linked'], 'multi-anchor':['pentagon','hexagon','linked'],
-  curves:['semicircle','arc','sector'], axes:['dashed-frame','chevron','hexagon'],
-  polygons:['compound','pentagon','trapezoid','hexagon'],
+  central:['hexagon','pentagon','compound','frame','octagon','gear'], diagonal:['chevron','parallelogram','hexagon','triangle','shield','capsule'],
+  corners:['sector','semicircle','hexagon','arc','crescent','orbit'], asymmetric:['trapezoid','pentagon','star','linked','burst','shield'],
+  frame:['dashed-frame','compound','concentric','frame','octagon','gear'], radial:['rays','hexagon','compound','orbit','burst'],
+  concentric:['concentric','arc','semicircle','orbit','crescent'], spiral:['pentagon','star','concentric','wave','orbit'],
+  modules:['hexagon','dashed-frame','linked','gear','capsule'], 'multi-anchor':['pentagon','hexagon','linked','capsule','octagon'],
+  curves:['semicircle','arc','sector','crescent','wave','capsule'], axes:['dashed-frame','chevron','hexagon','shield','wave'],
+  polygons:['compound','pentagon','trapezoid','hexagon','octagon','burst','shield'],
 };
-const closedFill = new Set<Shape['kind']>(['triangle','trapezoid','parallelogram','sector','chevron','star']);
+const closedFill = new Set<Shape['kind']>(['triangle','trapezoid','parallelogram','sector','chevron','star','crescent','capsule','burst','shield']);
 
 /** A plan first, then connected families. All distances are in the short edge's units. */
 export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
@@ -105,10 +105,10 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
     plane.layer='background';plane.opacity=.2;plane.fillOpacity=.65;plane.tone='mint';plane.bleed=true;
     add(plane,h,35);
     const count=type==='modules'?8:6;
-    const family=round?['semicircle','sector','concentric','hexagon'] as const
-      :type==='modules'?['hexagon','trapezoid','grid','dashed-frame'] as const
-      :type==='axes'?['rectangle','chevron','zigzag','parallelogram'] as const
-      :['parallelogram','hexagon','trapezoid','linked','pentagon'] as const;
+    const family:readonly Shape['kind'][]=round?['semicircle','sector','concentric','hexagon','crescent','orbit','wave']
+      :type==='modules'?['hexagon','trapezoid','grid','dashed-frame','gear','octagon','capsule']
+      :type==='axes'?['rectangle','chevron','zigzag','parallelogram','shield','wave']
+      :['parallelogram','hexagon','trapezoid','linked','pentagon','octagon','burst','shield'];
     const motif=choose(detail,family);
     for(let i=0;i<count;i++) {
       let offset:Point,rotation=direction;
@@ -168,8 +168,9 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
       }
     }
     // Small coherent clusters follow the outline; distant title space stays empty.
-    const smallKinds:readonly Shape['kind'][]=type==='modules'?['grid','hexagon','cross','dots']
-      :round?['circle','dots','star','rays','semicircle']:['chevron','dots','zigzag','pentagon','cross'];
+    const smallKinds:readonly Shape['kind'][]=type==='modules'?['grid','hexagon','cross','dots','gear','octagon']
+      :round?['circle','dots','star','rays','semicircle','crescent','orbit']
+      :['chevron','dots','zigzag','pentagon','cross','shield','burst'];
     for(let i=0;i<48;i++) {
       const rayIndex=radial?rayOrder[i%rayOrder.length]:0;
       const component=h.kind==='linked'?i%2:0;
