@@ -88,7 +88,7 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
     {!transparent&&backgroundBlend&&<rect data-testid="transition-background" width={width} height={height}
       fill={backgroundBlend.next.mode==='solid'?backgroundBlend.next.solid:`url(#${gradientId}-next)`}
       opacity={backgroundBlend.opacity}/>} 
-    {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height}/>} 
+    {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background}/>} 
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
@@ -106,6 +106,6 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
         </g>;
       })}
     </g>
-    {textOverlay?.layer==='front'&&<TextOverlay settings={textOverlay} width={width} height={height}/>} 
+    {textOverlay?.layer==='front'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background}/>} 
   </svg>;
 }

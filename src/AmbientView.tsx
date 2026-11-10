@@ -49,6 +49,8 @@ export function AmbientView({input,seconds,world,scrollCamera='parent',figureCac
  // to evolving scroll only, so values above 100 never feed into visibleScene.
  const scrollInput=scroll?{...input,density:input.density,background:scrollBackgroundAt(input,seconds)}:input;
  const painter=scroll?createFigurePainter(input,seconds,scrollInput.background,figureCache??localFigureCache):undefined;
+ const textBackground=scroll?scrollInput.background
+  :input.colors&&c.index!==0?coloredBackground(input.background,reseedColors(input.colors,ambientSeed(input.seed,c.index))):input.background;
  const fraction=(c.phase*Math.max(1,Math.round(s.scrollSpeed)))%1;
  return <svg data-testid="ambient-preview" className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
   {scroll?<>
@@ -59,7 +61,7 @@ export function AmbientView({input,seconds,world,scrollCamera='parent',figureCac
    {exit>0&&s.transitionType!=='reverse'&&<Tile input={input} index={nextIndex} progress={cycleGrowth?0:1} phase={0} opacity={exit}/>}
   </>}
   {/* Keep titles screen-fixed during floating, reverse growth, and tiled scrolling. */}
-  {(input.textOverlay?.layer==='front'||scroll)&&<TextOverlay settings={input.textOverlay} width={width} height={height}/>}
+  {(input.textOverlay?.layer==='front'||scroll)&&<TextOverlay settings={input.textOverlay} width={width} height={height} background={textBackground}/>}
  </svg>;
 }
 
@@ -69,7 +71,7 @@ function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:nu
  const painter=useMemo(()=>createFigurePainter(input,seconds,background,world.figureCache),[input.background,input.colors,input.seed,input.settings,input.scrollFigureState,background,s.scrollFigureAuto?seconds:0,world]);
  return <svg data-testid="ambient-preview" data-scroll-world="v3" data-scroll-density={s.scrollDensity} data-cache-size={world.cache.size} data-group-cache-size={world.groupCache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
   <Preview scene={world.empty} background={background}/>
-  {input.textOverlay?.layer==='back'&&<TextOverlay settings={input.textOverlay} width={width} height={height}/>}
+  {input.textOverlay?.layer==='back'&&<TextOverlay settings={input.textOverlay} width={width} height={height} background={background}/>}
   <g data-testid="scroll-camera" transform={camera==='parent'?`translate(${-cx} ${-cy})`:undefined}>{groups.map(chunk=>{
    const margin=world.renderMargin;
    if(chunk.anchorX-cx < -margin||chunk.anchorX-cx > width+margin||chunk.anchorY-cy < -margin||chunk.anchorY-cy > height+margin)return null;
@@ -82,6 +84,6 @@ function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:nu
     <Preview scene={chunk.scene} background={background} shapeColors={painter(chunk.scene.shapes,chunk.key)} growth={growth} transparent/>
    </g>;
   })}</g>
-  {input.textOverlay?.layer==='front'&&<TextOverlay settings={input.textOverlay} width={width} height={height}/>}
+  {input.textOverlay?.layer==='front'&&<TextOverlay settings={input.textOverlay} width={width} height={height} background={background}/>}
  </svg>;
 }
