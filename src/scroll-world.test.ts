@@ -20,7 +20,9 @@ describe('deterministic infinite world',()=>{
   low.forEach(g=>{const full=highByKey.get(g.key);expect(full).toBeDefined();expect(g.scale).toBe(full!.scale);expect(g.anchorX).toBe(full!.anchorX);expect(g.rotation).toBe(full!.rotation);for(const shape of g.scene.shapes)expect(full!.scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
   const empty=createScrollWorld({...input,settings:{...input.settings,scrollDensity:0}});
   expect(empty.frame(8,input.settings).groups).toHaveLength(0);
-  expect([0,8,20].some(t=>b.frame(t,input.settings).groups.length>a.frame(t,input.settings).groups.length)).toBe(true);
+  const allPlans=Array.from({length:9},(_,i)=>i-4).flatMap(x=>Array.from({length:9},(_,j)=>j-4).flatMap(y=>b.chunk(x,y).groups));
+  expect(allPlans.some(plan=>plan.startDensity>50&&plan.startDensity<=100)).toBe(true);
+  expect(allPlans.some(plan=>plan.startDensity===0)).toBe(true);
   expect(a.frame(30,input.settings)).toEqual(a.frame(30,{...input.settings,autoSeed:false,interval:4}));
  });
  it('contains hero envelopes, supports decoration-only groups and gives each group its own entry time',()=>{
