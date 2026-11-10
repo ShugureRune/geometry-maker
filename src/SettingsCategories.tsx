@@ -8,6 +8,6 @@ export const categories = [
   {id:'export',label:'書き出し',icon:'M12 2V16 M6 10 12 16 18 10 M3 16V22H21V16'},
 ] as const;
 export type Category=typeof categories[number]['id'];
-export function SettingsCategories({active,onChange}:{active:Category|null;onChange:(value:Category|null)=>void}){
- return <nav className="category-navigation" aria-label="設定カテゴリー">{categories.map(item=><button type="button" key={item.id} id={`category-${item.id}`} aria-expanded={active===item.id} aria-controls={`panel-${item.id}`} onClick={()=>onChange(active===item.id?null:item.id)}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}/></svg>{item.label}</button>)}</nav>;
+export function SettingsCategories({active,onChange,disabled=[]}:{active:Category|null;onChange:(value:Category|null)=>void;disabled?:readonly Category[]}){
+ return <nav className="category-navigation" aria-label="設定カテゴリー">{categories.map(item=><button type="button" key={item.id} id={`category-${item.id}`} disabled={disabled.includes(item.id)} title={disabled.includes(item.id)?'文字編集は2Dモードで利用できます':undefined} aria-expanded={active===item.id} aria-controls={`panel-${item.id}`} onClick={()=>onChange(active===item.id?null:item.id)}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}/></svg>{item.label}</button>)}</nav>;
 }

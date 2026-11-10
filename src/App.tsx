@@ -15,16 +15,31 @@ import {PreviewTextEditor} from './PreviewTextEditor';
 import {textOverlayDefaults,type TextOverlaySettings} from './text-overlay';
 import {applyImagePalette} from './image-palette';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {generateThreeComposition, THREE_ALGORITHM_VERSION, visibleThreeObjects} from './three/model';
+import {threeDefaults, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './three/settings';
+import {ThreeShapeControls, ThreeMaterialControls, ThreeAnimationControls} from './three/ThreeControls';
+import {ThreeExportPanel} from './three/ThreeExportPanel';
+import {ThreeBoundary} from './three/ThreeBoundary';
+import './three/three.css';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, type AlgorithmVersion, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
 
 const initialBackground: Background = {glowIntensity:100,mode:'gradient',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135};
+const ThreePreview = lazy(() => import('./three/ThreePreview'));
 
 
 export default function App() {
+  const [renderMode,setRenderMode]=useState<'2d'|'3d'>('2d');
   const [category,setCategory]=useState<Category|null>('shapes');
+  const [threeCategory,setThreeCategory]=useState<Category|null>('shapes');
+  const activeCategory=renderMode==='2d'?category:threeCategory;
+  const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>({...threeDefaults,animation:!matchMedia('(prefers-reduced-motion: reduce)').matches}));
+  const threeApi=useRef<ThreePreviewHandle|null>(null);
+  const threeView=useRef<ThreeView|undefined>(undefined);
+  const [threeReady,setThreeReady]=useState(false);
+  const resume2D=useRef({growth:false,ambient:false});
   const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
   const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>({...textOverlayDefaults});
   const entrancePreview=useTextEntrancePreview(textOverlay);
@@ -43,6 +58,9 @@ export default function App() {
   const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
   const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
   const activeColors = colorSettings ?? legacyColors(background);
+  // Old manual 2D settings may omit figureColors intentionally. In 3D the
+  // visible color slots are always the material colors, including locked slots.
+  const threeBackground=useMemo(()=>({...background,figureColors:{primary:activeColors.slots.primary.color,support:activeColors.slots.support.color,accent:activeColors.slots.accent.color}}),[background,activeColors]);
   function applyColors(c:ColorSettings) { setColorSettings(c);setBackground(bg=>coloredBackground(bg,c)); }
   function changeSeed(value:string) {setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
   function editor(id:Slot,label:string) { const slot=activeColors.slots[id];return <ColorEditor label={label} value={slot.color} locked={slot.locked}
@@ -60,7 +78,19 @@ export default function App() {
   useEffect(()=>{if(ambient.enabled)playback.setPlaying(false);},[ambient.enabled]);
   useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
-  function replayOnRegenerate(){if(animation.animationEnabled)playback.restart(true);}
+  function replayOnRegenerate(){if(renderMode==='2d'&&animation.animationEnabled)playback.restart(true);}
+  function switchRenderMode(next:'2d'|'3d'){
+    if(next===renderMode)return;
+    if(next==='3d'){
+      resume2D.current={growth:playback.playing,ambient:ambientClock.playing};
+      playback.setPlaying(false);ambientClock.pause();setThreeReady(false);
+    }else{
+      if(resume2D.current.growth)playback.setPlaying(true);
+      if(resume2D.current.ambient)ambientClock.play();
+    }
+    setRenderMode(next);
+  }
+  const threeComposition=useMemo(()=>renderMode==='3d'?generateThreeComposition(seed,ratio):null,[renderMode,seed,ratio]);
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
   function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
   function chooseVisualTheme(theme:VisualTheme){
@@ -81,28 +111,33 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
-      <button className="ui-theme-button" onClick={()=>setUiTheme(t=>t==='dark'?'light':'dark')} aria-label="UIテーマ切り替え">{uiTheme==='dark'?'ライトモード':'ダークモード'}</button><div className="mode-badge"><span /> 2D STUDIO <span className="version">v0.1</span></div>
+      <div className="render-mode-switch segmented" role="group" aria-label="描画モード">
+        <button type="button" aria-pressed={renderMode==='2d'} onClick={()=>switchRenderMode('2d')}>2Dモード</button>
+        <button type="button" aria-pressed={renderMode==='3d'} onClick={()=>switchRenderMode('3d')}>3Dモード</button>
+      </div>
+      <button className="ui-theme-button" onClick={()=>setUiTheme(t=>t==='dark'?'light':'dark')} aria-label="UIテーマ切り替え">{uiTheme==='dark'?'ライトモード':'ダークモード'}</button><div className="mode-badge"><span /> {renderMode==='2d'?'2D':'3D'} STUDIO <span className="version">v0.1</span></div>
     </header>
 
     <main className="workspace">
       <aside className="controls" aria-label="生成設定">
         <div className="panel-intro"><span className="eyebrow">MAKE IT YOURS</span><h2>ひとつのシードから、<br />あなただけの幾何学を。</h2><p>文字や数字を変えて、新しい構図に出会う。</p></div>
 
-        <SettingsCategories active={category} onChange={setCategory}/>
-        <div id="panel-shapes" className="category-panel" data-category="shapes" role="region" aria-labelledby="category-shapes" hidden={category!=='shapes'}>
+        <SettingsCategories active={activeCategory} onChange={renderMode==='2d'?setCategory:setThreeCategory} disabled={renderMode==='3d'?['text']:[]}/>
+        <div id="panel-shapes" className="category-panel" data-category="shapes" role="region" aria-labelledby="category-shapes" hidden={activeCategory!=='shapes'}>
           <h2 className="category-title">図形</h2>
         <section className="control-section" aria-labelledby="seed-heading">
           <div className="section-heading"><h3 id="seed-heading"><span>01</span> シード</h3><span className="tiny-label">SEED</span></div>
           <label htmlFor="seed">シード値</label>
           <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} onBlur={commitSeed} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing&&e.keyCode!==229)commitSeed();}} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={randomizeSeed} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
           <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</p>
-          <label htmlFor="algorithm-version">生成アルゴリズム</label>
+          <div hidden={renderMode==='3d'}><label className="algorithm-label" htmlFor="algorithm-version">生成アルゴリズム</label>
           <select id="algorithm-version" value={version} onChange={e=>setVersion(e.target.value as AlgorithmVersion)}>
             <option value={ALGORITHM_VERSION}>v5 — 拡張モード</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — クラシックモード</option>
           </select>
-          {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</p>}
+          {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</p>}</div>
         </section>
-        {version===ALGORITHM_VERSION&&<ShapeKindControls enabled={enabledShapeKinds} onChange={setEnabledShapeKinds}/>}
+        {renderMode==='2d'&&version===ALGORITHM_VERSION&&<ShapeKindControls enabled={enabledShapeKinds} onChange={setEnabledShapeKinds}/>}
+        {renderMode==='3d'&&<ThreeShapeControls settings={threeSettings} onChange={setThreeSettings}/>}
 
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
           <div className="section-heading"><h3 id="ratio-heading"><span>03</span> 縦横比</h3><span className="tiny-label">ASPECT RATIO</span></div>
@@ -116,12 +151,12 @@ export default function App() {
         <section className="control-section">
           <label className="range-label" htmlFor="density">図形密度 <output htmlFor="density">{density}%</output></label>
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
-          <p className="help">0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。</p>
+          <p className="help">{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</p>
         </section>
         <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
         </div>
-        <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={category!=='background'}>
+        <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={activeCategory!=='background'}>
           <h2 className="category-title">背景</h2>
         <section className="control-section" aria-labelledby="background-heading">
           <div className="section-heading"><h3 id="background-heading"><span>02</span> 背景</h3><span className="tiny-label">BACKGROUND</span></div>
@@ -138,7 +173,7 @@ export default function App() {
 
 
         </div>
-        <div id="panel-colors" className="category-panel" data-category="colors" role="region" aria-labelledby="category-colors" hidden={category!=='colors'}>
+        <div id="panel-colors" className="category-panel" data-category="colors" role="region" aria-labelledby="category-colors" hidden={activeCategory!=='colors'}>
           <h2 className="category-title">カラー</h2>
         <section className="control-section" aria-labelledby="theme-heading">
           <h3 id="theme-heading">ビジュアルテーマ</h3>
@@ -173,30 +208,33 @@ export default function App() {
         </section>
 
         </div>
-        <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={category!=='text'}>
+        <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={renderMode==='3d'||activeCategory!=='text'}>
           <h2 className="category-title">文字</h2>
           <TextControls settings={textOverlay} onChange={setTextOverlay} onReplay={entrancePreview.replay} previewPlaying={entrancePreview.playing}/>
         </div>
-        <div id="panel-decoration" className="category-panel" data-category="decoration" role="region" aria-labelledby="category-decoration" hidden={category!=='decoration'}>
+        <div id="panel-decoration" className="category-panel" data-category="decoration" role="region" aria-labelledby="category-decoration" hidden={activeCategory!=='decoration'}>
           <h2 className="category-title">装飾</h2>
         <section className="control-section">
           <label className="glow-toggle"><input type="checkbox" checked={(background.glowIntensity??0)>0} onChange={e=>{if(e.target.checked)setBackground({...background,glowIntensity:lastGlow.current||100});else{lastGlow.current=background.glowIntensity||100;setBackground({...background,glowIntensity:0});}}}/> 発光を有効化</label>
-          <label className="range-label" htmlFor="line-width">線の太さ <output>{background.lineWidth ?? 125}%</output></label>
-          <input id="line-width" type="range" min="50" max="300" step="5" value={background.lineWidth ?? 125} onChange={e=>setBackground({...background,lineWidth:+e.target.value})}/>
+          <div hidden={renderMode==='3d'}><label className="range-label" htmlFor="line-width">線の太さ <output>{background.lineWidth ?? 125}%</output></label>
+          <input id="line-width" type="range" min="50" max="300" step="5" value={background.lineWidth ?? 125} onChange={e=>setBackground({...background,lineWidth:+e.target.value})}/></div>
           <label className="range-label" htmlFor="glow-intensity">発光強度 <output>{background.glowIntensity??0}%</output></label>
           <input id="glow-intensity" type="range" min="0" max="200" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
           <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
         </section>
+        {renderMode==='3d'&&<ThreeMaterialControls settings={threeSettings} onChange={setThreeSettings}/>}
         </div>
-        <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={category!=='animation'}>
+        <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={activeCategory!=='animation'}>
           <h2 className="category-title">アニメーション</h2>
+        <div hidden={renderMode==='3d'}>
         <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
-
         </div>
-        <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={category!=='export'}>
+        {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings}/>}
+        </div>
+        <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={activeCategory!=='export'}>
           <h2 className="category-title">書き出し</h2>
-      <div className="export-area">
+      <div className="export-area" hidden={renderMode==='3d'}>
         <ExportPanel textOverlay={textOverlay} videoArtwork={{scene,candidates,seed,background,animation,textOverlay,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}}} version={version} density={density} colorSettings={activeColors} visualTheme={visualTheme} enabledShapeKinds={enabledShapeKinds} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
@@ -211,24 +249,32 @@ export default function App() {
             setRegenerations(0);
           }} />
       </div>
+        {renderMode==='3d'&&<ThreeExportPanel api={threeApi} seed={seed} ready={threeReady}/>}
         </div>
       </aside>
 
       <section className="preview-panel" aria-labelledby="preview-heading">
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
         <div className="canvas-stage">
-          <PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
+          {renderMode==='2d'?<PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
               {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds}/>}
             </div>
-          </PreviewTextEditor>
+          </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
+            <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
+              <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
+                {threeComposition&&<ThreePreview composition={threeComposition} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
+              </Suspense>
+            </ThreeBoundary>
+          </div>}
         </div>
-        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
-        <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
+        {renderMode==='3d'&&<div className="three-view-toolbar"><p>ドラッグで回転 · ホイール／ピンチでズーム</p><button type="button" disabled={!threeReady} onClick={()=>threeApi.current?.resetView()}>視点をリセット</button></div>}
+        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> {renderMode==='2d'?'SVG · 2D':'WebGL · 3D'}</span><span>{threeComposition?visibleThreeObjects(threeComposition,density).length:scene.shapes.length} SHAPES</span></div>
+        <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{renderMode==='2d'?version:THREE_ALGORITHM_VERSION}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>
 
     </main>
-    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>第5.5段階 · 2D背景スタジオ</span></footer>
+    <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>2D / 3D 背景スタジオ</span></footer>
   </div>;
 }
