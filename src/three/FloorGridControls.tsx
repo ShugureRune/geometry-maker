@@ -25,7 +25,7 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
         </label>
       </div>
       {!valid&&<p className="export-error">色は #RRGGBB で入力してください。</p>}
-      <ThreeRange id="floor-grid-opacity" label="床グリッドの透明度" value={grid.opacity}
+      <ThreeRange id="floor-grid-opacity" label="床グリッドの不透明度" value={grid.opacity}
         min={0} max={1} step={.05} onChange={opacity=>update({opacity})}/>
       <ThreeRange id="floor-grid-spacing" label="床グリッドの間隔" value={grid.spacing}
         min={.5} max={8} step={.25} unit="単位" onChange={spacing=>update({spacing})}/>
