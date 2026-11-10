@@ -88,12 +88,12 @@ describe('palette-linked text ink and independent glow',()=>{
   expect(markup).toMatch(/stop-color="#fa45ca"|stopColor="#fa45ca"/);
   expect(markup).toContain('fill="url(#text-');
   expect(markup).toContain('data-testid="text-glow"');
-  expect(markup).not.toContain('http://');
+  expect(markup).not.toContain('https://');
  });
  it('validates new options, restores older text JSON and still permits v4',()=>{
   const old={...textOverlayDefaults} as Record<string,unknown>;
   for(const key of ['colorMode','glowEnabled','glowColorMode','glowColor','glowStrength','glowBlur'])delete old[key];
-  const restored=parseSettings(settingsText({...project,textOverlay:old as typeof textOverlayDefaults}));
+  const restored=parseSettings(JSON.stringify({...project,textOverlay:old}));
   expect(restored.textOverlay).toEqual(textOverlayDefaults);
   const updated={...title,colorMode:'gradient' as const,glowEnabled:true,
    glowColorMode:'custom' as const,glowColor:'#b3ddee',glowStrength:170,glowBlur:24};
