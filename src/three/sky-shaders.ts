@@ -85,7 +85,8 @@ export const skyFragmentShader = [
   '    for(int i=0;i<4;i++){',
   '      if(uLow>.5 && i>=2)break;'
   '      float f=float(i);',
-  '      float wave=.16*sin(lon*(2.2+f*.36)+t*.14+f*1.8);',
+  '      // Integer longitude harmonics keep the 360-degree seam continuous.',
+  '      float wave=.16*sin(lon*(2.0+f)+t*.14+f*1.8);'
   '      float h=.09+f*.085+wave;',
   '      float plume=exp(-abs(d.y-h)*6.0)*smoothstep(-.5,.12,d.y);',
   '      float strands=.55+.45*pow(abs(sin(lon*51.0+wave*8.0+f)),2.0);',
@@ -105,8 +106,11 @@ export const skyFragmentShader = [
   '  }else if(uMode==5){',
   '    // Nebula: layered fractal clouds in violet, rose and electric cyan.',
   '    c=vec3(.009,.005,.03);',
-  '    float n=fbm(uv*vec2(6.0,9.0)+vec2(t*.012,-t*.007));',
-  '    float n2=fbm(uv*vec2(9.0,5.0)-vec2(t*.008,t*.009)+8.0);',
+  '    // Noise from the continuous 3D viewing ray avoids a hard longitude seam.',
+  '    vec2 sphereUV=vec2(d.x*5.0+d.y*2.2,d.z*5.0-d.y*3.1);',
+  '    float n=fbm(sphereUV+vec2(t*.012,-t*.007));'
+  '    float n2=fbm(sphereUV*1.4+vec2(d.y*2.0,d.x*1.3)',
+  '      -vec2(t*.008,t*.009)+8.0);'
   '    float cloud=smoothstep(.31,.7,n)*density;',
   '    float second=smoothstep(.40,.73,n2)*density;',
   '    c+=gain*(vec3(.37,.08,.64)*cloud*.8+vec3(.02,.38,.62)*second*.9);',
