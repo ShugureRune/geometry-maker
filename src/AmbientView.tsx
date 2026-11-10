@@ -48,7 +48,8 @@ export function AmbientView({input,seconds,world,scrollCamera='parent',figureCac
    {[{index:c.index,opacity:1},{index:nextIndex,opacity:s.loop==='evolving'?fade:0}].filter(layer=>layer.opacity>0).map((layer,k)=><g key={k} opacity={layer.opacity}>{(s.direction==='vertical'?[0]:[0,1,2]).flatMap(x=>(s.direction==='horizontal'?[0]:[0,1,2]).map(y=><g key={`${x}:${y}`} transform={`translate(${(x-(s.direction!=='vertical'?fraction*2:0))*width} ${(y-(s.direction!=='horizontal'?fraction*2:0))*height})`}><g transform={`translate(${Math.abs(x)%2?width:0} ${Math.abs(y)%2?height:0}) scale(${Math.abs(x)%2?-1:1} ${Math.abs(y)%2?-1:1})`}><Tile figurePainter={painter} figureKey={`loop:${layer.index}`} input={scrollInput} index={layer.index} progress={1} phase={0}/></g></g>))}</g>)}
   </>:<>
    <Tile input={input} index={c.index} progress={s.transitionType==='reverse'&&exit>0?1-exit:progress} phase={c.phase} opacity={1} scale={s.transitionType==='shrink'?1-exit*.08:1}/>
-   {exit>0&&<Tile input={input} index={nextIndex} progress={cycleGrowth?0:1} phase={0} opacity={exit}/>}
+   {/* Reverse growth retracts the current geometry on its own. Overlaying the\n       next tile (including its background rect) would fade out the old tile too. */}
+   {exit>0&&s.transitionType!=='reverse'&&<Tile input={input} index={nextIndex} progress={cycleGrowth?0:1} phase={0} opacity={exit}/>}
   </>}
  </svg>;
 }
