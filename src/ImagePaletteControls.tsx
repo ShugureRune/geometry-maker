@@ -50,7 +50,6 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
  const [crop,setCrop]=useState<Crop>({x:.2,y:.15,width:.6,height:.7});
  const sampleRef=useRef<Sample|null>(null);
  const dragRef=useRef<{x:number;y:number}|null>(null);
- const fileRef=useRef<File|null>(null);
  const request=useRef(0);
  function extract(sample:Sample,nextFocus:PaletteFocus|'area',nextCrop=crop){
   return extractImagePalette(sample.pixels,{width:sample.width,
@@ -95,11 +94,11 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
    if(id!==request.current)return;
    const colors=extract(sample,focus);
    sampleRef.current=sample;
-   fileRef.current=file;setName(file.name);setPalette(colors);setPreview(sample.preview);
+   setName(file.name);setPalette(colors);setPreview(sample.preview);
    setNotice('色を抽出しました。適用範囲を選択してください。');
   }catch(e){
    if(id!==request.current)return;
-   sampleRef.current=null;fileRef.current=null;setName('');setPreview('');
+   sampleRef.current=null;setName('');setPreview('');
    setError(e instanceof Error?e.message:'画像を読み取れませんでした。別の画像でお試しください。');
   }finally{if(id===request.current)setWorking(false);}
  }
