@@ -19,6 +19,26 @@ describe('independent seeded 3D composition', () => {
     }
     expect(signatures.size).toBe(6); expect([...kinds].sort()).toEqual([...THREE_KINDS].sort());
   });
+  it('supports original and new shape palettes without changing object positions or IDs', () => {
+    const composition=generateThreeComposition('new-3d-shapes','16:9');
+    const all=visibleThreeObjects(composition,100);
+    const original=visibleThreeObjects(composition,100,['sphere','cube','torus','icosahedron','dodecahedron','octahedron','tetrahedron']);
+    const futuristic=visibleThreeObjects(composition,100,['cylinder','cone','capsule','prism','pyramid','torus-knot']);
+    expect(original).toHaveLength(all.length);expect(futuristic).toHaveLength(all.length);
+    expect(original.map(({id,position,radius,rotation})=>({id,position,radius,rotation})))
+      .toEqual(all.map(({id,position,radius,rotation})=>({id,position,radius,rotation})));
+    expect(original.every(o=>!['cylinder','cone','capsule','prism','pyramid','torus-knot'].includes(o.kind))).toBe(true);
+    expect(futuristic.every(o=>['cylinder','cone','capsule','prism','pyramid','torus-knot'].includes(o.kind))).toBe(true);
+    for(const kind of THREE_KINDS){
+      const single=visibleThreeObjects(composition,100,[kind]);
+      expect(single).toHaveLength(all.length);
+      expect(single.every(o=>o.kind===kind)).toBe(true);
+      expect(single).toEqual(visibleThreeObjects(composition,100,[kind]));
+    }
+    expect(visibleThreeObjects(composition,100,[])).toEqual([]);
+    expect(visibleThreeObjects(composition,0,['cone'])).toEqual([]);
+    expect(composition.objects).toEqual(generateThreeComposition('new-3d-shapes','16:9').objects);
+  });
   it('retains existing objects and heroes as density changes, including a true empty scene', () => {
     const scene = generateThreeComposition('stable-density', '16:9');
     expect(visibleThreeObjects(scene, 0)).toEqual([]);
