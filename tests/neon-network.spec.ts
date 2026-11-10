@@ -112,3 +112,27 @@ test('network-only edits refresh the paused live canvas without an export or ano
   await page.getByLabel('ネオン線画を有効化').check();await page.getByLabel('ネオン表示方式').selectOption('lines');
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-neon-mode','lines');
 });
+
+test('fully disappeared figures leave no black ghost connections in exported PNG',async({page})=>{
+  await start(page);
+  const preview=page.getByTestId('three-preview');
+  await page.getByLabel('発光強度',{exact:true}).fill('0');
+  await page.getByLabel('図形の接続を有効化').check();
+  await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
+  await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
+  await category(page,'アニメーション');
+  await page.getByLabel('出現・消失アニメーションを有効化').check();
+  await page.getByLabel('図形ごとにタイミングをずらす').uncheck();
+  await page.getByLabel('主役図形は常に表示').uncheck();
+  // Reduced-motion preview stays at t=0: the entire composition is hidden.
+  await expect(preview).toHaveAttribute('data-visibility-enabled','true');
+  const withNetwork=hash(await savePNG(page));
+  await category(page,'装飾');
+  await page.getByLabel('図形の接続を有効化').uncheck();
+  const withoutNetwork=hash(await savePNG(page));
+  expect(withNetwork).toBe(withoutNetwork);
+  // Restoring the network must not restore the black ghosts.
+  await category(page,'装飾');
+  await page.getByLabel('図形の接続を有効化').check();
+  expect(hash(await savePNG(page))).toBe(withoutNetwork);
+});
