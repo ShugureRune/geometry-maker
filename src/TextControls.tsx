@@ -1,7 +1,7 @@
 import type {TextOverlaySettings} from './text-overlay';
 type Props={settings:TextOverlaySettings;onChange:(next:TextOverlaySettings)=>void};
-type NumberKey='fontSize'|'opacity'|'x'|'y'|'rotation'|'strokeWidth'|'shadowBlur';
-type ColorKey='color'|'strokeColor'|'shadowColor';
+type NumberKey='fontSize'|'opacity'|'x'|'y'|'rotation'|'strokeWidth'|'shadowBlur'|'glowStrength'|'glowBlur';
+type ColorKey='color'|'strokeColor'|'shadowColor'|'glowColor';
 export function TextControls({settings,onChange}:Props){
  const update=<K extends keyof TextOverlaySettings>(key:K,value:TextOverlaySettings[K])=>onChange({...settings,[key]:value});
  const range=(key:NumberKey,label:string,min:number,max:number,step=1,unit='')=><div className="text-control-range">
@@ -26,7 +26,18 @@ export function TextControls({settings,onChange}:Props){
   </select>
   <label className="text-checkbox"><input type="checkbox" checked={settings.bold} onChange={e=>update('bold',e.target.checked)}/> 太字にする</label>
   {range('fontSize','文字サイズ',12,250,1)}
-  {color('color','文字色')}
+  <label htmlFor="text-color-mode">文字色のモード</label>
+  <select id="text-color-mode" value={settings.colorMode??'solid'}
+   onChange={e=>update('colorMode',e.target.value as TextOverlaySettings['colorMode'])}>
+   <option value="solid">単色（手動）</option>
+   <option value="primary">主役色に連動</option>
+   <option value="support">補助色に連動</option>
+   <option value="accent">アクセント色に連動</option>
+   <option value="gradient">図形カラーのグラデーション</option>
+  </select>
+  {settings.colorMode==='solid'?color('color','文字色'):<p className="help">
+   図形のカラー・テーマ・画像から適用した色と連動します。グラデーションの向きは背景設定と合わせます。
+  </p>}
   {range('opacity','不透明度',0,100,1,'%')}
   <h3>位置と重なり順</h3>
   <div className="text-control-columns">
@@ -42,11 +53,25 @@ export function TextControls({settings,onChange}:Props){
   <select id="text-layer" value={settings.layer} onChange={e=>update('layer',e.target.value as TextOverlaySettings['layer'])}>
    <option value="front">図形より前面</option><option value="back">図形より背面（背景より前）</option>
   </select>
-  <h3>装飾</h3>
+  <h3>発光と装飾</h3>
+  <label className="text-checkbox"><input type="checkbox" checked={settings.glowEnabled}
+   onChange={e=>update('glowEnabled',e.target.checked)}/> 文字の発光を有効化</label>
+  {settings.glowEnabled&&<>
+   <label htmlFor="text-glow-mode">発光色</label>
+   <select id="text-glow-mode" value={settings.glowColorMode??'text'}
+    onChange={e=>update('glowColorMode',e.target.value as TextOverlaySettings['glowColorMode'])}>
+    <option value="text">文字色と同じ（グラデーションにも連動）</option>
+    <option value="custom">発光色を指定</option>
+   </select>
+   {settings.glowColorMode==='custom'&&color('glowColor','発光色（手動）')}
+   {range('glowStrength','文字の発光強度',0,200,5,'%')}
+   {range('glowBlur','文字の発光ぼかし',0,40,1)}
+  </>}
+
   <label className="text-checkbox"><input type="checkbox" checked={settings.strokeEnabled} onChange={e=>update('strokeEnabled',e.target.checked)}/> 縁取りを有効化</label>
   {settings.strokeEnabled&&<>{color('strokeColor','縁取り色')}{range('strokeWidth','縁取りの太さ',0,30,1)}</>}
   <label className="text-checkbox"><input type="checkbox" checked={settings.shadowEnabled} onChange={e=>update('shadowEnabled',e.target.checked)}/> 影を有効化</label>
   {settings.shadowEnabled&&<>{color('shadowColor','影の色')}{range('shadowBlur','影のぼかし',0,40,1)}</>}
-  <p className="help">SVGの文字レイヤーとして描画するため、PNG・SVG・通常動画と設定JSONに反映されます。フォントの見え方は端末環境により変わることがあります。</p>
+  <p className="help">文字の発光は図形の発光とは独立して設定できます。色連動・発光はPNG・SVG・動画・設定JSONに反映されます。フォントの見え方は端末環境により変わることがあります。</p>
  </section>;
 }
