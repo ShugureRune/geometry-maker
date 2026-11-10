@@ -5,12 +5,15 @@ import {
   Group,Mesh,ShaderMaterial,
 } from 'three';
 import {seededRandom} from '../scene';
-import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
+import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,skyPalette,SKY_KINDS,type SkySettings} from './sky-settings';
+import {createDigitalGlyphAtlas} from './digital-glyphs';
+import {floorGridPlacement} from './floor-grid';
+import type {ThreeView} from './settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
 
 type SkyProps={
   sky?:SkySettings;seed:string;seconds:RefObject<number>;low:boolean;
-  sceneHeight:number;floorGridEnabled:boolean;
+  sceneHeight:number;floorGridEnabled:boolean;view:RefObject<ThreeView|undefined>;
 };
 
 /** A real inside-out 3D sky sphere, always centered on the moving camera.
@@ -22,6 +25,9 @@ function SkyDome({sky,seed,seconds,low}:{
   const {camera}=useThree();
   const mesh=useRef<Mesh>(null);
   const material=useRef<ShaderMaterial>(null);
+  const atlas=useMemo(createDigitalGlyphAtlas,[]);
+  useEffect(()=>()=>atlas.dispose(),[atlas]);
+  const palette=skyPalette(sky);
   const uniforms=useMemo(()=>({
     uMode:{value:SKY_KINDS.indexOf(sky.kind)},
     uSeed:{value:skySeedNumber(seed,sky.kind)},
@@ -29,7 +35,11 @@ function SkyDome({sky,seed,seconds,low}:{
     uIntensity:{value:sky.intensity/100},
     uDensity:{value:sky.density/100},
     uLow:{value:low?1:0},
-  }),[sky,seed,seconds,low]);
+    uSkyBase:{value:new Color(palette.base)},
+    uSkyPrimary:{value:new Color(palette.primary)},
+    uSkyAccent:{value:new Color(palette.accent)},
+    uGlyphAtlas:{value:atlas},
+  }),[sky,seed,seconds,low,atlas,palette.base,palette.primary,palette.accent]);
   useFrame(()=>{
     mesh.current?.position.copy(camera.position);
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
@@ -50,6 +60,7 @@ function SkyParticles({sky,seed,seconds,low}:{
   sky:SkySettings;seed:string;seconds:RefObject<number>;low:boolean;
 }){
   const group=useRef<Group>(null);
+  const palette=skyPalette(sky);
   const geometry=useMemo(()=>{
     const g=new BufferGeometry();
     const random=seededRandom('background-particles-v1:'+sky.kind+':'+seed);
@@ -87,18 +98,13 @@ function SkyParticles({sky,seed,seconds,low}:{
       }
       positions.set([x,y,z],offset);
       const shade=.6+random()*.4;
-      const palette=sky.kind==='galaxy'?
-        [random()>.5?.9:.42,.46+random()*.3,1] :
-        sky.kind==='aurora'?[.16,.9,.58]:
-        sky.kind==='deep-sea'?[.26,.8,.96]:
-        sky.kind==='digital'?[.13,.95,.62]:
-        sky.kind==='nebula'?[.7,.5,1]:[.8,.89,1];
-      colors.set(palette.map(n=>n*shade),offset);
+      const color=new Color(sky.kind==='galaxy'&&random()>.5?palette.accent:palette.primary);
+      colors.set([color.r*shade,color.g*shade,color.b*shade],offset);
     }
     g.setAttribute('position',new Float32BufferAttribute(positions,3));
     g.setAttribute('color',new Float32BufferAttribute(colors,3));
     return g;
-  },[sky.kind,sky.density,seed,low]);
+  },[sky.kind,sky.density,seed,low,palette.primary,palette.accent]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   useFrame(()=>{
     if(group.current)group.current.rotation.y=seconds.current*sky.motion/100*.0018;
@@ -148,11 +154,11 @@ function CyberTunnel({sky,seconds}:{
   });
   return <group name="cyber-tunnel-3d-frames" ref={group}>
     <lineSegments geometry={geometries[0]} frustumCulled={false}>
-      <lineBasicMaterial color={new Color('#36cfff')} transparent opacity={Math.min(.85,sky.intensity*.006)}
+      <lineBasicMaterial color={new Color(skyPalette(sky).primary)} transparent opacity={Math.min(.85,sky.intensity*.006)}
         depthWrite={false} toneMapped={false}/>
     </lineSegments>
     <lineSegments geometry={geometries[1]} frustumCulled={false}>
-      <lineBasicMaterial color={new Color('#ff5bcf')} transparent opacity={Math.min(.8,sky.intensity*.006)}
+      <lineBasicMaterial color={new Color(skyPalette(sky).accent)} transparent opacity={Math.min(.8,sky.intensity*.006)}
         depthWrite={false} toneMapped={false}/>
     </lineSegments>
   </group>;
@@ -161,20 +167,30 @@ function CyberTunnel({sky,seconds}:{
 /** Retrowave grid is a real horizontal plane with camera perspective.
  * It avoids drawing a duplicate grid when the user's 3D floor grid is enabled.
  */
-function RetroFloor({sky,seconds,sceneHeight}:{
+function RetroFloor({sky,seconds,sceneHeight,view}:{
   sky:SkySettings;seconds:RefObject<number>;sceneHeight:number;
+  view:RefObject<ThreeView|undefined>;
 }){
   const material=useRef<ShaderMaterial>(null);
+  const mesh=useRef<Mesh>(null);
   const uniforms=useMemo(()=>({
     uTime:{value:seconds.current*sky.motion/100},
     uIntensity:{value:sky.intensity/100},
     uDensity:{value:sky.density/100},
+    uRetroColor:{value:new Color(skyPalette(sky).primary)},
   }),[seconds,sky]);
   useFrame(()=>{
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
+    if(mesh.current){
+      const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
+      mesh.current.position.set(x,y-.025,z);
+    }
   });
-  return <mesh name="retrowave-3d-floor" rotation={[-Math.PI/2,0,0]}
-    position={[0,-Math.max(3.3,sceneHeight*.51),-.4]} frustumCulled={false}>
+  const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
+  // Always render the pink floor under the optional 3D grid, slightly lower so
+  // both styles coexist without depth z-fighting or hiding either one.
+  return <mesh ref={mesh} name="retrowave-3d-floor" rotation={[-Math.PI/2,0,0]}
+    position={[x,y-.025,z]} frustumCulled={false} renderOrder={-2}>
     <planeGeometry args={[700,700]}/>
     <shaderMaterial ref={material} vertexShader={retroFloorVertexShader}
       fragmentShader={retroFloorFragmentShader} uniforms={uniforms} side={DoubleSide}
@@ -182,7 +198,7 @@ function RetroFloor({sky,seconds,sceneHeight}:{
   </mesh>;
 }
 
-export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGridEnabled}:SkyProps){
+export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,view}:SkyProps){
   const sky=maybeSky??skyDefaults;
   if(sky.kind==='classic')return null;
   const particles=['starfield','galaxy','aurora','deep-sea','nebula','digital'].includes(sky.kind);
@@ -190,6 +206,6 @@ export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGrid
     <SkyDome sky={sky} seed={seed} seconds={seconds} low={low}/>
     {particles&&<SkyParticles sky={sky} seed={seed} seconds={seconds} low={low}/>}
     {sky.kind==='cyber-tunnel'&&<CyberTunnel sky={sky} seconds={seconds}/>}
-    {sky.kind==='retrowave'&&!floorGridEnabled&&<RetroFloor sky={sky} seconds={seconds} sceneHeight={sceneHeight}/>}
+    {sky.kind==='retrowave'&&<RetroFloor sky={sky} seconds={seconds} sceneHeight={sceneHeight} view={view}/>}
   </>;
 }
