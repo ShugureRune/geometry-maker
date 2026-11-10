@@ -75,7 +75,13 @@ export function createScrollWorld(input:AmbientInput){
  return{figureCache:createFigureColorCache(),width,height,pitch,renderMargin:unit*.82,empty,cache,groupCache,layout,chunk,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
   const camera=scrollPathAt(s,time,path),cx=camera.x*width,cy=camera.y*height,chunks:ScrollChunk[]=[],groups:ScrollGroup[]=[];
   for(let y=Math.floor(cy/pitch)-1;y<=Math.floor((cy+height)/pitch)+1;y++)for(let x=Math.floor(cx/pitch)-1;x<=Math.floor((cx+width)/pitch)+1;x++)chunks.push(chunk(x,y));
-  for(const tile of chunks)for(const plan of tile.groups){const margin=plan.radius+unit*.15;if(plan.anchorX+margin>=cx&&plan.anchorX-margin<=cx+width&&plan.anchorY+margin>=cy&&plan.anchorY-margin<=cy+height)groups.push(group(plan));}
+  for(const tile of chunks)for(const plan of tile.groups){
+   // The density slider controls how many independent groups inhabit the world,
+   // not just how many decorative shapes each group contains.
+   if(input.settings.scrollDensity<=0||plan.startDensity>input.settings.scrollDensity)continue;
+   const margin=plan.radius+unit*.15;
+   if(plan.anchorX+margin>=cx&&plan.anchorX-margin<=cx+width&&plan.anchorY+margin>=cy&&plan.anchorY-margin<=cy+height)groups.push(group(plan));
+  }
   groups.sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
   return{cx,cy,chunks,groups};
  }};
