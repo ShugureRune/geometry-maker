@@ -45,11 +45,12 @@ export function floorGridOffset(seconds:number,grid:FloorGridSettings):number{
 }
 
 
-/** Physical stroke width in world units, independent of camera zoom/distance.
- * uThickness is a familiar relative slider, ~1–2px at the home camera.
- * Projection (rather than a fixed pixel thickness) determines distant width. */
-export function floorGridStrokeWidth(thickness:number):number{
-  return thickness*.012;
+/** Convert the near-camera CSS-pixel thickness into WORLD units.
+ * Use the scene height rather than live camera distance: zooming then changes
+ * the projected width naturally. The CSS preview height keeps mobile and desktop
+ * near-line thickness comparable; high-res PNG still scales the same world width. */
+export function floorGridStrokeWidth(thickness:number,sceneHeight:number,previewHeight:number):number{
+  return thickness*(sceneHeight*1.2/Math.max(1,previewHeight));
 }
 
 /** Stored extent (24..120) remains compatible with old 3D JSON.
