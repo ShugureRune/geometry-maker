@@ -20,7 +20,7 @@ export function contoursOf(s: Shape): Contour[] {
   });
   const polygon = (sides:number, radius=size, center:Point={x:0,y:0}) => path(Array.from({length:sides},(_,i)=>{const p=polar(radius,-90+i*360/sides);return {x:center.x+p.x,y:center.y+p.y};}),true);
   if (s.kind === 'branch-circuit') {
-    const trunk=s.points ?? [{x:0,y:0},{x:size*.35,y:0},{x:size*.55,y:-size*.2},{x:size,y:-size*.2}];
+    const trunk=s.points&&s.points.length>=3?s.points:[{x:0,y:0},{x:size*.35,y:0},{x:size*.55,y:-size*.2},{x:size,y:-size*.2}];
     const junction=trunk[1], second=trunk[2];
     return [{...path(trunk),growthEnd:.65},
       {...path([junction,{x:junction.x+size*.2,y:junction.y+size*.2},{x:size*.85,y:junction.y+size*.2}]),growthStart:.3},
