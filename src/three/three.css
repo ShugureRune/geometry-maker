@@ -41,3 +41,15 @@
 @media(max-width:1000px){.topbar{height:auto;min-height:100px;flex-wrap:wrap;gap:16px;padding-top:16px;padding-bottom:16px}.mode-badge{font-size:10px}}
 @media(max-width:720px){.topbar{gap:12px;min-height:120px}.brand{order:0}.ui-theme-button{order:1}.render-mode-switch{order:2;width:176px}.mode-badge{order:3}.three-view-toolbar{flex-wrap:wrap}.three-frame{min-height:120px}}
 @media(prefers-reduced-motion:reduce){.render-mode-switch button{transition:none}}
+
+.three-kind-fieldset{min-width:0;margin:14px 0;padding:12px 10px;border:1px solid #78718e;border-radius:8px}
+.three-kind-fieldset legend{font-size:12px;padding:0 6px}
+.three-kind-presets{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 12px}
+.three-kind-presets button{flex:1 1 72px;min-height:44px;padding:5px;border:1px solid #88759f;border-radius:7px;background:#30293e;color:#eee4ff;font-size:11px}
+.three-kind-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.three-kind-check{display:flex;align-items:center;min-width:0;gap:6px;min-height:44px;margin:0;padding:5px 7px;border:1px solid #817296;border-radius:7px;font-size:11px}
+.three-kind-check:has(input:checked){background:#30293e;border-color:#b5a1e7}
+.three-kind-check input{flex-shrink:0;width:17px;height:17px;accent-color:#9f86ed}
+.three-kind-check span{overflow-wrap:anywhere}
+[data-theme=light] .three-kind-presets button{background:#ece5f7;color:#35254d;border-color:#9b88b4}
+[data-theme=light] .three-kind-check:has(input:checked){background:#eee6fa}
