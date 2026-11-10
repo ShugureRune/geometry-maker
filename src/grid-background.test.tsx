@@ -62,6 +62,23 @@ describe('2D SVG grid background',()=>{
     expect(later).toContain('patternTransform="rotate(0 800 450) translate(20 0)"');
     expect(later).toContain('data-grid-motion="scroll"');
   });
+  it('allows 0.1–10x independent speed and follows a figure angle through any grid rotation',()=>{
+    const grid=make({spacing:80,rotation:0,animation:{...gridAnimationDefaults,enabled:true,duration:8,speed:4}});
+    expect(gridAnimationFrame(grid,1,0).moveX).toBe(40);
+    expect(gridAnimationFrame(grid,1,90)).toMatchObject({moveX:0,moveY:40});
+    expect(gridAnimationFrame(grid,1,180)).toMatchObject({moveX:-40,moveY:0});
+    expect(gridAnimationFrame(grid,1,270)).toMatchObject({moveX:0,moveY:-40});
+    expect(gridAnimationFrame(grid,1,360)).toMatchObject({moveX:40,moveY:0});
+    const rotated={...grid,rotation:90};
+    expect(gridAnimationFrame(rotated,1,0)).toMatchObject({moveX:0,moveY:-40});
+    expect(gridAnimationSeconds(grid)).toBe(2);
+    expect(gridAnimationSeconds({...grid,animation:{...grid.animation!,speed:.1}})).toBe(80);
+    expect(gridAnimationFrame(grid,10,135)).toEqual(gridAnimationFrame(grid,10,135));
+    const legacy={...grid,animation:{enabled:true,mode:'scroll' as const,duration:8,direction:'right' as const,reverse:false}};
+    expect(gridAnimationFrame(legacy,1,0).moveX).toBe(10);
+    expect(validateGridBackground(legacy).animation).toEqual(legacy.animation);
+    for(const speed of [0,.09,10.1,100,NaN,'fast'])expect(()=>validateGridBackground({...grid,animation:{...grid.animation,speed}})).toThrow();
+  });
   it('validates user data without changing the input',()=>{
     const grid=make({spacing:120,opacity:7});
     expect(validateGridBackground(grid)).toEqual(grid);
