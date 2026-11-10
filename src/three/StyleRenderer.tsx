@@ -12,6 +12,7 @@ import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
 import type {networkConnections} from './network';
+import {threeVisibility,visibilityDefaults,visibilityUsesFade} from './visibility';
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
   const geometries=useMemo(()=>enabled?new Map(THREE_KINDS.map(kind=>[kind,new LineSegmentsGeometry().setPositions(outlineSegments(kind,low))])):null,[enabled,low]);
@@ -19,9 +20,10 @@ export function useOutlineGeometry(enabled:boolean,low:boolean){
   return geometries;
 }
 
-export function NeonOutline({geometry,object,settings,background,low}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean}){
+export function NeonOutline({geometry,object,settings,background,low,seconds}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>}){
   const neon=settings.neon??neonDefaults, {invalidate,size}=useThree();
-  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,transparent:false,toneMapped:true}),[]);
+  const fading=visibilityUsesFade(settings.visibilityAnimation??visibilityDefaults);
+  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,transparent:fading,toneMapped:true}),[fading]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;value.scale.setScalar(1.002);return value;},[geometry,material]);
   useEffect(()=>()=>material.dispose(),[material]);
   useEffect(()=>{
@@ -38,6 +40,9 @@ export function NeonOutline({geometry,object,settings,background,low}:{geometry:
     material.color.set(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
     material.color.multiplyScalar(radiance(material.color,neon.glow,low));material.uniformsNeedUpdate=true;invalidate();
   },[line,material,neon,object.role,background,low,size.height,invalidate]);
+  useFrame(()=>{
+    if(fading)material.opacity=threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults);
+  });
   return <primitive object={line} dispose={null}/>;
 }
 
@@ -72,7 +77,12 @@ export function NetworkLines({objects,edges,settings,background,low,seconds}:{ob
       const pb=threePose(b,seconds.current,settings.floatAmount,settings.rotationAmount).position;
       start.setXYZ(i,...pa);end.setXYZ(i,...pb);
       const pulse=network.animation==='pulse'?networkPulse(seconds.current,a.phase+b.phase):1;
-      const [ca,cb]=colors[i];colorStart.setXYZ(i,ca.r*pulse,ca.g*pulse,ca.b*pulse);colorEnd.setXYZ(i,cb.r*pulse,cb.g*pulse,cb.b*pulse);
+      // Fixed topology avoids flicker/reconnections; the whole segment fades
+      // whenever either endpoint enters/exits or is temporarily invisible.
+      const appearance=settings.visibilityAnimation??visibilityDefaults;
+      const alpha=Math.min(threeVisibility(a,seconds.current,appearance),threeVisibility(b,seconds.current,appearance));
+      const factor=pulse*alpha;
+      const [ca,cb]=colors[i];colorStart.setXYZ(i,ca.r*factor,ca.g*factor,ca.b*factor);colorEnd.setXYZ(i,cb.r*factor,cb.g*factor,cb.b*factor);
     }
     start.data.needsUpdate=true;colorStart.data.needsUpdate=true;
   });
