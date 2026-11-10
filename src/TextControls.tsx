@@ -1,8 +1,9 @@
 import type {TextOverlaySettings} from './text-overlay';
-type Props={settings:TextOverlaySettings;onChange:(next:TextOverlaySettings)=>void};
-type NumberKey='fontSize'|'opacity'|'x'|'y'|'rotation'|'strokeWidth'|'shadowBlur'|'glowStrength'|'glowBlur';
+import {EASINGS} from './animation';
+type Props={settings:TextOverlaySettings;onChange:(next:TextOverlaySettings)=>void;onReplay?:()=>void;previewPlaying?:boolean};
+type NumberKey='fontSize'|'opacity'|'x'|'y'|'rotation'|'strokeWidth'|'shadowBlur'|'glowStrength'|'glowBlur'|'entranceDelay'|'entranceDuration';
 type ColorKey='color'|'strokeColor'|'shadowColor'|'glowColor';
-export function TextControls({settings,onChange}:Props){
+export function TextControls({settings,onChange,onReplay,previewPlaying}:Props){
  const update=<K extends keyof TextOverlaySettings>(key:K,value:TextOverlaySettings[K])=>onChange({...settings,[key]:value});
  const range=(key:NumberKey,label:string,min:number,max:number,step=1,unit='')=><div className="text-control-range">
   <label htmlFor={`text-${key}`}>{label} <output htmlFor={`text-${key}`}>{settings[key]}{unit}</output></label>
@@ -70,6 +71,31 @@ export function TextControls({settings,onChange}:Props){
   <select id="text-layer" value={settings.layer} onChange={e=>update('layer',e.target.value as TextOverlaySettings['layer'])}>
    <option value="front">図形より前面</option><option value="back">図形より背面（背景より前）</option>
   </select>
+  <h3>文字の登場アニメーション</h3>
+  <label htmlFor="text-entrance-mode">登場エフェクト</label>
+  <select id="text-entrance-mode" value={settings.entrance??'none'}
+   onChange={e=>onChange({...settings,enabled:e.target.value!=='none'?true:settings.enabled,
+    entrance:e.target.value as TextOverlaySettings['entrance']})}>
+   <option value="none">なし（常に表示）</option>
+   <option value="fade">ふわっと表示（フェードイン）</option>
+   <option value="slide-up">下からスライド</option>
+   <option value="slide-left">右からスライド</option>
+   <option value="zoom">ズームイン</option>
+   <option value="typewriter">タイプライター（1文字ずつ）</option>
+  </select>
+  {(settings.entrance??'none')!=='none'&&<>
+   {range('entranceDelay','登場までの待ち時間',0,10,.1,'秒')}
+   {range('entranceDuration','登場にかける時間',.2,8,.1,'秒')}
+   <label htmlFor="text-entrance-easing">動きの滑らかさ</label>
+   <select id="text-entrance-easing" value={settings.entranceEasing??'ease-out'}
+    onChange={e=>update('entranceEasing',e.target.value as TextOverlaySettings['entranceEasing'])}>
+    {EASINGS.map((e,i)=><option key={e} value={e}>{['一定速度','ゆっくり加速','ゆっくり減速','加速して減速','減速して加速'][i]}</option>)}
+   </select>
+   <button type="button" className="text-entrance-replay" onClick={onReplay}>
+    {previewPlaying?'↻ 最初から再生':'▶ 登場アニメをプレビュー'}
+   </button>
+   <p className="help">文字だけの登場演出です。図形の成長アニメとは独立して再生できます。動画は設定した待ち時間と登場時間まで再生されます。静止画のPNG・SVGは完成状態で保存されます。</p>
+  </>}
   <h3>発光と装飾</h3>
   <label className="text-checkbox"><input type="checkbox" checked={settings.glowEnabled}
    onChange={e=>update('glowEnabled',e.target.checked)}/> 文字の発光を有効化</label>
