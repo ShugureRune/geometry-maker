@@ -1,3 +1,4 @@
+import type {GridBackgroundSettings} from './grid-background';
 import { generateDiverseScene } from './scene-v5';
 import type {ShapeKind} from './shape-controls';
 import { contoursOf, crossesRect, polar, radians, shapeBounds, worldPoint } from './geometry.ts';
@@ -14,7 +15,7 @@ export const RATIOS = {
   'A4縦': [1050, 1485], 'A4横': [1485, 1050],
 } as const;
 export type Ratio = keyof typeof RATIOS;
-export type Background = { lineWidth?:number; glowIntensity?:number; figureColors?: Partial<{primary:string;support:string;accent:string}>; mode: 'solid' | 'gradient'; solid: string; colors: [string, string, string]; angle: number };
+export type Background = { grid?:GridBackgroundSettings; lineWidth?:number; glowIntensity?:number; figureColors?: Partial<{primary:string;support:string;accent:string}>; mode: 'solid' | 'gradient'; solid: string; colors: [string, string, string]; angle: number };
 export type Point = { x: number; y: number };
 export type Rect = Point & { width: number; height: number };
 export const LEGACY_COMPOSITION_TYPES = ['central', 'diagonal', 'corners', 'asymmetric', 'frame'] as const;
