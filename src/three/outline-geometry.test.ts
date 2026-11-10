@@ -11,5 +11,5 @@ it('makes deterministic nonempty contours for every solid, with reduced mobile c
     expect(vertices.length%6).toBe(0);expect(vertices.length).toBeGreaterThan(0);expect([...vertices].every(Number.isFinite)).toBe(true);
     for(let i=0;i<vertices.length;i+=6)expect(Math.hypot(vertices[i]-vertices[i+3],vertices[i+1]-vertices[i+4],vertices[i+2]-vertices[i+5])).toBeGreaterThan(.001);
   }
-  for(const kind of ['sphere','torus'] as const)expect(outlineSegments(kind,true).length).toBeLessThan(outlineSegments(kind,false).length);
+  for(const kind of ['sphere','torus','capsule','torus-knot'] as const)expect(outlineSegments(kind,true).length).toBeLessThan(outlineSegments(kind,false).length);
 });
