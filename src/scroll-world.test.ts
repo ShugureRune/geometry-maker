@@ -35,8 +35,9 @@ describe('deterministic infinite world',()=>{
    for(const t of [0,3,6,9,12,16,22,30]){
     const low=lowWorld.frame(t,lowSettings).groups,high=highWorld.frame(t,highSettings).groups;
     const highByKey=new Map(high.map(g=>[g.key,g]));
-    // The independent detail groups remain constant at every positive density.
-    expect(low.filter(g=>g.kind==='detail').map(g=>g.key)).toEqual(high.filter(g=>g.kind==='detail').map(g=>g.key));
+    // Each generated group owns a main figure; density affects the number of groups.
+    expect(low.every(g=>g.kind==='hero')).toBe(true);
+    expect(high.every(g=>g.kind==='hero')).toBe(true);
     for(const group of low){
      const counterpart=highByKey.get(group.key);
      expect(counterpart).toBeDefined();
@@ -51,9 +52,9 @@ describe('deterministic infinite world',()=>{
    expect(addedHeroes).toBeGreaterThan(0);
   }
  });
- it('contains hero envelopes, supports decoration-only groups and gives each group its own entry time',()=>{
+ it('contains main figures in all groups and gives each group its own entry time',()=>{
   for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version}),groups=world.frame(0,input.settings).groups;
-   expect(groups.length).toBeGreaterThan(0);for(const g of groups){if(g.kind==='detail')expect(g.scene.shapes.some(s=>s.role==='hero')).toBe(false);for(const shape of g.scene.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);for(const x of [b.x,b.x+b.width])for(const y of [b.y,b.y+b.height])expect(Math.hypot(x-g.localX,y-g.localY)*g.scale).toBeLessThanOrEqual(g.coreRadius+.00001);}}
+   expect(groups.length).toBeGreaterThan(0);for(const g of groups){expect(g.kind).toBe('hero');expect(g.scene.shapes.some(s=>s.role==='hero')).toBe(true);for(const shape of g.scene.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);for(const x of [b.x,b.x+b.width])for(const y of [b.y,b.y+b.height])expect(Math.hypot(x-g.localX,y-g.localY)*g.scale).toBeLessThanOrEqual(g.coreRadius+.00001);}}
    const plans=[...groups,...world.frame(8,input.settings).groups],times=plans.map(g=>entryTime(g.anchorX/world.width,g.anchorY/world.height,20,input.settings)).filter(Number.isFinite);expect(new Set(times).size).toBeGreaterThan(1);
   }
  });

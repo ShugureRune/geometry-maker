@@ -53,24 +53,16 @@ export function createScrollWorld(input:AmbientInput){
  }
  function group(plan:GroupPlan){
   const hit=groupCache.get(plan.key);if(hit){groupCache.delete(plan.key);groupCache.set(plan.key,hit);return hit;}
-  const base=generateScene(plan.seed,input.ratio,input.version);let candidates=densityCandidates(base,plan.seed);
-  let anchor=base.shapes.find(s=>s.role==='hero')??{x:width/2,y:height/2};
-  if(plan.kind==='detail'){
-   const kinds=new Set(['dot','dots','cross','accent','triangle','hexagon','pentagon','star','circle','chevron','grid','zigzag']);
-   candidates=candidates.filter(s=>s.role!=='hero'&&kinds.has(s.kind)).sort((a,b)=>Math.hypot(a.x-anchor.x,a.y-anchor.y)-Math.hypot(b.x-anchor.x,b.y-anchor.y)).slice(0,14);
-   const ids=new Set(candidates.map(s=>s.id));
-   candidates=candidates.map(s=>({...s,parent:s.parent&&ids.has(s.parent)?s.parent:undefined,startDensity:Math.min(85,Math.max(5,s.startDensity*.75))}));
-   if(candidates.length)anchor={x:candidates.reduce((sum,s)=>sum+s.x,0)/candidates.length,y:candidates.reduce((sum,s)=>sum+s.y,0)/candidates.length};
-  }
+  const base=generateScene(plan.seed,input.ratio,input.version);const candidates=densityCandidates(base,plan.seed);
+  const anchor=base.shapes.find(s=>s.role==='hero')??{x:width/2,y:height/2};
   const radiusFrom=(b:ReturnType<typeof shapeBounds>)=>Math.max(...[b.x,b.x+b.width].flatMap(x=>[b.y,b.y+b.height].map(y=>Math.hypot(x-anchor.x,y-anchor.y))));
   let radius=unit*.15,heroRadius=1;
   for(const shape of candidates){const r=radiusFrom(shapeBounds(shape));radius=Math.max(radius,r);if(shape.role==='hero')heroRadius=Math.max(heroRadius,r);}
-  const scale=Math.min(plan.radius/radius,plan.kind==='hero'?plan.coreRadius/heroRadius:Infinity);
+  const scale=Math.min(plan.radius/radius,plan.coreRadius/heroRadius);
   // Decoration detail inside each generated group is controlled by the normal
   // shape density, not the frequency of groups in infinite scroll.
   const scene=visibleScene({...base,shapes:candidates},candidates,input.density);
   const cues=schedule(candidates,plan.seed,input.version);
-  if(plan.kind==='detail'&&candidates.length){const first=Math.min(...Object.values(cues).map(c=>c.start)),span=Math.max(.01,1-first);for(const cue of Object.values(cues)){cue.start=(cue.start-first)/span;cue.duration/=span;}}
   const value={...plan,localX:anchor.x,localY:anchor.y,scale,scene,cues};
   groupCache.set(plan.key,value);while(groupCache.size>SCROLL_GROUP_CACHE_LIMIT)groupCache.delete(groupCache.keys().next().value!);return value;
  }
@@ -79,9 +71,8 @@ export function createScrollWorld(input:AmbientInput){
   for(let y=Math.floor(cy/pitch)-1;y<=Math.floor((cy+height)/pitch)+1;y++)for(let x=Math.floor(cx/pitch)-1;x<=Math.floor((cx+width)/pitch)+1;x++)chunks.push(chunk(x,y));
   for(const tile of chunks)for(const plan of tile.groups){
    // Scroll density changes the frequency of primary (hero) groups only.
-   // Standalone detail groups remain independent of this slider, and every
-   // individual group's decoration stays unchanged when scroll density varies.
-   if(s.scrollDensity<=0||(plan.kind==='hero'&&plan.startDensity>s.scrollDensity))continue;
+   // Per-group decoration is independent of this setting.
+   if(s.scrollDensity<=0||plan.startDensity>s.scrollDensity)continue;
    const margin=plan.radius+unit*.15;
    if(plan.anchorX+margin>=cx&&plan.anchorX-margin<=cx+width&&plan.anchorY+margin>=cy&&plan.anchorY-margin<=cy+height)groups.push(group(plan));
   }
