@@ -116,7 +116,7 @@ test('network-only edits refresh the paused live canvas without an export or ano
 test('fully disappeared figures leave no black ghost connections in exported PNG',async({page})=>{
   await start(page);
   const preview=page.getByTestId('three-preview');
-  await page.getByLabel('発光強度',{exact:true}).fill('0');
+  await page.getByLabel('発光強度').fill('0');
   await page.getByLabel('図形の接続を有効化').check();
   await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
   await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
