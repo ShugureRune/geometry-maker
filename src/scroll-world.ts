@@ -1,6 +1,6 @@
 import {createFigureColorCache} from './scroll-figure-colors';
 import {themeScene} from './themes';
-import {generateScene,RATIOS,type Scene} from './scene';
+import {generateScene,RATIOS,type Ratio,type Scene} from './scene';
 import {shapeBounds} from './geometry';
 import {densityCandidates,visibleScene} from './density';
 import {schedule} from './animation';
@@ -9,18 +9,26 @@ import type {AmbientInput,AmbientSettings} from './ambient';
 
 /** Velocities and positions are in viewport units, independent of output pixels. */
 export type ScrollLeg={time:number;x:number;y:number;vx:number;vy:number;speed:number};
-export function scrollVelocity(s:AmbientSettings){
+export function scrollVelocity(s:AmbientSettings,ratio:Ratio='16:9'){
  const rate=2*s.speed*s.scrollSpeed/s.duration;
+ if(s.mode==='scroll'&&s.loop==='evolving'&&s.scrollAngle!==undefined){
+  const angle=s.scrollAngle*Math.PI/180;
+  const [width,height]=RATIOS[ratio];
+  // Camera moves opposite to visible figure motion. Correct viewport units
+  // for aspect ratio so 45° is a real on-screen diagonal in every ratio.
+  const x=-Math.cos(angle),y=-Math.sin(angle)*width/height;
+  return{vx:Math.abs(x)<1e-12?0:x*rate,vy:Math.abs(y)<1e-12?0:y*rate};
+ }
  return{vx:s.direction==='vertical'?0:rate,vy:s.direction==='horizontal'?0:rate};
 }
-export function scrollPathAt(s:AmbientSettings,time:number,path?:ScrollLeg[]){
- const legs=path?.length?path:[{time:0,x:0,y:0,...scrollVelocity(s),speed:s.speed}];
+export function scrollPathAt(s:AmbientSettings,time:number,path?:ScrollLeg[],ratio:Ratio='16:9'){
+ const legs=path?.length?path:[{time:0,x:0,y:0,...scrollVelocity(s,ratio),speed:s.speed}];
  let leg=legs[0];for(const item of legs){if(item.time>time)break;leg=item;}
  return{x:leg.x+(time-leg.time)*leg.vx,y:leg.y+(time-leg.time)*leg.vy,legs};
 }
 /** First intersection of the anchor with the moving viewport, including diagonal entry. */
-export function entryTime(x:number,y:number,time:number,s:AmbientSettings,path?:ScrollLeg[]){
- const {legs}=scrollPathAt(s,time,path);
+export function entryTime(x:number,y:number,time:number,s:AmbientSettings,path?:ScrollLeg[],ratio:Ratio='16:9'){
+ const {legs}=scrollPathAt(s,time,path,ratio);
  for(let i=0;i<legs.length;i++){
   const l=legs[i];if(l.time>time)break;
   let enter=0,exit=Math.min(time,legs[i+1]?.time??time)-l.time;
@@ -77,7 +85,7 @@ export function createScrollWorld(input:AmbientInput){
   groupCache.set(plan.key,value);while(groupCache.size>SCROLL_GROUP_CACHE_LIMIT)groupCache.delete(groupCache.keys().next().value!);return value;
  }
  return{figureCache:createFigureColorCache(),width,height,pitch,renderMargin:unit*.82,empty,cache,groupCache,layout,chunk,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
-  const camera=scrollPathAt(s,time,path),cx=camera.x*width,cy=camera.y*height,chunks:ScrollChunk[]=[],groups:ScrollGroup[]=[];
+  const camera=scrollPathAt(s,time,path,input.ratio),cx=camera.x*width,cy=camera.y*height,chunks:ScrollChunk[]=[],groups:ScrollGroup[]=[];
   // Only request the extra layers needed at the selected frequency.
   // The original 0–100% world (layer 0) keeps its existing seeds and geometry.
   const maxLayer=Math.min(3,Math.max(0,Math.ceil(s.scrollDensity/100)-1));
