@@ -16,6 +16,8 @@ import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
+import {generateCelestialBodies, celestialDefaults} from './celestial';
+import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 
@@ -182,8 +184,9 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     if (gl.getContext().isContextLost()) throw new Error('3D描画が中断されました。解像度を下げて再度お試しください。');
     const network=settings.network??networkDefaults,neon=settings.neon??neonDefaults;
     const floor=settings.floorGrid??floorGridDefaults;
-    const styled=network.enabled||neon.enabled||floor.enabled;
-    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0) / 100;
+    const celestial=settings.celestial??celestialDefaults;
+    const styled=network.enabled||neon.enabled||floor.enabled||celestial.enabled;
+    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0) / 100;
     if (pipeline.current) {
       pipeline.current.bloom.enabled = glow > 0;
       pipeline.current.bloom.strength = Math.min(.55, glow * .28);
@@ -251,6 +254,8 @@ export default function ThreePreview(props: Props) {
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   const edges=useMemo(()=>network.enabled?networkConnections(objects,network.distance,network.maxConnections):[],[objects,network.enabled,network.distance,network.maxConnections]);
+  const celestial=props.settings.celestial??celestialDefaults;
+  const celestialObjects=useMemo(()=>generateCelestialBodies(props.composition,celestial,props.density),[props.composition,celestial,props.density]);
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
@@ -258,7 +263,7 @@ export default function ThreePreview(props: Props) {
     data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
-    data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'}>
+    data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 150}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
@@ -268,6 +273,7 @@ export default function ThreePreview(props: Props) {
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds}/>
       {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines}/>)}
+      {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds}/>)}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
     </Canvas>
