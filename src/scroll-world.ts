@@ -66,7 +66,9 @@ export function createScrollWorld(input:AmbientInput){
   let radius=unit*.15,heroRadius=1;
   for(const shape of candidates){const r=radiusFrom(shapeBounds(shape));radius=Math.max(radius,r);if(shape.role==='hero')heroRadius=Math.max(heroRadius,r);}
   const scale=Math.min(plan.radius/radius,plan.kind==='hero'?plan.coreRadius/heroRadius:Infinity);
-  const scene=visibleScene({...base,shapes:candidates},candidates,input.settings.scrollDensity);
+  // Decoration detail inside each generated group is controlled by the normal
+  // shape density, not the frequency of groups in infinite scroll.
+  const scene=visibleScene({...base,shapes:candidates},candidates,input.density);
   const cues=schedule(candidates,plan.seed,input.version);
   if(plan.kind==='detail'&&candidates.length){const first=Math.min(...Object.values(cues).map(c=>c.start)),span=Math.max(.01,1-first);for(const cue of Object.values(cues)){cue.start=(cue.start-first)/span;cue.duration/=span;}}
   const value={...plan,localX:anchor.x,localY:anchor.y,scale,scene,cues};
@@ -76,9 +78,10 @@ export function createScrollWorld(input:AmbientInput){
   const camera=scrollPathAt(s,time,path),cx=camera.x*width,cy=camera.y*height,chunks:ScrollChunk[]=[],groups:ScrollGroup[]=[];
   for(let y=Math.floor(cy/pitch)-1;y<=Math.floor((cy+height)/pitch)+1;y++)for(let x=Math.floor(cx/pitch)-1;x<=Math.floor((cx+width)/pitch)+1;x++)chunks.push(chunk(x,y));
   for(const tile of chunks)for(const plan of tile.groups){
-   // The density slider controls how many independent groups inhabit the world,
-   // not just how many decorative shapes each group contains.
-   if(input.settings.scrollDensity<=0||plan.startDensity>input.settings.scrollDensity)continue;
+   // Scroll density changes the frequency of primary (hero) groups only.
+   // Standalone detail groups remain independent of this slider, and every
+   // individual group's decoration stays unchanged when scroll density varies.
+   if(s.scrollDensity<=0||(plan.kind==='hero'&&plan.startDensity>s.scrollDensity))continue;
    const margin=plan.radius+unit*.15;
    if(plan.anchorX+margin>=cx&&plan.anchorX-margin<=cx+width&&plan.anchorY+margin>=cy&&plan.anchorY-margin<=cy+height)groups.push(group(plan));
   }
