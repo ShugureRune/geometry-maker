@@ -1,0 +1,113 @@
+import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
+
+test('create, drag, directly edit and export a title from the live canvas',async({page})=>{
+ await page.goto('./');
+ const initialSeed=await page.getByTestId('current-seed').textContent();
+ await page.getByRole('button',{name:'プレビューに文字を追加'}).click();
+ const mini=page.getByRole('group',{name:'プレビュー上で文字を編集'});
+ await expect(mini).toBeVisible();
+ await mini.getByLabel('文字の内容').fill('直接編集\nGeometry Maker');
+ await mini.getByLabel('サイズ').fill('130');
+ await mini.getByLabel('文字色').fill('#23bbdd');
+ await mini.getByRole('button',{name:'編集を終了'}).click();
+ const svg=page.getByTestId('preview');
+ const title=svg.getByTestId('text-overlay').locator('text').last();
+ await expect(title).toHaveAttribute('font-size','130');
+ await expect(title).toHaveAttribute('fill','#23bbdd');
+ const initial=Number(await title.getAttribute('x'));
+ const box=await title.boundingBox();
+ if(!box)throw new Error('Text glyphs are not visible for dragging');
+ const from={x:box.x+box.width/2,y:box.y+box.height/2};
+ await page.mouse.move(from.x,from.y);
+ await page.mouse.down();
+ await page.mouse.move(from.x+85,from.y+35,{steps:6});
+ await page.mouse.up();
+ await expect.poll(async()=>Number(await title.getAttribute('x'))).toBeGreaterThan(initial+60);
+ await expect(mini).toBeHidden();
+ const second=await title.boundingBox();
+ if(!second)throw new Error('Title disappeared after drag');
+ await page.mouse.click(second.x+second.width/2,second.y+second.height/2);
+ await expect(mini).toBeVisible();
+ await mini.getByLabel('文字の内容').fill('移動できた！');
+ await mini.getByRole('button',{name:'詳細設定'}).click();
+ await expect(page.locator('#panel-text')).toBeVisible();
+ await expect(page.getByLabel('表示する文字')).toHaveValue('移動できた！');
+ await expect(page.getByTestId('current-seed')).toHaveText(initialSeed??'');
+ const position=Number(await page.getByLabel('横位置').inputValue());
+ expect(position).toBeGreaterThan(55);
+ await page.getByRole('navigation',{name:'設定カテゴリー'}).getByRole('button',{name:'書き出し'}).click();
+ const pending=page.waitForEvent('download');
+ await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ const json=JSON.parse((await readFile((await (await pending).path())!)).toString());
+ expect(json.textOverlay).toMatchObject({text:'移動できた！',fontSize:130,color:'#23bbdd',colorMode:'solid'});
+ expect(json.textOverlay.x).toBeGreaterThan(55);
+ const pendingSvg=page.waitForEvent('download');
+ await page.getByRole('button',{name:'SVGを書き出す'}).click();
+ const exported=(await readFile((await (await pendingSvg).path())!)).toString();
+ expect(exported).toContain('移動できた！');
+ expect(exported).not.toContain('preview-text-popover');
+});
+
+test('outline-only neon can be dragged and edited in the ambient preview',async({page})=>{
+ await page.goto('./');
+ const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+ await nav.getByRole('button',{name:'文字',exact:true}).click();
+ await page.getByLabel('表示する文字').fill('ネオン');
+ await page.getByRole('button',{name:'中抜きネオンを一発設定'}).click();
+ await nav.getByRole('button',{name:'アニメーション',exact:true}).click();
+ await page.getByLabel('自動待機画面を有効化').check();
+ const ambient=page.getByTestId('ambient-preview');
+ const title=ambient.getByTestId('text-overlay');
+ await expect(title).toBeVisible();
+ const sharp=title.locator('text').last();
+ const x=Number(await sharp.getAttribute('x'));
+ const box=await sharp.boundingBox();
+ if(!box)throw new Error('Neon title has no bounds');
+ await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+ await page.mouse.down();
+ await page.mouse.move(box.x+box.width/2-55,box.y+box.height/2-20,{steps:4});
+ await page.mouse.up();
+ await expect.poll(async()=>Number(await sharp.getAttribute('x'))).toBeLessThan(x-30);
+ const current=await sharp.boundingBox();
+ if(!current)throw new Error('Moved neon title disappeared');
+ await page.mouse.click(current.x+current.width/2,current.y+current.height/2);
+ const popup=page.getByRole('group',{name:'プレビュー上で文字を編集'});
+ await expect(popup).toBeVisible();
+ await popup.getByLabel('文字の内容').fill('光る枠線');
+ await popup.getByRole('button',{name:'編集を終了'}).click();
+ await expect(ambient.getByTestId('text-overlay')).toContainText('光る枠線');
+});
+
+
+test('touch drag and tap can edit an outline title on a narrow portrait canvas',async({browser})=>{
+ const context=await browser.newContext({hasTouch:true,isMobile:true,deviceScaleFactor:1,viewport:{width:390,height:844}});
+ try{
+  const page=await context.newPage();
+  await page.goto('http://127.0.0.1:5173/');
+  await page.getByLabel('キャンバスの比率').selectOption('9:16');
+  const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+  await nav.getByRole('button',{name:'文字',exact:true}).click();
+  await page.getByLabel('表示する文字').fill('ネオン');
+  await page.getByRole('button',{name:'中抜きネオンを一発設定'}).click();
+  const sharp=page.getByTestId('preview').getByTestId('text-overlay').locator('text').last();
+  await sharp.scrollIntoViewIfNeeded();
+  const box=await sharp.boundingBox();
+  if(!box)throw new Error('Touch title bounding box is missing');
+  const original=Number(await sharp.getAttribute('y'));
+  const cx=box.x+box.width/2,cy=box.y+box.height/2;
+  const cdp=await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx,y:cy,id:1}]});
+  for(let i=1;i<=5;i++)await cdp.send('Input.dispatchTouchEvent',
+   {type:'touchMove',touchPoints:[{x:cx+10*i,y:cy-9*i,id:1}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect.poll(async()=>Number(await sharp.getAttribute('y'))).toBeLessThan(original-50);
+  const movedBox=await sharp.boundingBox();
+  if(!movedBox)throw new Error('Moved touch title disappeared');
+  await page.touchscreen.tap(movedBox.x+movedBox.width/2,movedBox.y+movedBox.height/2);
+  const editor=page.getByRole('group',{name:'プレビュー上で文字を編集'});
+  await expect(editor).toBeVisible();
+  await editor.getByLabel('文字の内容').fill('スマホ編集OK');
+  await expect(page.getByTestId('preview').getByTestId('text-overlay')).toContainText('スマホ編集OK');
+ }finally{await context.close();}
+});
