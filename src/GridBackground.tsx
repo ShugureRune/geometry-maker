@@ -4,12 +4,12 @@ import type {Background} from './scene';
 import {gridAnimationFrame,gridBackgroundDefaults} from './grid-background';
 
 /** Repeated SVG pattern keeps the DOM small, even for large exports and dense dots. */
-export function GridBackground({background,width,height,seconds=0}: {background:Background;width:number;height:number;seconds?:number}) {
+export function GridBackground({background,width,height,seconds=0,figureAngle}: {background:Background;width:number;height:number;seconds?:number;figureAngle?:number}) {
   const grid=background.grid??gridBackgroundDefaults;
   const id=`grid-${useId().replace(/:/g,'')}`;
   if(!grid.enabled || grid.opacity===0)return null;
   const color=grid.colorMode==='custom'?grid.color:inkAt('neutral',background,{x:width/2,y:height/2},width,height);
-  const frame=gridAnimationFrame(grid,seconds);
+  const frame=gridAnimationFrame(grid,seconds,figureAngle);
   const opacity=grid.opacity/100*frame.opacityMultiplier;
   return <g data-testid="grid-background" data-grid-type={grid.type} data-grid-motion={grid.animation?.enabled?grid.animation.mode:undefined} pointerEvents="none">
     <defs>

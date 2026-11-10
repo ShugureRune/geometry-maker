@@ -37,10 +37,11 @@ export function GridBackgroundControls({value,onChange}:{value:GridBackgroundSet
           </select>
           <label className="range-label" htmlFor="grid-animation-duration">1周期の長さ <output htmlFor="grid-animation-duration">{motion.duration}秒</output></label>
           <input id="grid-animation-duration" type="range" min="2" max="30" step="1" value={motion.duration} onChange={event=>updateMotion({duration:Number(event.target.value)})}/>
-          {motion.mode==='scroll'&&<><label htmlFor="grid-animation-direction">スクロール方向</label>
-            <select id="grid-animation-direction" value={motion.direction} onChange={event=>updateMotion({direction:event.target.value as GridAnimationSettings['direction']})}>
-              <option value="right">右</option><option value="left">左</option><option value="up">上</option><option value="down">下</option><option value="diagonal">右下斜め</option>
-            </select></>}
+          {motion.mode==='scroll'&&<>
+            <label className="range-label" htmlFor="grid-animation-speed">グリッドのスクロール速度 <output htmlFor="grid-animation-speed">{(motion.speed??1).toFixed(1)}倍</output></label>
+            <input id="grid-animation-speed" type="range" min="0.1" max="10" step="0.1" value={motion.speed??1} onChange={event=>updateMotion({speed:Number(event.target.value)})}/>
+            <p className="help">スクロール方向は図形に合わせます。無限スクロールの角度は「アニメーション」タブで調整できます。速度は図形と独立です。</p>
+          </>}
           {motion.mode==='rotate'&&<label className="glow-toggle"><input type="checkbox" checked={motion.reverse} onChange={event=>updateMotion({reverse:event.target.checked})}/> 反時計回り</label>}
           <p className="help">図形の成長とは独立してループします。動画・待機画面にも反映されます。</p>
         </>}

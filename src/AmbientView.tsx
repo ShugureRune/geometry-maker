@@ -9,7 +9,7 @@ import { generateScene, RATIOS, type Background } from './scene';
 import { densityCandidates, visibleScene } from './density';
 import { schedule, progressAt } from './animation';
 import { coloredBackground, reseedColors } from './colors';
-import { ambientClock, ambientEnvelope, ambientSeed, type AmbientInput } from './ambient';
+import { ambientClock, ambientEnvelope, ambientSeed, figureScrollAngle, type AmbientInput } from './ambient';
 function Tile({input,index,progress,phase,opacity=1,scale=1,figurePainter,figureKey='loop',backgroundBlend,textSeconds,gridSeconds}:{figurePainter?:FigurePainter;figureKey?:string;input:AmbientInput;index:number;progress:number;phase:number;opacity?:number;scale?:number;backgroundBlend?:{next:Background;opacity:number};textSeconds?:number;gridSeconds?:number}){
  const seed=ambientSeed(input.seed,index),s=input.settings;
  const generated=useMemo(()=>{const base=generateScene(seed,input.ratio,input.version,input.enabledShapeKinds);const candidates=densityCandidates(base,seed);return{scene:themeScene(visibleScene(base,candidates,input.density),input.visualTheme??'standard',seed),cues:schedule(candidates,seed,input.version)};},[seed,input.ratio,input.version,input.density,input.visualTheme,input.enabledShapeKinds]);
@@ -26,7 +26,7 @@ function Tile({input,index,progress,phase,opacity=1,scale=1,figurePainter,figure
  }
  const transform='';
 
- return <g opacity={opacity} transform={transform}><Preview scene={generated.scene} background={background} backgroundBlend={backgroundBlend} gridSeconds={gridSeconds} textOverlay={input.settings.mode==='scroll'?undefined:input.textOverlay?.layer==='back'?input.textOverlay:undefined} textSeconds={textSeconds} motion={motion} shapeColors={figurePainter?.(generated.scene.shapes,figureKey)} growth={progress>=1?undefined:Object.fromEntries(generated.scene.shapes.map(shape=>[shape.id,progressAt(generated.cues[shape.id],progress,input.animation.easingType)]))}/></g>;
+ return <g opacity={opacity} transform={transform}><Preview scene={generated.scene} background={background} backgroundBlend={backgroundBlend} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(input.settings,input.ratio)} textOverlay={input.settings.mode==='scroll'?undefined:input.textOverlay?.layer==='back'?input.textOverlay:undefined} textSeconds={textSeconds} motion={motion} shapeColors={figurePainter?.(generated.scene.shapes,figureKey)} growth={progress>=1?undefined:Object.fromEntries(generated.scene.shapes.map(shape=>[shape.id,progressAt(generated.cues[shape.id],progress,input.animation.easingType)]))}/></g>;
 }
 export function AmbientView({input,seconds,world,scrollCamera='parent',figureCache}:{input:AmbientInput;seconds:number;world?:ScrollWorld;scrollCamera?:'parent'|'per-chunk';figureCache?:FigureColorCache}){
  const localFigureCache=useMemo(createFigureColorCache,[input.seed]);
@@ -71,12 +71,12 @@ function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:nu
  const background=useMemo(()=>scrollBackgroundAt(input,seconds),[input.background,input.colors,input.seed,input.settings,input.scrollPaletteState,s.scrollBackgroundAuto?seconds:0]);
  const painter=useMemo(()=>createFigurePainter(input,seconds,background,world.figureCache),[input.background,input.colors,input.seed,input.settings,input.scrollFigureState,background,s.scrollFigureAuto?seconds:0,world]);
  return <svg data-testid="ambient-preview" data-scroll-world="v3" data-scroll-density={s.scrollDensity} data-cache-size={world.cache.size} data-group-cache-size={world.groupCache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
-  <Preview scene={world.empty} background={background} gridSeconds={seconds}/>
+  <Preview scene={world.empty} background={background} gridSeconds={seconds} gridFigureAngle={figureScrollAngle(input.settings,input.ratio)}/>
   {input.textOverlay?.layer==='back'&&<TextOverlay settings={input.textOverlay} width={width} height={height} background={background} seconds={titleSeconds}/>}
   <g data-testid="scroll-camera" transform={camera==='parent'?`translate(${-cx} ${-cy})`:undefined}>{groups.map(chunk=>{
    const margin=world.renderMargin;
    if(chunk.anchorX-cx < -margin||chunk.anchorX-cx > width+margin||chunk.anchorY-cy < -margin||chunk.anchorY-cy > height+margin)return null;
-   const start=entryTime(chunk.anchorX/width,chunk.anchorY/height,seconds,s,input.scrollPath);
+   const start=entryTime(chunk.anchorX/width,chunk.anchorY/height,seconds,s,input.scrollPath,input.ratio);
    if(!Number.isFinite(start))return null;
    const elapsed=growthSeconds(start,seconds,s,input.scrollPath);
    const progress=Math.min(1,elapsed*input.animation.playbackSpeed/input.animation.animationDuration);

@@ -38,6 +38,8 @@ describe('portable, versioned settings', () => {
   };
   expect(parseSettings(settingsText({...valid,gridBackground})).gridBackground).toEqual(gridBackground);
   for(const animation of [
+   {...gridBackground.animation,speed:0},
+   {...gridBackground.animation,speed:10.1},
    {...gridBackground.animation,duration:0},
    {...gridBackground.animation,mode:'fake'},
    {...gridBackground.animation,direction:'center'},
