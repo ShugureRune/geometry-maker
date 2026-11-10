@@ -3,6 +3,15 @@ name: Preview text browser checks
 on:
   pull_request:
     paths:
+      - 'tests/text-entrance.spec.ts'
+      - 'src/VideoPanel.tsx'
+      - 'src/video-frame.tsx'
+      - 'src/video.ts'
+      - 'src/Preview.tsx'
+      - 'src/AmbientView.tsx'
+      - 'src/TextControls.tsx'
+      - 'src/preview-text-animation.ts'
+      - 'src/text-entrance.ts'
       - 'src/PreviewTextEditor.tsx'
       - 'src/preview-text-transform.ts'
       - 'src/preview-text-transform.test.ts'
@@ -32,4 +41,4 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Test canvas text editing in Chromium
-        run: npx playwright test tests/preview-text.spec.ts tests/preview-text-transform.spec.ts
+        run: npx playwright test tests/preview-text.spec.ts tests/preview-text-transform.spec.ts tests/text-entrance.spec.ts
