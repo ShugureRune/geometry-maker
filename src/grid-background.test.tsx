@@ -58,8 +58,8 @@ describe('2D SVG grid background',()=>{
     const first=renderToStaticMarkup(<Preview scene={scene} background={{...base,grid:moving}} gridSeconds={0}/>);
     const later=renderToStaticMarkup(<Preview scene={scene} background={{...base,grid:moving}} gridSeconds={2}/>);
     expect(first).toContain('data-grid-motion="scroll"');
-    expect(first).toContain('patternTransform="rotate(0 960 540)"');
-    expect(later).toContain('patternTransform="rotate(0 960 540) translate(20 0)"');
+    expect(first).toContain('patternTransform="rotate(0 800 450)"');
+    expect(later).toContain('patternTransform="rotate(0 800 450) translate(20 0)"');
     expect(later).toContain('data-grid-motion="scroll"');
   });
   it('validates user data without changing the input',()=>{
