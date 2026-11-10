@@ -1,4 +1,5 @@
 import {createFigureColorCache} from './scroll-figure-colors';
+import {themeScene} from './themes';
 import {generateScene,RATIOS,type Scene} from './scene';
 import {shapeBounds} from './geometry';
 import {densityCandidates,visibleScene} from './density';
@@ -70,7 +71,7 @@ export function createScrollWorld(input:AmbientInput){
   const scale=Math.min(plan.radius/radius,plan.coreRadius/heroRadius);
   // Decoration detail inside each generated group is controlled by the normal
   // shape density, not the frequency of groups in infinite scroll.
-  const scene=visibleScene({...base,shapes:candidates},candidates,input.density);
+  const scene=themeScene(visibleScene({...base,shapes:candidates},candidates,input.density),input.visualTheme??'standard',plan.seed);
   const cues=schedule(candidates,plan.seed,input.version);
   const value={...plan,localX:anchor.x,localY:anchor.y,scale,scene,cues};
   groupCache.set(plan.key,value);while(groupCache.size>SCROLL_GROUP_CACHE_LIMIT)groupCache.delete(groupCache.keys().next().value!);return value;
