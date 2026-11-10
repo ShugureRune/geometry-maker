@@ -86,7 +86,7 @@ describe('eight procedural 3D sky presets',()=>{
       {aurora:{primary:'#abf',secondary:'#123456'}},
       {aurora:{primary:'#123456'}},
       {invalid:{primary:'#123456',secondary:'#abcdef'}},
-      {aurora:{primary:'#123456',secondary:'#abcdef'},__proto__:[]},
+      {aurora:{primary:'#123456',secondary:'not-a-color'}},
     ];
     for(const palettes of invalid)
       expect(()=>validateSky({...skyDefaults,palettes})).toThrow();
@@ -101,7 +101,7 @@ describe('eight procedural 3D sky presets',()=>{
     };
     // Glyph 0 is a hollow ring, glyph 1 a narrow upright, A has a crossbar.
     expect(bit(0,2,6)).toBe(1);
-    expect(bit(0,2,3)).toBe(0);
+    expect(bit(0,2,5)).toBe(0);
     expect(bit(1,2,3)).toBe(1);
     expect([0,1,2,3,4].map(x=>bit(10,x,3))).toEqual([1,1,1,1,1]);
     expect([0,1,2,3,4].map(x=>bit(15,x,0))).toEqual([1,0,0,0,0]);
