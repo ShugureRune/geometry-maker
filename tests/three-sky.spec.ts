@@ -148,3 +148,84 @@ test('sky density changes cyber tunnel frames and retrowave ground independently
   expect(normalRetro).not.toBe(emptyRetro);
   await expect(preview).toHaveAttribute('data-object-count',objectCount!);
 });
+
+test('background colors remain independent per preset, change PNG, survive JSON, and reset only the selected preset',async({page})=>{
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  const sky=page.getByLabel('3D背景の種類');
+  await sky.selectOption('aurora');
+  const original=digest(await png(page));
+  await category(page,'背景');
+  await page.locator('#three-sky-primary').fill('#ff1111');
+  await page.locator('#three-sky-secondary').fill('#1133ff');
+  const changed=digest(await png(page));
+  expect(changed).not.toBe(original);
+
+  await category(page,'背景');
+  await sky.selectOption('digital');
+  await page.locator('#three-sky-primary').fill('#ffffff');
+  await page.locator('#three-sky-secondary').fill('#ffe900');
+  const digital=digest(await png(page));
+  expect(digital).not.toBe(changed);
+  await category(page,'背景');
+  await sky.selectOption('aurora');
+  await expect(page.locator('#three-sky-primary')).toHaveValue('#ff1111');
+  await expect(page.locator('#three-sky-secondary')).toHaveValue('#1133ff');
+  expect(digest(await png(page))).toBe(changed);
+
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  const bytes=await readFile((await (await pending).path())!);
+  const saved=JSON.parse(bytes.toString());
+  expect(saved.settings.sky.palettes).toMatchObject({
+    aurora:{primary:'#ff1111',secondary:'#1133ff'},
+    digital:{primary:'#ffffff',secondary:'#ffe900'},
+  });
+
+  await category(page,'背景');
+  await page.getByRole('button',{name:'この背景のカラーを初期値に戻す'}).click();
+  await expect(page.locator('#three-sky-primary')).not.toHaveValue('#ff1111');
+  expect(digest(await png(page))).not.toBe(changed);
+  await category(page,'書き出し');
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+    name:'colors.json',mimeType:'application/json',buffer:bytes,
+  });
+  await category(page,'背景');
+  await expect(page.locator('#three-sky-primary')).toHaveValue('#ff1111');
+  await expect(page.locator('#three-sky-secondary')).toHaveValue('#1133ff');
+  expect(digest(await png(page))).toBe(changed);
+  await category(page,'背景');
+  await sky.selectOption('digital');
+  await expect(page.locator('#three-sky-primary')).toHaveValue('#ffffff');
+  await expect(page.locator('#three-sky-secondary')).toHaveValue('#ffe900');
+  expect(digest(await png(page))).toBe(digital);
+});
+
+test('retrowave floor stays visible on top of regular 3D grid and its palette changes independently',async({page})=>{
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  const select=page.getByLabel('3D背景の種類');
+  await select.selectOption('retrowave');
+  const alone=digest(await png(page));
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  await expect(page.getByTestId('three-preview')).toHaveAttribute('data-floor-grid','on');
+  const combined=digest(await png(page));
+  expect(combined).not.toBe(alone);
+  await category(page,'背景');
+  await page.locator('#three-sky-secondary').fill('#00ff00');
+  const recolored=digest(await png(page));
+  expect(recolored).not.toBe(combined);
+  await category(page,'背景');
+  await select.selectOption('classic');
+  const regularOnly=digest(await png(page));
+  expect(regularOnly).not.toBe(recolored);
+  await category(page,'背景');
+  await select.selectOption('retrowave');
+  expect(digest(await png(page))).toBe(recolored);
+});
