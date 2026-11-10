@@ -47,3 +47,42 @@ test('text editor is reflected in preview, SVG and JSON without changing seed',a
  await expect(page.getByLabel('表示する文字')).toHaveValue('急行 池袋\nGeometry & Studio');
  await expect(page.getByTestId('current-seed')).toHaveText(seed??'');
 });
+
+
+test('text colors track figure colors and glow survives SVG and JSON export',async({page})=>{
+ await page.goto('./');
+ const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+ await nav.getByRole('button',{name:'文字',exact:true}).click();
+ await page.getByLabel('文字を表示').check();
+ await page.getByLabel('表示する文字').fill('発光タイトル');
+ await page.getByLabel('文字色のモード').selectOption('primary');
+ await page.getByLabel('文字の発光を有効化').check();
+ await page.getByLabel('文字の発光強度').fill('160');
+ await page.getByLabel('文字の発光ぼかし').fill('18');
+ const overlay=page.getByTestId('preview').getByTestId('text-overlay');
+ await expect(overlay).toHaveAttribute('data-text-color-mode','primary');
+ await expect(overlay.getByTestId('text-glow')).toBeVisible();
+ const before=await overlay.locator('text').last().getAttribute('fill');
+ await nav.getByRole('button',{name:'カラー',exact:true}).click();
+ await page.getByLabel('主役色 HEX').fill('#11ddaa');
+ await nav.getByRole('button',{name:'文字',exact:true}).click();
+ await expect(overlay.locator('text').last()).toHaveAttribute('fill','#11ddaa');
+ expect(before).not.toBe('#11ddaa');
+ await page.getByLabel('文字色のモード').selectOption('gradient');
+ await expect(overlay.getByTestId('text-gradient')).toBeVisible();
+ await page.getByLabel('発光色').selectOption('custom');
+ await page.getByLabel('発光色（手動）').fill('#ff2266');
+ await expect(overlay.getByTestId('text-glow').locator('text')).toHaveAttribute('fill','#ff2266');
+ await nav.getByRole('button',{name:'書き出し',exact:true}).click();
+ const jsonEvent=page.waitForEvent('download');
+ await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ const config=JSON.parse((await readFile((await (await jsonEvent).path())!)).toString());
+ expect(config.textOverlay).toMatchObject({colorMode:'gradient',glowEnabled:true,glowColorMode:'custom',
+  glowColor:'#ff2266',glowStrength:160,glowBlur:18});
+ const svgEvent=page.waitForEvent('download');
+ await page.getByRole('button',{name:'SVGを書き出す'}).click();
+ const svg=(await readFile((await (await svgEvent).path())!)).toString();
+ expect(svg).toContain('data-testid="text-gradient"');
+ expect(svg).toContain('data-testid="text-glow"');
+ expect(svg).toContain('feGaussianBlur');
+});
