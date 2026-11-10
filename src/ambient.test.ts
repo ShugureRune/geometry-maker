@@ -45,3 +45,35 @@ it('reverse growth retracts figures without fading the next scene over them',()=
   }
  }
 });
+
+it('smoothly crossfades only the background during reverse growth, for solid and gradient modes',()=>{
+ const seed='reverse-bg-transition';
+ for(const mode of ['solid','gradient'] as const){
+  const base={mode,solid:'#111526',colors:['#112233','#334455','#556677'] as [string,string,string],angle:135};
+  const colors={...legacyColors(base),mode:'seed' as const};
+  const background=coloredBackground(base,reseedColors(colors,seed));
+  const input={seed,version:'2d-v5' as const,ratio:'16:9' as const,density:50,colors,background,animation:defaults,
+   settings:{...ambientDefaults,enabled:true,mode:'growth' as const,loop:'evolving' as const,transitionType:'reverse' as const}};
+  const render=(seconds:number)=>renderToStaticMarkup(createElement(AmbientView,{seconds,input}));
+  const before=render(10),middle=render(12.5),late=render(13.5),after=render(14);
+  const overlay=(svg:string)=>svg.match(/<rect[^>]*data-testid="transition-background"[^>]*>/)?.[0];
+  expect(overlay(before)).toBeUndefined();
+  expect(overlay(after)).toBeUndefined();
+  expect(overlay(middle)).toContain('opacity="0.5"');
+  expect(overlay(late)).toContain('opacity="0.8333333333333334"');
+  expect((middle.match(/data-testid="background"/g)??[])).toHaveLength(1);
+  // Reverse growth is still a single scene; only its backdrop gets a second layer.
+  expect((middle.match(/data-testid="preview"/g)??[])).toHaveLength(1);
+  const next=coloredBackground(base,reseedColors(colors,ambientSeed(seed,1)));
+  if(mode==='solid'){
+   expect(overlay(middle)).toContain(`fill="${next.solid}"`);
+   expect(overlay(middle)).not.toContain(`fill="${background.solid}"`);
+   expect(after).toContain(`data-testid="background" width="1600" height="900" fill="${next.solid}"`);
+  }else{
+   expect(overlay(middle)).toContain('-next)');
+   expect(middle).toContain('data-testid="transition-background-gradient"');
+   for(const color of next.colors)expect(middle).toContain(`stop-color="${color}"`);
+   expect(after).not.toContain('data-testid="transition-background-gradient"');
+  }
+ }
+});
