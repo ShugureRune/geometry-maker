@@ -2,18 +2,19 @@ import type {VisualTheme} from '../themes';
 import {THREE_KINDS,type ThreeKind,type Vector3Tuple} from './model';
 import {visibilityDefaults,validateThreeVisibility,type ThreeVisibilitySettings} from './visibility';
 import {floorGridDefaults,validateFloorGrid,type FloorGridSettings} from './floor-grid';
+import {CELESTIAL_KINDS, celestialDefaults, validateCelestialSettings, type CelestialSettings} from './celestial';
 import {networkDefaults, neonDefaults, record, enumField, numberField, booleanField, validateNetwork, validateNeon, type NetworkSettings, type NeonSettings} from './style-settings';
 
 export type ThreeSettings = {
   network?: NetworkSettings; neon?: NeonSettings; enabledKinds?: ThreeKind[]; visibilityAnimation?:ThreeVisibilitySettings;
-  floorGrid?:FloorGridSettings;
+  floorGrid?:FloorGridSettings; celestial?:CelestialSettings;
   quality: 'auto' | 'low' | 'high'; material: 'theme' | 'matte' | 'metal' | 'glass' | 'wireframe';
   roughness: number; metalness: number; lightIntensity: number;
   animation: boolean; speed: number; floatAmount: number; rotationAmount: number;
 };
 export const threeDefaults: ThreeSettings = {
   network: {...networkDefaults}, neon: {...neonDefaults}, enabledKinds: [...THREE_KINDS], visibilityAnimation:{...visibilityDefaults},
-  floorGrid:{...floorGridDefaults},
+  floorGrid:{...floorGridDefaults}, celestial:{...celestialDefaults,kinds:[...CELESTIAL_KINDS]},
   quality: 'auto', material: 'theme', roughness: .32, metalness: .45, lightIntensity: 1,
   animation: true, speed: 1, floatAmount: 1, rotationAmount: 1,
 };
@@ -28,7 +29,7 @@ export function validateThreeSettings(value: unknown): ThreeSettings {
     lightIntensity:numberField(d.lightIntensity,.1,3,'照明'), animation:booleanField(d.animation,'3Dアニメーション'),
     speed:numberField(d.speed,.25,4,'3D再生速度'), floatAmount:numberField(d.floatAmount,0,2,'浮遊量'),
     rotationAmount:numberField(d.rotationAmount,0,2,'回転量'), visibilityAnimation:validateThreeVisibility(d.visibilityAnimation),
-    floorGrid:validateFloorGrid(d.floorGrid??floorGridDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
+    floorGrid:validateFloorGrid(d.floorGrid??floorGridDefaults), celestial:validateCelestialSettings(d.celestial??celestialDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
 }
 export type ThreeView = {position: Vector3Tuple; target: Vector3Tuple};
 export type ThreePreviewHandle = {savePNG: (width: number, height: number) => Promise<Blob>; resetView: () => void; getElapsedSeconds?:()=>number};
