@@ -295,7 +295,7 @@ export default function ThreePreview(props: Props) {
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
       <SkyRenderer sky={props.settings.sky} seed={props.skySeed} seconds={seconds} low={low}
-        sceneHeight={props.composition.height} floorGridEnabled={(props.settings.floorGrid??floorGridDefaults).enabled}/>
+        sceneHeight={props.composition.height} floorGridEnabled={(props.settings.floorGrid??floorGridDefaults).enabled} view={props.view}/>
       <ambientLight intensity={props.settings.lightIntensity * .5}/>
       <directionalLight position={[5, 6, 7]} intensity={props.settings.lightIntensity * 2} castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
