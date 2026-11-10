@@ -217,7 +217,7 @@ export function PreviewTextEditor({children,settings,onChange,onAdvanced}:Props)
    apply(rotateTextAroundCenter({origin:session.origin,center:session.center,
     startRotation:session.settings.rotation,startPointer:session.start,pointer:now,canvas:view}));
   }else{
-   const index=corners.indexOf(session.mode);
+   const index=(corners as readonly string[]).indexOf(session.mode);
    if(index<0)return;
    apply(resizeTextCorner({handle:session.corners[index],opposite:session.corners[opposite[index]],
     origin:session.origin,fontSize:session.settings.fontSize,canvas:view},now));
@@ -319,7 +319,7 @@ export function PreviewTextEditor({children,settings,onChange,onAdvanced}:Props)
    style={frame?{left:frame.inline.left,top:frame.inline.top,width:frame.inline.width}:undefined}>
    <label htmlFor="preview-inline-text">文字をその場で編集</label>
    <textarea ref={input} id="preview-inline-text" rows={Math.min(4,Math.max(2,draft.split('\n').length))}
-    maxLength={2000} value={draft} onChange={e=>setDraft(e.target.value.split('\n').slice(0,12).join(''))}
+    maxLength={2000} value={draft} onChange={e=>setDraft(e.target.value.slice(0,2000).split('\n').slice(0,12).join('\n'))}
     onBlur={saveInline}
     onKeyDown={e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();cancelInline();}else if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();saveInline();}}}/>
    <p>Ctrl/Cmd+Enter で確定 / Esc で取り消し</p>
