@@ -62,6 +62,12 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
     {kind === 'dodecahedron' && <dodecahedronGeometry args={[1, 0]}/>}
     {kind === 'octahedron' && <octahedronGeometry args={[1, 0]}/>}
     {kind === 'tetrahedron' && <tetrahedronGeometry args={[1, 0]}/>}
+    {kind === 'cylinder' && <cylinderGeometry args={[.62, .62, 1.45, low ? 12 : 32]}/>}
+    {kind === 'cone' && <coneGeometry args={[.72, 1.35, low ? 12 : 32]}/>}
+    {kind === 'capsule' && <capsuleGeometry args={[.42, .68, low ? 4 : 8, low ? 10 : 24]}/>}
+    {kind === 'prism' && <cylinderGeometry args={[.69, .69, 1.32, 3]}/>}
+    {kind === 'pyramid' && <cylinderGeometry args={[0, .70, 1.30, 4]}/>}
+    {kind === 'torus-knot' && <torusKnotGeometry args={[.50, .15, low ? 48 : 112, low ? 6 : 12, 2, 3]}/>} 
     {/* Transparency changes the compiled OPAQUE shader variant; replace the
         material on this boundary so alpha sliders never use a stale program. */}
     {material === 'glass' ? <meshPhysicalMaterial key={translucent?'translucent':'surface'} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
@@ -71,7 +77,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
         transparent={translucent} opacity={translucent?neon.faceOpacity:1} depthWrite={!translucent}
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
-        flatShading={kind !== 'sphere' && kind !== 'torus'} emissive={color} emissiveIntensity={emissive}/>}
+        flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
     {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low}/>}
   </mesh>;
 }
@@ -230,7 +236,7 @@ export default function ThreePreview(props: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
-  const objects = useMemo(() => visibleThreeObjects(props.composition, props.density), [props.composition, props.density]);
+  const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   const edges=useMemo(()=>network.enabled?networkConnections(objects,network.distance,network.maxConnections):[],[objects,network.enabled,network.distance,network.maxConnections]);
   const outlines=useOutlineGeometry(neon.enabled,low);
