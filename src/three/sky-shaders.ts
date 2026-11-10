@@ -35,7 +35,7 @@ export const skyFragmentShader = [
   '  for(int i=0;i<4;i++){',
   '    if(uLow>.5 && i>=2)break;',
   '    v+=a*noise2(p);p=p*2.03+vec2(2.7,1.3);a*=0.5;',
-  '  }'
+  '  }',
   '  return v;',
   '}',
   'float stars(vec2 uv,float factor){',
@@ -61,8 +61,8 @@ export const skyFragmentShader = [
   '  if(uMode==1){',
   '    // Infinite starfield: midnight blue with a faint Milky Way dust band.',
   '    float dust=fbm(vec2(d.x*7.0+d.y*1.8,d.z*7.0-d.y*2.4)',
-  '      +vec2(0.0,t*.004));'
-  '    float band=exp(-pow((uv.y-.53+sin(lon*3.0)*.045)*10.0,2.0));'
+  '      +vec2(0.0,t*.004));',
+  '    float band=exp(-pow((uv.y-.53+sin(lon*3.0)*.045)*10.0,2.0));',
   '    c+=vec3(.020,.027,.065)*dust*band*density;',
   '    c+=vec3(.75,.84,1.0)*st*gain;',
   '  }else if(uMode==2){',
@@ -84,10 +84,10 @@ export const skyFragmentShader = [
   '    c=mix(vec3(.009,.019,.042),vec3(.006,.055,.064),smoothstep(-.9,.8,d.y));',
   '    float aurora=0.0, violet=0.0;',
   '    for(int i=0;i<4;i++){',
-  '      if(uLow>.5 && i>=2)break;'
+  '      if(uLow>.5 && i>=2)break;',
   '      float f=float(i);',
   '      // Integer longitude harmonics keep the 360-degree seam continuous.',
-  '      float wave=.16*sin(lon*(2.0+f)+t*.14+f*1.8);'
+  '      float wave=.16*sin(lon*(2.0+f)+t*.14+f*1.8);',
   '      float h=.09+f*.085+wave;',
   '      float plume=exp(-abs(d.y-h)*6.0)*smoothstep(-.5,.12,d.y);',
   '      float strands=.55+.45*pow(abs(sin(lon*51.0+wave*8.0+f)),2.0);',
@@ -109,9 +109,9 @@ export const skyFragmentShader = [
   '    c=vec3(.009,.005,.03);',
   '    // Noise from the continuous 3D viewing ray avoids a hard longitude seam.',
   '    vec2 sphereUV=vec2(d.x*5.0+d.y*2.2,d.z*5.0-d.y*3.1);',
-  '    float n=fbm(sphereUV+vec2(t*.012,-t*.007));'
+  '    float n=fbm(sphereUV+vec2(t*.012,-t*.007));',
   '    float n2=fbm(sphereUV*1.4+vec2(d.y*2.0,d.x*1.3)',
-  '      -vec2(t*.008,t*.009)+8.0);'
+  '      -vec2(t*.008,t*.009)+8.0);',
   '    float cloud=smoothstep(.31,.7,n)*density;',
   '    float second=smoothstep(.40,.73,n2)*density;',
   '    c+=gain*(vec3(.37,.08,.64)*cloud*.8+vec3(.02,.38,.62)*second*.9);',
@@ -129,8 +129,8 @@ export const skyFragmentShader = [
   '    c+=vec3(.20,.025,.11)*exp(-pow((h+.13)*3.0,2.0));',
   '    vec2 sun=(d.xy-vec2(-.05,.15))*vec2(1.0,1.05);',
   '    float disk=(1.0-smoothstep(.28,.3,length(sun)))',
-  '      *(1.0-smoothstep(-.25,.2,d.z));'
-  '    float stripes=step(.20,sin((h+.09)*(75.0+50.0*density)));'
+  '      *(1.0-smoothstep(-.25,.2,d.z));',
+  '    float stripes=step(.20,sin((h+.09)*(75.0+50.0*density)));',
   '    float bottom=smoothstep(-.14,.25,h);',
   '    c+=gain*vec3(1.0,.36,.16)*disk*mix(stripes,1.0,bottom)*.87;',
   '    c+=gain*vec3(.28,.04,.19)*st*.13;',
@@ -141,9 +141,9 @@ export const skyFragmentShader = [
   '    float column=floor(p.x);',
   '    float speed=2.0+5.0*hash21(vec2(column,0.0));',
   '    // uv.y increases upward: subtract time to make the code fall downward.',
-  '    float head=mod(hash21(vec2(column,8.0))*56.0-t*speed,56.0);'
+  '    float head=mod(hash21(vec2(column,8.0))*56.0-t*speed,56.0);',
   '    float row=floor(p.y);',
-  '    float tail=mod(row-head+56.0,56.0);'
+  '    float tail=mod(row-head+56.0,56.0);',
   '    float trail=exp(-tail*.19);',
   '    float glyph=step(.39,hash21(vec2(column,row+floor(t*.75))));',
   '    vec2 boxCell=abs(fract(p)-.5);',
@@ -167,16 +167,16 @@ export const retroFloorFragmentShader=[
   'uniform float uTime;',
   'uniform float uIntensity;',
   'uniform float uDensity;',
-  'varying vec2 vPos;'
+  'varying vec2 vPos;',
   'void main(){',
   '  float density=clamp(uDensity,0.0,2.0);',
-  '  vec2 tile=(vPos+vec2(0.0,uTime*.7))/(5.0/max(.25,density));'
+  '  vec2 tile=(vPos+vec2(0.0,uTime*.7))/(5.0/max(.25,density));',
   '  vec2 cell=abs(fract(tile-.5)-.5);',
   '  vec2 aa=max(fwidth(tile),vec2(.00001));',
   '  float line=max(1.0-smoothstep(.015,.07+aa.x,cell.x),',
   '    1.0-smoothstep(.015,.07+aa.y,cell.y));',
   '  float fade=1.0-smoothstep(35.0,320.0,length(vPos));',
-  '  float alpha=clamp(line*fade*uIntensity*.55*smoothstep(0.0,.10,density),0.0,.8);'
+  '  float alpha=clamp(line*fade*uIntensity*.55*smoothstep(0.0,.10,density),0.0,.8);',
   '  if(alpha<.003)discard;',
   '  gl_FragColor=vec4(vec3(.70,.10,.65),alpha);',
   '  #include <tonemapping_fragment>',
