@@ -40,7 +40,8 @@ export function AmbientControls({settings,onChange,clock,input}:{input?:AmbientI
  {select('mode','待機アニメーション',[['growth','自動成長・再生成'],['float','浮遊・回転'],['scroll','無限スクロール'],['combined','複合モード']])}
  {select('loop','ループ方式',[['perfect','完全ループ'],['evolving','無限変化']])}
  {settings.mode==='scroll'&&<fieldset className="scroll-settings"><legend>スクロールの密度と配色</legend>
- {number('scrollDensity','スクロール専用図形密度',0,100,5,'%')}
+ {number('scrollDensity','スクロール専用図形密度（メイン図形の出現頻度）',0,100,5,'%')}
+ <p className="help">メイン図形の出現数だけを調整します。各図形に付く装飾量はこのスライダーでは変わりません。</p>
  <label><input type="checkbox" checked={settings.scrollBackgroundAuto} onChange={e=>{
   changePalette({...settings,scrollBackgroundAuto:e.target.checked});
  }}/> 背景色を自動変更</label>
