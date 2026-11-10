@@ -21,7 +21,7 @@ export const skyFragmentShader = [
   'uniform vec3 uSkyBase;',
   'uniform vec3 uSkyPrimary;',
   'uniform vec3 uSkyAccent;',
-  'uniform sampler2D uGlyphAtlas;'
+  'uniform sampler2D uGlyphAtlas;',
   'varying vec3 vRay;',
   '#define PI 3.141592653589793',
   'float hash21(vec2 p){',
@@ -61,17 +61,17 @@ export const skyFragmentShader = [
   '  float gain=clamp(uIntensity,0.0,2.0);',
   '  float density=clamp(uDensity,0.0,2.0);',
   '  float st=stars(uv,density);',
-  '  vec3 c=uSkyBase;'
+  '  vec3 c=uSkyBase;',
   '  if(uMode==1){',
   '    // Infinite starfield: midnight blue with a faint Milky Way dust band.',
   '    float dust=fbm(vec2(d.x*7.0+d.y*1.8,d.z*7.0-d.y*2.4)',
   '      +vec2(0.0,t*.004));',
   '    float band=exp(-pow((uv.y-.53+sin(lon*3.0)*.045)*10.0,2.0));',
-  '    c+=uSkyPrimary*dust*band*density*.35;'
-  '    c+=uSkyAccent*st*gain;'
+  '    c+=uSkyPrimary*dust*band*density*.35;',
+  '    c+=uSkyAccent*st*gain;',
   '  }else if(uMode==2){',
   '    // Spiral galaxy: a bright core and rotating colored spiral arms.',
-  '    c=uSkyBase;'
+  '    c=uSkyBase;',
   '    vec2 p=(d.xy-vec2(-.08,.08))*vec2(1.0,1.55);',
   '    float r=length(p);',
   '    float a=atan(p.y,p.x);',
@@ -80,12 +80,12 @@ export const skyFragmentShader = [
   '    float disk=exp(-r*4.2)*(0.25+1.6*arm)*(0.35+cloudy);',
   '    float core=exp(-r*r*160.0);',
   '    float front=1.0-smoothstep(-.65,-.05,d.z);',
-  '    vec3 galaxyColor=mix(uSkyPrimary,uSkyAccent,clamp(r*2.6,0.0,1.0));'
-  '    c+=gain*front*density*(galaxyColor*disk*1.7+uSkyAccent*core*2.1);'
-  '    c+=st*gain*uSkyAccent*.65;'
+  '    vec3 galaxyColor=mix(uSkyPrimary,uSkyAccent,clamp(r*2.6,0.0,1.0));',
+  '    c+=gain*front*density*(galaxyColor*disk*1.7+uSkyAccent*core*2.1);',
+  '    c+=st*gain*uSkyAccent*.65;',
   '  }else if(uMode==3){',
   '    // Aurora: layered undulating luminous curtains on a starry polar sky.',
-  '    c=mix(uSkyBase,uSkyBase+uSkyPrimary*.08,smoothstep(-.9,.8,d.y));'
+  '    c=mix(uSkyBase,uSkyBase+uSkyPrimary*.08,smoothstep(-.9,.8,d.y));',
   '    float aurora=0.0, violet=0.0;',
   '    for(int i=0;i<4;i++){',
   '      if(uLow>.5 && i>=2)break;',
@@ -98,19 +98,19 @@ export const skyFragmentShader = [
   '      aurora+=plume*strands*(1.0-f*.13);',
   '      violet+=plume*strands*f*.21;',
   '    }',
-  '    c+=gain*density*(uSkyPrimary*aurora+uSkyAccent*violet)*.78;'
-  '    c+=st*gain*uSkyAccent*.5;'
+  '    c+=gain*density*(uSkyPrimary*aurora+uSkyAccent*violet)*.78;',
+  '    c+=st*gain*uSkyAccent*.5;',
   '  }else if(uMode==4){',
   '    // Deep sea: turquoise light shafts, refracted caustics and deep blue haze.',
   '    float h=smoothstep(-.85,.95,d.y);',
-  '    c=mix(uSkyBase,uSkyBase+uSkyPrimary*.22,h);'
+  '    c=mix(uSkyBase,uSkyBase+uSkyPrimary*.22,h);',
   '    float shaft=pow(max(0.0,.5+.5*sin(lon*16.0+sin(lon*8.0+t*.12))),10.0);',
   '    float caustic=pow(max(0.0,sin(lon*18.0+t*.14+sin(uv.y*37.0))',
   '        *cos(uv.y*81.0-t*.11+sin(lon*8.0))),5.0);',
-  '    c+=gain*density*(uSkyPrimary*shaft*h*.38+uSkyAccent*caustic*h*.16);'
+  '    c+=gain*density*(uSkyPrimary*shaft*h*.38+uSkyAccent*caustic*h*.16);',
   '  }else if(uMode==5){',
   '    // Nebula: layered fractal clouds in violet, rose and electric cyan.',
-  '    c=uSkyBase;'
+  '    c=uSkyBase;',
   '    // Noise from the continuous 3D viewing ray avoids a hard longitude seam.',
   '    vec2 sphereUV=vec2(d.x*5.0+d.y*2.2,d.z*5.0-d.y*3.1);',
   '    float n=fbm(sphereUV+vec2(t*.012,-t*.007));',
@@ -118,29 +118,29 @@ export const skyFragmentShader = [
   '      -vec2(t*.008,t*.009)+8.0);',
   '    float cloud=smoothstep(.31,.7,n)*density;',
   '    float second=smoothstep(.40,.73,n2)*density;',
-  '    c+=gain*(uSkyPrimary*cloud*.85+uSkyAccent*second*.75);'
-  '    c+=gain*uSkyAccent*st*.70;'
+  '    c+=gain*(uSkyPrimary*cloud*.85+uSkyAccent*second*.75);',
+  '    c+=gain*uSkyAccent*st*.70;',
   '  }else if(uMode==6){',
   '    // The 3D frames are real geometry; this is a dark animated tech backdrop.',
-  '    c=uSkyBase;'
+  '    c=uSkyBase;',
   '    float beams=pow(abs(sin(lon*13.0+t*.04)),24.0)*pow(1.0-abs(d.y),3.0);',
-  '    c+=gain*density*uSkyPrimary*beams*.14;'
-  '    c+=gain*uSkyAccent*st*.18;'
+  '    c+=gain*density*uSkyPrimary*beams*.14;',
+  '    c+=gain*uSkyAccent*st*.18;',
   '  }else if(uMode==7){',
   '    // Retro-wave: a striped sunset over a purple horizon.',
   '    float h=d.y;',
-  '    c=mix(uSkyBase,uSkyBase+uSkyPrimary*.22,1.0-smoothstep(-.3,.85,h));'
-  '    c+=uSkyPrimary*.15*exp(-pow((h+.13)*3.0,2.0));'
+  '    c=mix(uSkyBase,uSkyBase+uSkyPrimary*.22,1.0-smoothstep(-.3,.85,h));',
+  '    c+=uSkyPrimary*.15*exp(-pow((h+.13)*3.0,2.0));',
   '    vec2 sun=(d.xy-vec2(-.05,.15))*vec2(1.0,1.05);',
   '    float disk=(1.0-smoothstep(.28,.3,length(sun)))',
   '      *(1.0-smoothstep(-.25,.2,d.z));',
   '    float stripes=step(.20,sin((h+.09)*(75.0+50.0*density)));',
   '    float bottom=smoothstep(-.14,.25,h);',
-  '    c+=gain*uSkyAccent*disk*mix(stripes,1.0,bottom)*1.25;'
-  '    c+=gain*uSkyPrimary*st*.13;'
+  '    c+=gain*uSkyAccent*disk*mix(stripes,1.0,bottom)*1.25;',
+  '    c+=gain*uSkyPrimary*st*.13;',
   '  }else if(uMode==8){',
-  '    // Digital rain uses actual 0-9/A-F letters sampled from a canvas glyph atlas.'
-  '    c=uSkyBase;'
+  '    // Digital rain uses actual 0-9/A-F letters sampled from a canvas glyph atlas.',
+  '    c=uSkyBase;',
   '    vec2 p=uv*vec2(88.0,56.0);',
   '    float column=floor(p.x);',
   '    float speed=2.0+5.0*hash21(vec2(column,0.0));',
@@ -155,9 +155,9 @@ export const skyFragmentShader = [
   '    // Keep texture lookup within this character cell to prevent atlas bleeding.',
   '    vec2 atlasUV=(glyphCell+clamp(charUV,vec2(.015),vec2(.985)))/4.0;',
   '    float glyph=texture2D(uGlyphAtlas,atlasUV).a;',
-  '    float lit=trail*glyph*density;'
-  '    c+=gain*uSkyPrimary*lit;'
-  '    c+=gain*uSkyAccent*st*.22;'
+  '    float lit=trail*glyph*density;',
+  '    c+=gain*uSkyPrimary*lit;',
+  '    c+=gain*uSkyAccent*st*.22;',
   '  }',
   '  gl_FragColor=vec4(clamp(c,0.0,1.4),1.0);',
   '  #include <tonemapping_fragment>',
@@ -175,7 +175,7 @@ export const retroFloorFragmentShader=[
   'uniform float uIntensity;',
   'uniform float uDensity;',
   'uniform vec3 uRetroColor;',
-  'varying vec2 vPos;'
+  'varying vec2 vPos;',
   'void main(){',
   '  float density=clamp(uDensity,0.0,2.0);',
   '  vec2 tile=(vPos+vec2(0.0,uTime*.7))/(5.0/max(.25,density));',
@@ -186,7 +186,7 @@ export const retroFloorFragmentShader=[
   '  float fade=1.0-smoothstep(35.0,320.0,length(vPos));',
   '  float alpha=clamp(line*fade*uIntensity*.55*smoothstep(0.0,.10,density),0.0,.8);',
   '  if(alpha<.003)discard;',
-  '  gl_FragColor=vec4(uRetroColor,alpha);'
+  '  gl_FragColor=vec4(uRetroColor,alpha);',
   '  #include <tonemapping_fragment>',
   '  #include <colorspace_fragment>',
   '}',
