@@ -30,6 +30,7 @@ export function visibleNetworkSegment(
   if(amount<=.001)return null;
   const start=threePose(a,seconds,floatAmount,rotationAmount).position;
   const end=threePose(b,seconds,floatAmount,rotationAmount).position;
+  if(amount>=1)return {start,end};
   const middle:Vector3Tuple=[(start[0]+end[0])/2,(start[1]+end[1])/2,(start[2]+end[2])/2];
   return {
     start:start.map((value,i)=>middle[i]+(value-middle[i])*amount) as Vector3Tuple,
