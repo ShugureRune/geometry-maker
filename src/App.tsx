@@ -8,6 +8,8 @@ import { AnimationControls,usePlayback } from './AnimationControls';
 import { defaults,schedule,progressAt,type AnimationSettings } from './animation';
 import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
+import {ImagePaletteControls} from './ImagePaletteControls';
+import {applyImagePalette} from './image-palette';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExportPanel } from './ExportPanel';
@@ -145,6 +147,7 @@ export default function App() {
           </div>}
           <p className="help">テーマに応じて図形の強弱・線・発光・背景色を変更します。下のカラー・装飾設定からさらに調整できます。</p>
         </section>
+        <ImagePaletteControls onApply={(palette,scope)=>applyColors(applyImagePalette(activeColors,palette,scope))}/>
         <section className="control-section">
           <h3>背景と図形の配色</h3>
           {editor('solid','背景色')}
