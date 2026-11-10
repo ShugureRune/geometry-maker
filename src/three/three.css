@@ -53,3 +53,10 @@
 .three-kind-check span{overflow-wrap:anywhere}
 [data-theme=light] .three-kind-presets button{background:#ece5f7;color:#35254d;border-color:#9b88b4}
 [data-theme=light] .three-kind-check:has(input:checked){background:#eee6fa}
+
+/* Independent, accessible palette pickers for every 3D sky preset. */
+.three-sky-colors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0}
+.three-sky-colors label{display:flex;flex-direction:column;gap:7px;font-size:12px;min-width:0}
+.three-sky-colors input[type=color]{width:100%;min-width:0;min-height:44px;cursor:pointer;border-radius:8px;border:1px solid #88759f;background:#11141a;padding:5px}
+.three-sky-colors button{grid-column:1/-1;min-height:44px;border:1px solid #88759f;border-radius:7px;background:#30293e;color:#eee4ff}
+[data-theme=light] .three-sky-colors button{background:#ece5f7;color:#35254d;border-color:#9b88b4}
