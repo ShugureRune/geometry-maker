@@ -30,6 +30,14 @@ describe('portable, versioned settings', () => {
   expect(()=>parseSettings(JSON.stringify({...valid,visualTheme:123}))).toThrow();
  });
  it('round trips animation settings with legacy compatibility',()=>{const a={...valid,animationEnabled:true,animationDuration:12,playbackSpeed:2,easingType:'ease-out-in' as const};expect(parseSettings(settingsText(a))).toEqual(a);expect(parseSettings(settingsText(valid)).animationEnabled).toBeUndefined();expect(()=>parseSettings(JSON.stringify({...a,animationDuration:31}))).toThrow();});
+ it('round-trips grid backgrounds and keeps older files compatible',()=>{
+  const gridBackground={enabled:true,type:'dot' as const,colorMode:'custom' as const,color:'#aabbcc',opacity:65,spacing:60,thickness:2,glow:30,rotation:45};
+  expect(parseSettings(settingsText({...valid,gridBackground})).gridBackground).toEqual(gridBackground);
+  expect(parseSettings(settingsText(valid)).gridBackground).toBeUndefined();
+  for(const invalid of [{...gridBackground,opacity:120},{...gridBackground,spacing:-1},{...gridBackground,type:'bad'},null]){
+   expect(()=>parseSettings(JSON.stringify({...valid,gridBackground:invalid}))).toThrow();
+  }
+ });
  it('keeps resolutions bounded and filenames safe', () => {
   expect(resolutionError(256,8192)).toBeNull();expect(resolutionError(NaN,256)).not.toBeNull();
   expect(fileStem('../a/b:*?')).not.toMatch(/[/:*?]/);expect(fileStem('')).toContain('seed-empty');
