@@ -10,7 +10,7 @@ import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {backgroundVector, luminance} from '../paint';
 import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
-import {threePose, threeSpacingFactor, visibleThreeObjects, type ThreeComposition, type ThreeObject} from './model';
+import {threePose, threeSpacingFactor, visibleThreeObjects, type ThreeComposition, type ThreeObject, type Vector3Tuple} from './model';
 import {effectiveThreeQuality, themeMaterial, threeResolutionError, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './settings';
 import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
@@ -22,7 +22,7 @@ import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 
 type Props = {
-  composition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
+  composition: ThreeComposition; sourceComposition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
@@ -274,7 +274,13 @@ export default function ThreePreview(props: Props) {
     networkConnections(objects,network.distance*spacingFactor,network.maxConnections):[],
     [objects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
-  const celestialObjects=useMemo(()=>generateCelestialBodies(props.composition,celestial,props.density),[props.composition,celestial,props.density]);
+  // Generate celestial appearance from unscaled positions, then spread the
+  // constellation without re-rolling its sizes, phases or surface patterns.
+  const celestialBase=useMemo(()=>generateCelestialBodies(props.sourceComposition,celestial,props.density),
+    [props.sourceComposition,celestial,props.density]);
+  const celestialObjects=useMemo(()=>celestialBase.map(body=>({
+    ...body,position:body.position.map(n=>n*spacingFactor) as Vector3Tuple,
+  })),[celestialBase,spacingFactor]);
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
