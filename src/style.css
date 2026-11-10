@@ -112,3 +112,20 @@
 .image-palette-reset-area{margin:9px 0;min-height:40px;padding:8px 12px;border-radius:7px;border:1px solid #827298;background:#30253e;color:#eae2f6}
 [data-theme=light] .image-palette-pick-area{background:#f1eef7;border-color:#8d76b0}
 [data-theme=light] .image-palette-reset-area{background:#eae2f3;color:#392755}
+
+/* Text tab — matching existing settings while keeping tap targets usable on phones. */
+.text-controls{min-width:0}
+.text-controls textarea{width:100%;min-height:85px;resize:vertical;background:#11141a;color:#e3e5ee;border:1px solid #444957;border-radius:7px;padding:11px;font:inherit;font-size:13px;line-height:1.5;outline-offset:3px}
+.text-controls textarea:focus-visible{outline:2px solid #a997ff}
+.text-controls .text-checkbox{display:flex;align-items:center;gap:9px;min-height:44px;font-size:12px;margin:10px 0}
+.text-controls .text-checkbox input{width:18px;height:18px;accent-color:#a997ff}
+.text-controls h3{font-size:12px;margin:24px 0 14px}
+.text-control-range{margin:15px 0}
+.text-control-range label{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#c4c9d3;margin-bottom:11px}
+.text-control-range output{font-family:monospace;color:#c7b5ff}
+.text-controls .text-color-input{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;font-size:11px}
+.text-color-input input{width:58px;height:38px;cursor:pointer}
+.text-control-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px}
+[data-theme=light] .text-controls textarea{background:#fbfaff;color:#2f293e;border-color:#b9afca}
+[data-theme=light] .text-control-range label,[data-theme=light] .text-controls .text-color-input{color:#493863}
+[data-theme=light] .text-control-range output{color:#68459e}

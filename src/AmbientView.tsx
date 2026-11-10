@@ -4,6 +4,7 @@ import {themeScene} from './themes';
 import {createScrollWorld,entryTime,growthSeconds,type ScrollWorld} from './scroll-world';
 import { useMemo } from 'react';
 import { Preview } from './Preview';
+import { TextOverlay } from './TextOverlay';
 import { generateScene, RATIOS, type Background } from './scene';
 import { densityCandidates, visibleScene } from './density';
 import { schedule, progressAt } from './animation';
@@ -25,7 +26,7 @@ function Tile({input,index,progress,phase,opacity=1,scale=1,figurePainter,figure
  }
  const transform='';
 
- return <g opacity={opacity} transform={transform}><Preview scene={generated.scene} background={background} backgroundBlend={backgroundBlend} motion={motion} shapeColors={figurePainter?.(generated.scene.shapes,figureKey)} growth={progress>=1?undefined:Object.fromEntries(generated.scene.shapes.map(shape=>[shape.id,progressAt(generated.cues[shape.id],progress,input.animation.easingType)]))}/></g>;
+ return <g opacity={opacity} transform={transform}><Preview scene={generated.scene} background={background} backgroundBlend={backgroundBlend} textOverlay={input.settings.mode==='scroll'?undefined:input.textOverlay?.layer==='back'?input.textOverlay:undefined} motion={motion} shapeColors={figurePainter?.(generated.scene.shapes,figureKey)} growth={progress>=1?undefined:Object.fromEntries(generated.scene.shapes.map(shape=>[shape.id,progressAt(generated.cues[shape.id],progress,input.animation.easingType)]))}/></g>;
 }
 export function AmbientView({input,seconds,world,scrollCamera='parent',figureCache}:{input:AmbientInput;seconds:number;world?:ScrollWorld;scrollCamera?:'parent'|'per-chunk';figureCache?:FigureColorCache}){
  const localFigureCache=useMemo(createFigureColorCache,[input.seed]);
@@ -57,6 +58,8 @@ export function AmbientView({input,seconds,world,scrollCamera='parent',figureCac
    {/* Reverse growth retracts the current geometry on its own. Overlaying the\n       next tile (including its background rect) would fade out the old tile too. */}
    {exit>0&&s.transitionType!=='reverse'&&<Tile input={input} index={nextIndex} progress={cycleGrowth?0:1} phase={0} opacity={exit}/>}
   </>}
+  {/* Keep titles screen-fixed during floating, reverse growth, and tiled scrolling. */}
+  {(input.textOverlay?.layer==='front'||scroll)&&<TextOverlay settings={input.textOverlay} width={width} height={height}/>}
  </svg>;
 }
 
@@ -66,6 +69,7 @@ function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:nu
  const painter=useMemo(()=>createFigurePainter(input,seconds,background,world.figureCache),[input.background,input.colors,input.seed,input.settings,input.scrollFigureState,background,s.scrollFigureAuto?seconds:0,world]);
  return <svg data-testid="ambient-preview" data-scroll-world="v3" data-scroll-density={s.scrollDensity} data-cache-size={world.cache.size} data-group-cache-size={world.groupCache.size} className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">
   <Preview scene={world.empty} background={background}/>
+  {input.textOverlay?.layer==='back'&&<TextOverlay settings={input.textOverlay} width={width} height={height}/>}
   <g data-testid="scroll-camera" transform={camera==='parent'?`translate(${-cx} ${-cy})`:undefined}>{groups.map(chunk=>{
    const margin=world.renderMargin;
    if(chunk.anchorX-cx < -margin||chunk.anchorX-cx > width+margin||chunk.anchorY-cy < -margin||chunk.anchorY-cy > height+margin)return null;
@@ -78,5 +82,6 @@ function ChunkScroll({input,seconds,world,camera}:{input:AmbientInput;seconds:nu
     <Preview scene={chunk.scene} background={background} shapeColors={painter(chunk.scene.shapes,chunk.key)} growth={growth} transparent/>
    </g>;
   })}</g>
+  {input.textOverlay?.layer==='front'&&<TextOverlay settings={input.textOverlay} width={width} height={height}/>}
  </svg>;
 }

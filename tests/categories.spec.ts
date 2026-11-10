@@ -1,8 +1,8 @@
 import {test,expect,type Page} from '@playwright/test';
-const names=['図形','背景','カラー','装飾','アニメーション','書き出し'];
+const names=['図形','背景','カラー','文字','装飾','アニメーション','書き出し'];
 async function open(page:Page,name:string){const button=page.getByRole('navigation',{name:'設定カテゴリー'}).getByRole('button',{name,exact:true});if(await button.getAttribute('aria-expanded')!=='true')await button.click();}
-test('six categories classify controls and preserve every local setting',async({page})=>{
- await page.emulateMedia({reducedMotion:'reduce'});await page.goto('./');const nav=page.getByRole('navigation',{name:'設定カテゴリー'});await expect(nav.getByRole('button')).toHaveCount(6);await expect(page.locator('#panel-shapes')).toBeVisible();
+test('seven categories classify controls and preserve every local setting',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto('./');const nav=page.getByRole('navigation',{name:'設定カテゴリー'});await expect(nav.getByRole('button')).toHaveCount(7);await expect(page.locator('#panel-shapes')).toBeVisible();
  await open(page,'アニメーション');await page.getByLabel('アニメーションを有効化').uncheck();await open(page,'図形');await page.getByLabel('シード値',{exact:true}).fill('category-state');await page.getByLabel('図形密度').fill('75');await page.getByLabel('キャンバスの比率').selectOption('1:1');
  await open(page,'カラー');for(const label of ['背景色','グラデーション色1','グラデーション色2','グラデーション色3','主役色','補助色','アクセント色'])await expect(page.getByLabel(label,{exact:true})).toBeVisible();await page.getByLabel('主役色 HEX').fill('#44aa99');await page.getByRole('button',{name:'主役色を固定',exact:true}).click();
  await open(page,'背景');await expect(page.getByRole('button',{name:'グラデーション',exact:true})).toBeVisible();await page.getByLabel('方向').fill('90');

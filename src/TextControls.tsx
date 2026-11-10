@@ -1,0 +1,52 @@
+import type {TextOverlaySettings} from './text-overlay';
+type Props={settings:TextOverlaySettings;onChange:(next:TextOverlaySettings)=>void};
+type NumberKey='fontSize'|'opacity'|'x'|'y'|'rotation'|'strokeWidth'|'shadowBlur';
+type ColorKey='color'|'strokeColor'|'shadowColor';
+export function TextControls({settings,onChange}:Props){
+ const update=<K extends keyof TextOverlaySettings>(key:K,value:TextOverlaySettings[K])=>onChange({...settings,[key]:value});
+ const range=(key:NumberKey,label:string,min:number,max:number,step=1,unit='')=><div className="text-control-range">
+  <label htmlFor={`text-${key}`}>{label} <output htmlFor={`text-${key}`}>{settings[key]}{unit}</output></label>
+  <input id={`text-${key}`} type="range" min={min} max={max} step={step} value={settings[key]}
+   onChange={e=>update(key,Number(e.target.value))}/>
+ </div>;
+ const color=(key:ColorKey,label:string)=><label className="text-color-input">{label}
+  <input type="color" value={settings[key]} onChange={e=>update(key,e.target.value)}/>
+ </label>;
+ return <section className="control-section text-controls" aria-labelledby="text-settings-heading">
+  <div className="section-heading"><h3 id="text-settings-heading">文字を配置</h3><span className="tiny-label">TEXT OVERLAY</span></div>
+  <label className="text-checkbox"><input type="checkbox" checked={settings.enabled} onChange={e=>update('enabled',e.target.checked)}/> 文字を表示</label>
+  <label htmlFor="overlay-text">表示する文字</label>
+  <textarea id="overlay-text" rows={3} maxLength={2000} value={settings.text}
+   onChange={e=>update('text',e.target.value.split('\n').slice(0,12).join('\n'))}
+   placeholder="ここにタイトルを入力（改行OK）"/>
+  <p className="help">1つのテキストを配置します。最大2000文字・12行。文字は図形のシードを変更しません。</p>
+  <label htmlFor="text-font-family">フォント</label>
+  <select id="text-font-family" value={settings.fontFamily} onChange={e=>update('fontFamily',e.target.value as TextOverlaySettings['fontFamily'])}>
+   <option value="sans-serif">ゴシック体</option><option value="serif">明朝体</option><option value="monospace">等幅フォント</option>
+  </select>
+  <label className="text-checkbox"><input type="checkbox" checked={settings.bold} onChange={e=>update('bold',e.target.checked)}/> 太字にする</label>
+  {range('fontSize','文字サイズ',12,250,1)}
+  {color('color','文字色')}
+  {range('opacity','不透明度',0,100,1,'%')}
+  <h3>位置と重なり順</h3>
+  <div className="text-control-columns">
+   {range('x','横位置',0,100,1,'%')}
+   {range('y','縦位置',0,100,1,'%')}
+  </div>
+  <label htmlFor="text-align">横揃え</label>
+  <select id="text-align" value={settings.align} onChange={e=>update('align',e.target.value as TextOverlaySettings['align'])}>
+   <option value="left">左揃え</option><option value="center">中央揃え</option><option value="right">右揃え</option>
+  </select>
+  {range('rotation','回転',-180,180,1,'°')}
+  <label htmlFor="text-layer">文字の重なり順</label>
+  <select id="text-layer" value={settings.layer} onChange={e=>update('layer',e.target.value as TextOverlaySettings['layer'])}>
+   <option value="front">図形より前面</option><option value="back">図形より背面（背景より前）</option>
+  </select>
+  <h3>装飾</h3>
+  <label className="text-checkbox"><input type="checkbox" checked={settings.strokeEnabled} onChange={e=>update('strokeEnabled',e.target.checked)}/> 縁取りを有効化</label>
+  {settings.strokeEnabled&&<>{color('strokeColor','縁取り色')}{range('strokeWidth','縁取りの太さ',0,30,1)}</>}
+  <label className="text-checkbox"><input type="checkbox" checked={settings.shadowEnabled} onChange={e=>update('shadowEnabled',e.target.checked)}/> 影を有効化</label>
+  {settings.shadowEnabled&&<>{color('shadowColor','影の色')}{range('shadowBlur','影のぼかし',0,40,1)}</>}
+  <p className="help">SVGの文字レイヤーとして描画するため、PNG・SVG・通常動画と設定JSONに反映されます。フォントの見え方は端末環境により変わることがあります。</p>
+ </section>;
+}

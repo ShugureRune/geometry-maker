@@ -9,6 +9,8 @@ import { defaults,schedule,progressAt,type AnimationSettings } from './animation
 import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
 import {ImagePaletteControls} from './ImagePaletteControls';
+import {TextControls} from './TextControls';
+import {textOverlayDefaults,type TextOverlaySettings} from './text-overlay';
 import {applyImagePalette} from './image-palette';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +24,7 @@ const initialBackground: Background = {glowIntensity:100,mode:'gradient',solid:'
 export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
   const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
+  const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>({...textOverlayDefaults});
   const [enabledShapeKinds,setEnabledShapeKinds]=useState<ShapeKind[]>(()=>[...ALL_SHAPE_KINDS]);
   const lastGlow=useRef(100);
   const [ambient,setAmbient]=useState({...ambientDefaults});
@@ -71,7 +74,7 @@ export default function App() {
    replayOnRegenerate();
   }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
-  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
+  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background} textOverlay={textOverlay}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
@@ -167,6 +170,10 @@ export default function App() {
         </section>
 
         </div>
+        <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={category!=='text'}>
+          <h2 className="category-title">文字</h2>
+          <TextControls settings={textOverlay} onChange={setTextOverlay}/>
+        </div>
         <div id="panel-decoration" className="category-panel" data-category="decoration" role="region" aria-labelledby="category-decoration" hidden={category!=='decoration'}>
           <h2 className="category-title">装飾</h2>
         <section className="control-section">
@@ -180,17 +187,17 @@ export default function App() {
         </div>
         <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={category!=='animation'}>
           <h2 className="category-title">アニメーション</h2>
-        <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
+        <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
 
         </div>
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={category!=='export'}>
           <h2 className="category-title">書き出し</h2>
       <div className="export-area">
-        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds}}} version={version} density={density} colorSettings={activeColors} visualTheme={visualTheme} enabledShapeKinds={enabledShapeKinds} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel textOverlay={textOverlay} videoArtwork={{scene,candidates,seed,background,animation,textOverlay,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}}} version={version} density={density} colorSettings={activeColors} visualTheme={visualTheme} enabledShapeKinds={enabledShapeKinds} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
-            setDensity(settings.density ?? 50);setVisualTheme(settings.visualTheme??'standard');
+            setDensity(settings.density ?? 50);setVisualTheme(settings.visualTheme??'standard');setTextOverlay(settings.textOverlay??{...textOverlayDefaults});
             setEnabledShapeKinds(settings.enabledShapeKinds??[...ALL_SHAPE_KINDS]);
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
             setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
@@ -206,7 +213,7 @@ export default function App() {
 
       <section className="preview-panel" aria-labelledby="preview-heading">
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
-        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth}/>}</></div></div>
+        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay}/>}</></div></div>
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
