@@ -94,3 +94,45 @@ describe('on-device image palette extraction',()=>{
   expect(generateScene('same-seed','16:9')).toEqual(generateScene('same-seed','16:9'));
  });
 });
+
+
+function makeCanvas(width:number,height:number,background:[number,number,number],
+ foreground:[number,number,number],rectangle:{x:number;y:number;width:number;height:number}){
+ const pixels=new Uint8ClampedArray(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+  const index=(y*width+x)*4;
+  const on=x>=rectangle.x&&x<rectangle.x+rectangle.width&&y>=rectangle.y&&y<rectangle.y+rectangle.height;
+  pixels.set([...(on?foreground:background),255],index);
+ }
+ return pixels;
+}
+
+describe('foreground-first image palette sampling',()=>{
+ it('removes a large, connected uniform backdrop instead of selecting it as the first swatch',()=>{
+  const pixels=makeCanvas(64,64,[24,105,215],[222,58,127],{x:17,y:15,width:30,height:31});
+  const whole=extractImagePalette(pixels);
+  const focused=extractImagePalette(pixels,{width:64,focus:'subject'});
+  expect(whole.solid).toBe('#1869d7');
+  expect(focused.solid).toBe('#de3a7f');
+  expect(focused.swatches[0]).toBe('#de3a7f');
+  expect(extractImagePalette(pixels,{width:64,focus:'subject'})).toEqual(focused);
+  for(const shape of focused.figures)for(const bg of focused.gradient)
+   expect(contrastRatio(shape,bg)).toBeGreaterThanOrEqual(4.4);
+ });
+ it('allows selecting just an off-center subject and retains the original whole-image mode',()=>{
+  const pixels=makeCanvas(60,40,[25,70,140],[232,175,42],{x:38,y:5,width:14,height:22});
+  expect(extractImagePalette(pixels,{width:60,focus:'all'})).toEqual(extractImagePalette(pixels));
+  const selected=extractImagePalette(pixels,{width:60,focus:'all',
+   crop:{x:38/60,y:5/40,width:14/60,height:22/40}});
+  expect(selected.solid).toBe('#e8af2a');
+  expect(selected.swatches[0]).toBe('#e8af2a');
+  expect(extractImagePalette(pixels,{width:60,focus:'center'}).swatches.length).toBeGreaterThanOrEqual(5);
+ });
+ it('keeps valid palettes for completely flat images and reports invalid crop dimensions',()=>{
+  const flat=makeCanvas(24,24,[90,110,130],[90,110,130],{x:4,y:4,width:10,height:10});
+  expect(extractImagePalette(flat,{width:24,focus:'subject'}).solid).toBe('#5a6e82');
+  expect(()=>extractImagePalette(flat,{width:0,focus:'subject'})).toThrow();
+  expect(()=>extractImagePalette(flat,{width:24,focus:'all',
+   crop:{x:.5,y:.5,width:0,height:0}})).toThrow();
+ });
+});
