@@ -17,11 +17,35 @@ export const SKY_LABELS: Record<SkyKind,string> = {
   digital:'デジタル空間',
 };
 
+/** Three editable colors per preset: dark atmosphere, luminous midtone, and highlights.
+ * A missing color override keeps the exact original procedural palette. */
+export type SkyPalette={base:string;accent:string;highlight:string};
+export const SKY_PALETTES:Record<SkyKind,SkyPalette>={
+  classic:{base:'#060b21',accent:'#38456e',highlight:'#e3ecff'},
+  starfield:{base:'#050b26',accent:'#26418b',highlight:'#d6eaff'},
+  galaxy:{base:'#080621',accent:'#694acb',highlight:'#ffccae'},
+  aurora:{base:'#031421',accent:'#1daa83',highlight:'#a7f1d2'},
+  'deep-sea':{base:'#010d2b',accent:'#087f99',highlight:'#8deeff'},
+  nebula:{base:'#0d0628',accent:'#9b40d4',highlight:'#5de2f3'},
+  'cyber-tunnel':{base:'#04051a',accent:'#36cfff',highlight:'#ff5bcf'},
+  retrowave:{base:'#120525',accent:'#ee399d',highlight:'#ffb45d'},
+  digital:{base:'#011413',accent:'#10d87b',highlight:'#a9ffcf'},
+};
+export function validateSkyPalette(value:unknown):SkyPalette{
+  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('3D背景の色設定が不正です。');
+  const v=value as Record<string,unknown>,color=(x:unknown)=>{
+    if(typeof x!=='string'||!/^#[0-9a-fA-F]{6}$/.test(x))throw new Error('3D背景の色は#RRGGBBで指定してください。');
+    return x.toLowerCase();
+  };
+  return {base:color(v.base),accent:color(v.accent),highlight:color(v.highlight)};
+}
+
 export type SkySettings = {
   kind:SkyKind;
   intensity:number;
   density:number;
   motion:number;
+  colors?:SkyPalette;
 };
 export const skyDefaults:SkySettings={
   kind:'classic',intensity:100,density:100,motion:100,
@@ -36,7 +60,8 @@ export function validateSky(value:unknown):SkySettings{
     if(typeof v[key]!=='number'||!Number.isFinite(v[key])||v[key]<min||v[key]>max)
       throw new Error('3D背景の'+key+'が範囲外です。');
   }
-  return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,motion:v.motion as number};
+  return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,motion:v.motion as number,
+    ...(v.colors===undefined?{}:{colors:validateSkyPalette(v.colors)})};
 }
 /** No frame-time random numbers. Repeated seed + kind produces the same universe. */
 export function skySeedNumber(seed:string,kind:SkyKind):number{
