@@ -93,3 +93,30 @@ test('animated grid scrolls, rotates and pulses independently of shape growth',a
  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
  await expect(page.getByTestId('grid-background')).toHaveCount(0);
 });
+
+test('grid speed is independent and follows the 0–360 degree infinite figure scroll setting',async({page})=>{
+ await page.goto('./');
+ const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+ await nav.getByRole('button',{name:'背景',exact:true}).click();
+ await page.getByLabel('グリッド背景を有効化').check();
+ await page.getByLabel('グリッドアニメーションを有効化').check();
+ await page.locator('#grid-animation-speed').fill('0.1');
+ await expect(page.locator('#grid-animation-speed')).toHaveValue('0.1');
+ await nav.getByRole('button',{name:'アニメーション',exact:true}).click();
+ await page.getByLabel('自動待機画面を有効化').check();
+ await page.getByLabel('待機アニメーション').selectOption('scroll');
+ await page.getByText('待機画面の詳細設定',{exact:true}).click();
+ await expect(page.locator('#ambient-scrollAngle')).toBeVisible();
+ await expect(page.getByText('0°=右、90°=下、180°=左、270°=上',{exact:false})).toBeVisible();
+ await page.locator('#ambient-scrollAngle').fill('90');
+ await expect(page.locator('#ambient-scrollAngle')).toHaveValue('90');
+ await expect(page.getByTestId('ambient-preview').getByTestId('grid-background')).toHaveAttribute('data-grid-motion','scroll');
+ await expect(page.getByTestId('ambient-preview')).toHaveAttribute('data-scroll-world','v3');
+ await nav.getByRole('button',{name:'書き出し',exact:true}).click();
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
+ const bytes=await readFile((await(await download).path())!);
+ const settings=JSON.parse(bytes.toString());
+ expect(settings.gridBackground.animation.speed).toBe(0.1);
+ expect(settings.ambient.scrollAngle).toBe(90);
+});
