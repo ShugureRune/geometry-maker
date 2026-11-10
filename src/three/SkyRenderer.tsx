@@ -5,7 +5,7 @@ import {
   Group,Mesh,ShaderMaterial,
 } from 'three';
 import {seededRandom} from '../scene';
-import {skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
+import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
 
 type SkyProps={
@@ -28,7 +28,8 @@ function SkyDome({sky,seed,seconds,low}:{
     uTime:{value:seconds.current*sky.motion/100},
     uIntensity:{value:sky.intensity/100},
     uDensity:{value:sky.density/100},
-  }),[sky,seed,seconds]);
+    uLow:{value:low?1:0},
+  }),[sky,seed,seconds,low]);
   useFrame(()=>{
     mesh.current?.position.copy(camera.position);
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
@@ -122,7 +123,8 @@ function CyberTunnel({sky,seconds}:{
   const geometries=useMemo(()=>{
     const neon:number[]=[],magenta:number[]=[];
     const add=(arr:number[],a:number[],b:number[])=>arr.push(...a,...b);
-    const width=16,height=11,step=7.5,frames=34;
+    // Density must affect the actual 3D frames, not just the background tint.
+    const width=16,height=11,step=7.5,frames=cyberTunnelFrameCount(sky.density);
     for(let i=0;i<frames;i++){
       const z=8-i*step;
       const points=[
@@ -139,7 +141,7 @@ function CyberTunnel({sky,seconds}:{
       g.setAttribute('position',new Float32BufferAttribute(coords,3));
       return g;
     });
-  },[]);
+  },[sky.density]);
   useEffect(()=>()=>geometries.forEach(g=>g.dispose()),[geometries]);
   useFrame(()=>{
     if(group.current)group.current.position.z=(seconds.current*sky.motion/100*5)%7.5;
@@ -166,6 +168,7 @@ function RetroFloor({sky,seconds,sceneHeight}:{
   const uniforms=useMemo(()=>({
     uTime:{value:seconds.current*sky.motion/100},
     uIntensity:{value:sky.intensity/100},
+    uDensity:{value:sky.density/100},
   }),[seconds,sky]);
   useFrame(()=>{
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;

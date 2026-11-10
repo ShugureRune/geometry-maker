@@ -47,6 +47,12 @@ export function skySeedNumber(seed:string,kind:SkyKind):number{
   }
   return (hash>>>0)/4294967295;
 }
+/** Actual count of 3D tunnel frames. Density 0 hides them, 100 retains
+ * the original 34-frame tunnel, and 200 doubles it without adding meshes. */
+export function cyberTunnelFrameCount(density:number):number{
+  return Math.max(0,Math.round(34*density/100));
+}
+
 export function skyIsAnimated(sky:SkySettings):boolean{
   return sky.kind!=='classic'&&sky.motion>0&&sky.intensity>0;
 }

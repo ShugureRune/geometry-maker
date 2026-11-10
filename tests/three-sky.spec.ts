@@ -117,3 +117,34 @@ test('background effects render in low-quality mobile-sized 3D mode with a celes
   await page.getByLabel('3D背景の種類').selectOption('digital');
   expect(digest(await png(page))).not.toBe(tunnel);
 });
+
+test('sky density changes cyber tunnel frames and retrowave ground independently from the 3D figures',async({page})=>{
+  await start(page);
+  const preview=page.getByTestId('three-preview');
+  const objectCount=await preview.getAttribute('data-object-count');
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  const select=page.getByLabel('3D背景の種類');
+  await select.selectOption('cyber-tunnel');
+  await page.locator('#three-sky-density').fill('0');
+  const none=digest(await png(page));
+  await category(page,'背景');
+  await page.locator('#three-sky-density').fill('100');
+  const standard=digest(await png(page));
+  await category(page,'背景');
+  await page.locator('#three-sky-density').fill('200');
+  const dense=digest(await png(page));
+  expect(new Set([none,standard,dense]).size).toBe(3);
+  await expect(preview).toHaveAttribute('data-object-count',objectCount!);
+
+  await category(page,'背景');
+  await select.selectOption('retrowave');
+  await page.locator('#three-sky-density').fill('0');
+  const emptyRetro=digest(await png(page));
+  await category(page,'背景');
+  await page.locator('#three-sky-density').fill('100');
+  const normalRetro=digest(await png(page));
+  expect(normalRetro).not.toBe(emptyRetro);
+  await expect(preview).toHaveAttribute('data-object-count',objectCount!);
+});
