@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {RATIOS} from '../scene';
 import {generateThreeComposition} from './model';
 import {CELESTIAL_KINDS, celestialDefaults, celestialSpin, generateCelestialBodies, validateCelestialSettings} from './celestial';
-import {threeDefaults, validateThreeSettings} from './settings';
+import {threeDefaults, validateThreeSettings, type ThreeSettings} from './settings';
 import {parseThreeProject, threeProjectText, type ThreeProject} from './project';
 
 const all = {...celestialDefaults, enabled: true};
@@ -44,7 +44,7 @@ describe('optional 3D celestial scene', () => {
     expect(celestialSpin('neutron-star', 12.5, 1)).toBe(celestialSpin('neutron-star', 12.5, 1));
   });
   it('round trips the new settings while keeping old 3D projects disabled', () => {
-    const settings = {...threeDefaults, celestial: {...all, kinds: ['star', 'moon', 'black-hole']}};
+    const settings: ThreeSettings = {...threeDefaults, celestial: {...all, kinds: ['star', 'moon', 'black-hole']}};
     const project: ThreeProject = {
       kind: 'geometry-maker-3d', schemaVersion: 1, algorithmVersion: '3d-v1', seed: 'star-test',
       aspectRatio: '16:9', density: 50, visualTheme: 'standard',
