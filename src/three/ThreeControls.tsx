@@ -1,7 +1,7 @@
 import type {ThreeSettings} from './settings';
 
 type Props = {settings: ThreeSettings; onChange: (settings: ThreeSettings) => void};
-function ThreeRange({id, label, value, min, max, step = .05, unit = '', onChange}: {
+export function ThreeRange({id, label, value, min, max, step = .05, unit = '', onChange}: {
   id: string; label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (n: number) => void;
 }) {
   return <div className="three-range">
