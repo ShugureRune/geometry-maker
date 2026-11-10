@@ -27,7 +27,7 @@ export function TextControls({settings,onChange}:Props){
   <label className="text-checkbox"><input type="checkbox" checked={settings.bold} onChange={e=>update('bold',e.target.checked)}/> 太字にする</label>
   {range('fontSize','文字サイズ',12,250,1)}
   {color('color','文字色')}
-  {range('opacity','透明度',0,100,1,'%')}
+  {range('opacity','不透明度',0,100,1,'%')}
   <h3>位置と重なり順</h3>
   <div className="text-control-columns">
    {range('x','横位置',0,100,1,'%')}
