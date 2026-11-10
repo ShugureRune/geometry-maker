@@ -317,6 +317,12 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   const withGrid=digest(await png(page));
   expect(withGrid).not.toBe(original);
   await category(page,'背景');
+  // A change in physical (world-space) stroke width must change the rendered PNG.
+  await page.locator('#floor-grid-thickness').fill('5');
+  expect(digest(await png(page))).not.toBe(withGrid);
+  await category(page,'背景');
+  await page.locator('#floor-grid-thickness').fill('3');
+  await category(page,'背景');
   await page.locator('#floor-grid-hex').fill('#ff4499');
   const pink=digest(await png(page));
   expect(pink).not.toBe(withGrid);

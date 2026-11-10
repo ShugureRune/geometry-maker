@@ -44,6 +44,15 @@ export function floorGridOffset(seconds:number,grid:FloorGridSettings):number{
   return Math.abs(offset-grid.spacing)<1e-8?0:offset;
 }
 
+
+/** Convert the near-camera CSS-pixel thickness into WORLD units.
+ * Use the scene height rather than live camera distance: zooming then changes
+ * the projected width naturally. The CSS preview height keeps mobile and desktop
+ * near-line thickness comparable; high-res PNG still scales the same world width. */
+export function floorGridStrokeWidth(thickness:number,sceneHeight:number,previewHeight:number):number{
+  return thickness*(sceneHeight*1.2/Math.max(1,previewHeight));
+}
+
 /** Stored extent (24..120) remains compatible with old 3D JSON.
  * Only the rendered diameter is enlarged, so grid spacing and motion stay unchanged. */
 export const FLOOR_GRID_DIAMETER_MULTIPLIER = 10;
