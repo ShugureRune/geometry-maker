@@ -14,16 +14,42 @@ describe('deterministic infinite world',()=>{
   }
  },15000);
  it('keeps group plans, sizes and common shapes stable across density changes',()=>{
-  const a=createScrollWorld(input),b=createScrollWorld({...input,settings:{...input.settings,scrollDensity:100}}),low=a.frame(8,input.settings).groups,high=b.frame(8,input.settings).groups;
+  const highSettings={...input.settings,scrollDensity:100};
+  const a=createScrollWorld(input),b=createScrollWorld({...input,settings:highSettings}),low=a.frame(8,input.settings).groups,high=b.frame(8,highSettings).groups;
   const highByKey=new Map(high.map(g=>[g.key,g]));
   expect(low.length).toBeGreaterThan(0);expect(high.length).toBeGreaterThanOrEqual(low.length);
-  low.forEach(g=>{const full=highByKey.get(g.key);expect(full).toBeDefined();expect(g.scale).toBe(full!.scale);expect(g.anchorX).toBe(full!.anchorX);expect(g.rotation).toBe(full!.rotation);for(const shape of g.scene.shapes)expect(full!.scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
+  low.forEach(g=>{const full=highByKey.get(g.key);expect(full).toBeDefined();expect(g.scale).toBe(full!.scale);expect(g.anchorX).toBe(full!.anchorX);expect(g.rotation).toBe(full!.rotation);expect(g.scene.shapes).toEqual(full!.scene.shapes);});
   const empty=createScrollWorld({...input,settings:{...input.settings,scrollDensity:0}});
-  expect(empty.frame(8,input.settings).groups).toHaveLength(0);
+  expect(empty.frame(8,{...input.settings,scrollDensity:0}).groups).toHaveLength(0);
   const allPlans=Array.from({length:9},(_,i)=>i-4).flatMap(x=>Array.from({length:9},(_,j)=>j-4).flatMap(y=>b.chunk(x,y).groups));
   expect(allPlans.some(plan=>plan.startDensity>50&&plan.startDensity<=100)).toBe(true);
   expect(allPlans.some(plan=>plan.startDensity===0)).toBe(true);
   expect(a.frame(30,input.settings)).toEqual(a.frame(30,{...input.settings,autoSeed:false,interval:4}));
+ });
+ it('scroll density raises hero frequency, not decoration or per-group detail',()=>{
+  for(const version of ['2d-v4','2d-v5'] as const){
+   const lowSettings={...input.settings,scrollDensity:25},highSettings={...input.settings,scrollDensity:100};
+   const lowWorld=createScrollWorld({...input,version,settings:lowSettings});
+   const highWorld=createScrollWorld({...input,version,settings:highSettings});
+   let addedHeroes=0;
+   for(const t of [0,3,6,9,12,16,22,30]){
+    const low=lowWorld.frame(t,lowSettings).groups,high=highWorld.frame(t,highSettings).groups;
+    const highByKey=new Map(high.map(g=>[g.key,g]));
+    // The independent detail groups remain constant at every positive density.
+    expect(low.filter(g=>g.kind==='detail').map(g=>g.key)).toEqual(high.filter(g=>g.kind==='detail').map(g=>g.key));
+    for(const group of low){
+     const counterpart=highByKey.get(group.key);
+     expect(counterpart).toBeDefined();
+     expect(group.scene.shapes).toEqual(counterpart!.scene.shapes);
+     expect(group.scale).toBe(counterpart!.scale);
+    }
+    const lower=low.filter(g=>g.kind==='hero').length;
+    const upper=high.filter(g=>g.kind==='hero').length;
+    expect(upper).toBeGreaterThanOrEqual(lower);
+    addedHeroes+=upper-lower;
+   }
+   expect(addedHeroes).toBeGreaterThan(0);
+  }
  });
  it('contains hero envelopes, supports decoration-only groups and gives each group its own entry time',()=>{
   for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version}),groups=world.frame(0,input.settings).groups;
