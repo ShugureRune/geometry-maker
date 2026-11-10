@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {generateScene,RATIOS,type Ratio} from './scene';
+import {generateScene,type Ratio} from './scene';
 import {shapeBounds,crossesRect,contoursOf,worldPoint} from './geometry';
 import {createScrollWorld} from './scroll-world';
 import {ambientDefaults,type AmbientInput} from './ambient';
