@@ -55,9 +55,14 @@ export function resolveAllowedShapeKind(
 ):ShapeKind{
  if(!enabledKinds||enabledKinds.includes(requested))return requested;
  if(enabledKinds.length===0)throw new Error('表示する図形を1種類以上選択してください。');
- const candidates=(preferred[requested]??[]).filter(kind=>enabledKinds.includes(kind));
+ // Branch-circuit and circuit are connector-specific contours. Keep them as
+ // requested shapes, but do not substitute them for ordinary floating motifs
+ // unless they are literally the only remaining user choice.
+ const safe=enabledKinds.filter(kind=>kind!=='branch-circuit'&&kind!=='circuit');
+ const options=safe.length?safe:enabledKinds;
+ const candidates=(preferred[requested]??[]).filter(kind=>options.includes(kind));
  const family=SHAPE_FAMILIES.find(f=>f.kinds.includes(requested));
- const similar=family?.kinds.filter(kind=>kind!==requested&&enabledKinds.includes(kind))??[];
- const pool=candidates.length?candidates:similar.length?similar:enabledKinds;
+ const similar=family?.kinds.filter(kind=>kind!==requested&&options.includes(kind))??[];
+ const pool=candidates.length?candidates:similar.length?similar:options;
  return pool[Math.floor(seededRandom(`shape-kind-replacement-v1:${seed}:${id}:${requested}`)()*pool.length)];
 }
