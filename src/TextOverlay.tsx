@@ -2,18 +2,21 @@ import {useId} from 'react';
 import type {TextOverlaySettings} from './text-overlay';
 import type {Background} from './scene';
 import {backgroundVector,inkAt} from './paint';
+import {textEntranceFrame} from './text-entrance';
 
 /** An SVG-native title layer shared by preview, still exports and video frames.
  * All color modes resolve at render time so changing a theme/seed/image palette
  * changes linked text without mutating the text settings or geometry. */
-export function TextOverlay({settings,width,height,background}:{
- settings?:TextOverlaySettings;width:number;height:number;background?:Background
+export function TextOverlay({settings,width,height,background,seconds}:{
+ settings?:TextOverlaySettings;width:number;height:number;background?:Background;seconds?:number
 }){
  const id='text-'+useId().replace(/:/g,'');
  if(!settings?.enabled||!settings.text.trim())return null;
  const x=width*settings.x/100,y=height*settings.y/100;
+ const entrance=textEntranceFrame(settings,seconds);
+ const hasMotion=entrance.progress<1;
  const anchor=settings.align==='left'?'start':settings.align==='right'?'end':'middle';
- const lines=settings.text.split('\n');
+ const lines=entrance.text.split('\n');
  const spacing=settings.fontSize*1.25;
  const startY=y-(lines.length-1)*spacing/2+settings.fontSize*.35;
  const typeface=settings.fontFamily;
@@ -45,7 +48,9 @@ export function TextOverlay({settings,width,height,background}:{
  );
  return <g data-testid="text-overlay" data-text-layer={settings.layer} data-text-color-mode={colorMode}
   data-text-fill-mode={settings.fillMode??'solid'} data-text-glow-target={glowTarget}
-  opacity={settings.opacity/100} transform={`rotate(${settings.rotation} ${x} ${y})`}>
+  opacity={settings.opacity/100*entrance.opacity} data-text-entrance={settings.entrance??'none'}
+  data-text-progress={entrance.progress}
+  transform={hasMotion?`translate(${entrance.dx} ${entrance.dy}) translate(${x} ${y}) scale(${entrance.scale}) translate(${-x} ${-y}) rotate(${settings.rotation} ${x} ${y})`:`rotate(${settings.rotation} ${x} ${y})`}>
   {colorMode==='gradient'&&<defs>
    <linearGradient id={`${id}-gradient`} data-testid="text-gradient" gradientUnits="userSpaceOnUse"
     x1={vector.start.x} y1={vector.start.y} x2={vector.end.x} y2={vector.end.y}>
