@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {RATIOS} from '../scene';
 import {generateThreeComposition,spaceThreeComposition,threeSpacingFactor,THREE_SPACING_DEFAULT,visibleThreeObjects} from './model';
 import {networkConnections} from './network';
-import {celestialDefaults,generateCelestialBodies} from './celestial';
+import {celestialDefaults,generateCelestialBodies,spaceCelestialBodies} from './celestial';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
@@ -71,10 +71,24 @@ describe('3D object spacing percentage',()=>{
 
   it('retains moon radius proportion with the widened constellation',()=>{
     const source=generateThreeComposition('space-celestial','16:9');
-    const bodies=generateCelestialBodies(spaceThreeComposition(source,100),{...celestialDefaults,enabled:true},100);
-    const planet=bodies.find(body=>body.kind==='planet')!;
-    const moon=bodies.find(body=>body.kind==='moon')!;
+    const bodies=generateCelestialBodies(source,{...celestialDefaults,enabled:true},100);
+    const spaced=spaceCelestialBodies(bodies,100);
+    const more=spaceCelestialBodies(bodies,175);
+    const planet=spaced.find(body=>body.kind==='planet')!;
+    const moon=spaced.find(body=>body.kind==='moon')!;
     expect(moon.radius).toBeCloseTo(planet.radius/4);
+    for(let i=0;i<bodies.length;i++){
+      expect(spaced[i].id).toBe(bodies[i].id);
+      expect(spaced[i].radius).toBe(bodies[i].radius);
+      expect(more[i].radius).toBe(bodies[i].radius);
+      expect(spaced[i].phase).toBe(bodies[i].phase);
+      expect(more[i].phase).toBe(bodies[i].phase);
+      for(let axis=0;axis<3;axis++){
+        expect(spaced[i].position[axis]).toBeCloseTo(bodies[i].position[axis]*1.5,10);
+        expect(more[i].position[axis]).toBeCloseTo(bodies[i].position[axis]*2.625,10);
+      }
+    }
+    expect(generateCelestialBodies(source,{...celestialDefaults,enabled:true},100)).toEqual(bodies);
   });
 
   it('validates spacing and round trips JSON, including older projects without the setting',()=>{
