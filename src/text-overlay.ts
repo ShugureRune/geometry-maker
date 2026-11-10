@@ -4,6 +4,7 @@ export type TextOverlaySettings={
  text:string;
  fontFamily:'sans-serif'|'serif'|'monospace';
  colorMode:'solid'|'primary'|'support'|'accent'|'gradient';
+ fillMode:'solid'|'transparent';
  fontSize:number;
  bold:boolean;
  color:string;
@@ -13,12 +14,14 @@ export type TextOverlaySettings={
  align:'left'|'center'|'right';
  rotation:number;
  strokeEnabled:boolean;
+ strokeColorMode:'custom'|'text';
  strokeColor:string;
  strokeWidth:number;
  shadowEnabled:boolean;
  shadowColor:string;
  shadowBlur:number;
  glowEnabled:boolean;
+ glowTarget:'fill'|'outline'|'both';
  glowColorMode:'text'|'custom';
  glowColor:string;
  glowStrength:number;
@@ -26,11 +29,11 @@ export type TextOverlaySettings={
  layer:'front'|'back';
 };
 export const textOverlayDefaults:TextOverlaySettings={
- enabled:false,text:'タイトル',fontFamily:'sans-serif',colorMode:'solid',fontSize:100,bold:true,
+ enabled:false,text:'タイトル',fontFamily:'sans-serif',colorMode:'solid',fillMode:'solid',fontSize:100,bold:true,
  color:'#ffffff',opacity:100,x:50,y:50,align:'center',rotation:0,
- strokeEnabled:false,strokeColor:'#171527',strokeWidth:6,
+ strokeEnabled:false,strokeColorMode:'custom',strokeColor:'#171527',strokeWidth:6,
  shadowEnabled:false,shadowColor:'#000000',shadowBlur:8,
- glowEnabled:false,glowColorMode:'text',glowColor:'#bba0ff',glowStrength:100,glowBlur:10,layer:'front'
+ glowEnabled:false,glowTarget:'fill',glowColorMode:'text',glowColor:'#bba0ff',glowStrength:100,glowBlur:10,layer:'front'
 };
 export function validateTextOverlay(value:unknown):TextOverlaySettings{
  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('文字設定が不正です。');
@@ -44,6 +47,9 @@ export function validateTextOverlay(value:unknown):TextOverlaySettings{
  ||typeof result.text!=='string'||result.text.length>2000||result.text.split('\n').length>12
  ||!choice(result.fontFamily,['sans-serif','serif','monospace'])
  ||!choice(result.colorMode,['solid','primary','support','accent','gradient'])
+ ||!choice(result.fillMode,['solid','transparent'])
+ ||!choice(result.strokeColorMode,['custom','text'])
+ ||!choice(result.glowTarget,['fill','outline','both'])
  ||!choice(result.glowColorMode,['text','custom'])
  ||!choice(result.align,['left','center','right'])||!choice(result.layer,['front','back'])
  ||!number(result.fontSize,12,250)||!number(result.opacity,0,100)
