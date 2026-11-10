@@ -1,4 +1,5 @@
 import { contoursOf, crossesRect, polar, shapeBounds, worldPoint } from './geometry';
+import {resolveAllowedShapeKind,type ShapeKind} from './shape-controls';
 import { ALGORITHM_VERSION, COMPOSITION_TYPES, RATIOS, seededRandom, spatialNoise,
   type Composition, type CompositionType, type HeroPlan, type Point, type Ratio, type Rect, type Scene, type Shape } from './scene';
 
@@ -17,7 +18,7 @@ const heroesFor:Record<CompositionType,readonly Shape['kind'][]> = {
 const closedFill = new Set<Shape['kind']>(['triangle','trapezoid','parallelogram','sector','chevron','star','crescent','capsule','burst','shield']);
 
 /** A plan first, then connected families. All distances are in the short edge's units. */
-export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
+export function generateDiverseScene(seed:string,ratio:Ratio,enabledKinds?:readonly ShapeKind[]):Scene {
   const [width,height]=RATIOS[ratio],unit=Math.min(width,height),wide=width>=height;
   const random=seededRandom(`2d-v5:plan:${seed}`);
   const type=choose(random,COMPOSITION_TYPES);
@@ -33,6 +34,7 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
   if(type==='multi-anchor')focus=wide?{x:width*.28,y:height*.39}:{x:width*.4,y:height*.28};
   const primary=choose(random,heroesFor[type]);
   function make(kind:Shape['kind'],role:Shape['role'],p:Point,size:number,rotation:number,id:string,parent?:string):Shape {
+    kind=resolveAllowedShapeKind(kind,enabledKinds,seed,id);
     return {id,kind,role,group:parent??id,parent,x:p.x,y:p.y,size,rotation,tone:'violet',
       layer:role==='decoration'||role==='accent'?'foreground':'midground',
       opacity:role==='hero'?.92:role==='accent'?.95:.56,filled:closedFill.has(kind),
@@ -43,7 +45,7 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
       startDensity:role==='hero'?1:role==='accent'?20:role==='support'?30:45};
   }
   const hero=make(primary,'hero',focus,unit*(.27+random()*.065),direction+(primary==='hexagon'?30:0),'hero-0');
-  if(primary==='rays')hero.size=unit*.34;
+  if(hero.kind==='rays')hero.size=unit*.34;
   if(type==='corners') {
     hero.x=width*(side<0?.12:.88);hero.y=height*(random()<.5?.15:.85);
     hero.size=unit*.4;hero.bleed=true;
