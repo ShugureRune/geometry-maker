@@ -3,6 +3,7 @@ export type TextOverlaySettings={
  enabled:boolean;
  text:string;
  fontFamily:'sans-serif'|'serif'|'monospace';
+ colorMode:'solid'|'primary'|'support'|'accent'|'gradient';
  fontSize:number;
  bold:boolean;
  color:string;
@@ -17,13 +18,19 @@ export type TextOverlaySettings={
  shadowEnabled:boolean;
  shadowColor:string;
  shadowBlur:number;
+ glowEnabled:boolean;
+ glowColorMode:'text'|'custom';
+ glowColor:string;
+ glowStrength:number;
+ glowBlur:number;
  layer:'front'|'back';
 };
 export const textOverlayDefaults:TextOverlaySettings={
- enabled:false,text:'タイトル',fontFamily:'sans-serif',fontSize:100,bold:true,
+ enabled:false,text:'タイトル',fontFamily:'sans-serif',colorMode:'solid',fontSize:100,bold:true,
  color:'#ffffff',opacity:100,x:50,y:50,align:'center',rotation:0,
  strokeEnabled:false,strokeColor:'#171527',strokeWidth:6,
- shadowEnabled:false,shadowColor:'#000000',shadowBlur:8,layer:'front'
+ shadowEnabled:false,shadowColor:'#000000',shadowBlur:8,
+ glowEnabled:false,glowColorMode:'text',glowColor:'#bba0ff',glowStrength:100,glowBlur:10,layer:'front'
 };
 export function validateTextOverlay(value:unknown):TextOverlaySettings{
  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('文字設定が不正です。');
@@ -33,13 +40,17 @@ export function validateTextOverlay(value:unknown):TextOverlaySettings{
  const number=(v:unknown,min:number,max:number)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
  const color=(v:unknown)=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
  if(typeof result.enabled!=='boolean'||typeof result.bold!=='boolean'||typeof result.strokeEnabled!=='boolean'||typeof result.shadowEnabled!=='boolean'
+ ||typeof result.glowEnabled!=='boolean'
  ||typeof result.text!=='string'||result.text.length>2000||result.text.split('\n').length>12
  ||!choice(result.fontFamily,['sans-serif','serif','monospace'])
+ ||!choice(result.colorMode,['solid','primary','support','accent','gradient'])
+ ||!choice(result.glowColorMode,['text','custom'])
  ||!choice(result.align,['left','center','right'])||!choice(result.layer,['front','back'])
  ||!number(result.fontSize,12,250)||!number(result.opacity,0,100)
  ||!number(result.x,0,100)||!number(result.y,0,100)||!number(result.rotation,-180,180)
  ||!number(result.strokeWidth,0,30)||!number(result.shadowBlur,0,40)
- ||!color(result.color)||!color(result.strokeColor)||!color(result.shadowColor))
+ ||!number(result.glowStrength,0,200)||!number(result.glowBlur,0,40)
+ ||!color(result.color)||!color(result.strokeColor)||!color(result.shadowColor)||!color(result.glowColor))
   throw new Error('文字設定の入力値が範囲外です。');
  // Copy only supported keys, never import arbitrary fields from a JSON file.
  return Object.fromEntries(Object.keys(textOverlayDefaults).map(key=>[key,result[key as keyof TextOverlaySettings]])) as TextOverlaySettings;
