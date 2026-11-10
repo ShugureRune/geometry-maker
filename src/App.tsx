@@ -2,6 +2,7 @@ import { SettingsCategories, type Category } from './SettingsCategories';
 import {ShapeKindControls} from './ShapeKindControls';
 import {ALL_SHAPE_KINDS,type ShapeKind} from './shape-controls';
 import { AmbientControls, AmbientStage, useAmbientClock, ambientDefaults } from './AmbientControls';
+import {figureScrollAngle} from './ambient';
 import { darkTheme,VISUAL_THEMES,THEME_PRESETS,applyThemePalette,themeScene,type VisualTheme } from './themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AnimationControls,usePlayback } from './AnimationControls';
@@ -52,7 +53,7 @@ export default function App() {
   const [enabledShapeKinds,setEnabledShapeKinds]=useState<ShapeKind[]>(()=>[...ALL_SHAPE_KINDS]);
   const lastGlow=useRef(100);
   const [ambient,setAmbient]=useState({...ambientDefaults});
-  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient);
+  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient,ratio);
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState(createRandomSeed);
   const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
@@ -114,7 +115,7 @@ export default function App() {
    replayOnRegenerate();
   }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
-  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background} textOverlay={textOverlay} gridSeconds={gridSeconds}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
+  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background} textOverlay={textOverlay} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
@@ -273,7 +274,7 @@ export default function App() {
         <div className="canvas-stage">
           {renderMode==='2d'?<PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
-              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds}/>}
+              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>}
             </div>
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
