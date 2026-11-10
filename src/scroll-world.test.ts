@@ -15,7 +15,12 @@ describe('deterministic infinite world',()=>{
  },15000);
  it('keeps group plans, sizes and common shapes stable across density changes',()=>{
   const a=createScrollWorld(input),b=createScrollWorld({...input,settings:{...input.settings,scrollDensity:100}}),low=a.frame(8,input.settings).groups,high=b.frame(8,input.settings).groups;
-  expect(low.length).toBeGreaterThan(0);low.forEach((g,i)=>{expect(g.scale).toBe(high[i].scale);expect(g.anchorX).toBe(high[i].anchorX);expect(g.rotation).toBe(high[i].rotation);for(const shape of g.scene.shapes)expect(high[i].scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
+  const highByKey=new Map(high.map(g=>[g.key,g]));
+  expect(low.length).toBeGreaterThan(0);expect(high.length).toBeGreaterThanOrEqual(low.length);
+  low.forEach(g=>{const full=highByKey.get(g.key);expect(full).toBeDefined();expect(g.scale).toBe(full!.scale);expect(g.anchorX).toBe(full!.anchorX);expect(g.rotation).toBe(full!.rotation);for(const shape of g.scene.shapes)expect(full!.scene.shapes.find(s=>s.id===shape.id)).toEqual(shape);});
+  const empty=createScrollWorld({...input,settings:{...input.settings,scrollDensity:0}});
+  expect(empty.frame(8,input.settings).groups).toHaveLength(0);
+  expect([0,8,20].some(t=>b.frame(t,input.settings).groups.length>a.frame(t,input.settings).groups.length)).toBe(true);
   expect(a.frame(30,input.settings)).toEqual(a.frame(30,{...input.settings,autoSeed:false,interval:4}));
  });
  it('contains hero envelopes, supports decoration-only groups and gives each group its own entry time',()=>{
