@@ -26,6 +26,8 @@ import {ThreeShapeControls, ThreeMaterialControls, ThreeAnimationControls} from 
 import {ThreeExportPanel} from './three/ThreeExportPanel';
 import {ThreeBoundary} from './three/ThreeBoundary';
 import {ThreeStyleControls} from './three/ThreeStyleControls';
+import {FloorGridControls} from './three/FloorGridControls';
+import {floorGridDefaults} from './three/floor-grid';
 import type {ThreeProject} from './three/project';
 import './three/three.css';
 import { ExportPanel } from './ExportPanel';
@@ -179,6 +181,7 @@ export default function App() {
           <p className="help">背景の各色は「カラー」で編集できます。</p>
         </section>
         {renderMode==='2d'&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
+        {renderMode==='3d'&&<FloorGridControls value={threeSettings.floorGrid??floorGridDefaults} onChange={floorGrid=>setThreeSettings(settings=>({...settings,floorGrid}))}/>}
 
 
         </div>
