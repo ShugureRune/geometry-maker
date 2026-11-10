@@ -50,3 +50,57 @@ describe('SVG text layer and portable settings',()=>{
   expect(validateTextOverlay({...s,extra:'ignore'})).toEqual(s);
  });
 });
+
+
+describe('palette-linked text ink and independent glow',()=>{
+ const scene=generateScene('color-link','16:9','2d-v5');
+ const paletteBackground={...background,figureColors:{primary:'#fa45ca',support:'#49dfee',accent:'#a7ed63'}};
+ const title={...textOverlayDefaults,enabled:true,text:'タイトル'};
+ const draw=(settings:typeof title,backgroundColor=paletteBackground)=>
+  renderToStaticMarkup(<Preview scene={scene} background={backgroundColor} textOverlay={settings}/>);
+ it('keeps plain titles unchanged and adds a glow only when enabled',()=>{
+  const plain=draw(title);
+  expect(plain).not.toContain('data-testid="text-glow"');
+  const glow=draw({...title,glowEnabled:true,glowStrength:155,glowBlur:14});
+  expect(glow).toContain('data-testid="text-glow"');
+  expect(glow).toContain('feGaussianBlur');
+  expect(glow).toContain('stdDeviation="14"');
+  expect(glow).toContain('slope="2.55"');
+  expect(draw({...title,glowEnabled:true,glowStrength:0})).not.toContain('data-testid="text-glow"');
+  expect(draw({...title,glowEnabled:true,glowColorMode:'custom',glowColor:'#ff2200'})).toContain('fill="#ff2200"');
+ });
+ it('resolves role colors at render time and reacts to theme / palette changes',()=>{
+  const roles=[['primary','#fa45ca'],['support','#49dfee'],['accent','#a7ed63']] as const;
+  for(const [mode,color] of roles){
+   const markup=draw({...title,colorMode:mode,glowEnabled:true});
+   expect(markup).toContain('data-text-color-mode="'+mode+'"');
+   expect(markup).toContain('fill="'+color+'"');
+  }
+  const revised={...paletteBackground,figureColors:{...paletteBackground.figureColors,primary:'#22dd44'}};
+  expect(draw({...title,colorMode:'primary'},revised)).toContain('fill="#22dd44"');
+  expect(draw({...title,colorMode:'solid',color:'#f12345'},revised)).toContain('fill="#f12345"');
+  expect(generateScene('color-link','16:9','2d-v5')).toEqual(scene);
+ });
+ it('uses the same gradient direction and source role colors, with no external assets',()=>{
+  const markup=draw({...title,colorMode:'gradient',glowEnabled:true,glowColorMode:'text'});
+  expect(markup).toContain('data-testid="text-gradient"');
+  expect(markup).toContain('gradientUnits="userSpaceOnUse"');
+  expect(markup).toMatch(/stop-color="#fa45ca"|stopColor="#fa45ca"/);
+  expect(markup).toContain('fill="url(#text-');
+  expect(markup).toContain('data-testid="text-glow"');
+  expect(markup).not.toContain('http://');
+ });
+ it('validates new options, restores older text JSON and still permits v4',()=>{
+  const old={...textOverlayDefaults} as Record<string,unknown>;
+  for(const key of ['colorMode','glowEnabled','glowColorMode','glowColor','glowStrength','glowBlur'])delete old[key];
+  const restored=parseSettings(settingsText({...project,textOverlay:old as typeof textOverlayDefaults}));
+  expect(restored.textOverlay).toEqual(textOverlayDefaults);
+  const updated={...title,colorMode:'gradient' as const,glowEnabled:true,
+   glowColorMode:'custom' as const,glowColor:'#b3ddee',glowStrength:170,glowBlur:24};
+  expect(parseSettings(settingsText({...project,textOverlay:updated})).textOverlay).toEqual(updated);
+  expect(parseSettings(settingsText({...project,algorithmVersion:'2d-v4',textOverlay:updated})).algorithmVersion).toBe('2d-v4');
+  for(const change of [{colorMode:'rainbow'},{glowEnabled:'yes'},{glowColorMode:'external'},
+   {glowColor:'rebeccapurple'},{glowStrength:201},{glowStrength:-1},{glowBlur:41},
+   {glowBlur:Number.POSITIVE_INFINITY}])expect(()=>validateTextOverlay({...updated,...change})).toThrow();
+ });
+});
