@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {generateScene,seededRandom} from './scene';
+import {generateScene} from './scene';
 import {densityCandidates,visibleScene} from './density';
 import {legacyColors} from './colors';
 import {applyThemePalette,themeScene,validVisualTheme,VISUAL_THEMES,THEME_PRESETS} from './themes';
@@ -30,7 +30,6 @@ describe('12 selectable visual themes',()=>{
   original.slots.solid={...original.slots.solid,color:'#abcdef',locked:true};
   original.slots.primary={...original.slots.primary,color:'#fadbee',locked:true};
   for(const t of VISUAL_THEMES.filter(t=>t.id!=='standard')){
-   if(t.id==='standard')continue;
    const result=applyThemePalette(original,background,t.id);
    expect(result.background.solid).toBe('#abcdef');
    expect(result.background.figureColors?.primary).toBe('#fadbee');
