@@ -1,4 +1,5 @@
 import { generateDiverseScene } from './scene-v5';
+import type {ShapeKind} from './shape-controls';
 import { contoursOf, crossesRect, polar, radians, shapeBounds, worldPoint } from './geometry.ts';
 
 /** Geometry and styling changes require a new version to preserve seed semantics. */
@@ -357,6 +358,6 @@ export function generateSceneV4(seed: string, ratio: Ratio): Scene {
 }
 
 /** Version dispatch is explicit: old JSON never silently adopts new geometry. */
-export function generateScene(seed: string, ratio: Ratio, version: AlgorithmVersion = ALGORITHM_VERSION): Scene {
-  return version === LEGACY_ALGORITHM_VERSION ? generateSceneV4(seed, ratio) : generateDiverseScene(seed, ratio);
+export function generateScene(seed: string, ratio: Ratio, version: AlgorithmVersion = ALGORITHM_VERSION, enabledKinds?:readonly ShapeKind[]): Scene {
+  return version === LEGACY_ALGORITHM_VERSION ? generateSceneV4(seed, ratio) : generateDiverseScene(seed, ratio, enabledKinds);
 }
