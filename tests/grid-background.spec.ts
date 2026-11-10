@@ -4,6 +4,8 @@ import {readFile} from 'node:fs/promises';
 test('2D grid controls, SVG/PNG export, JSON round-trip, and 3D isolation',async({page})=>{
   await page.goto('./');
   const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+  await nav.getByRole('button',{name:'アニメーション',exact:true}).click();
+  await page.getByLabel('アニメーションを有効化').uncheck();
   await nav.getByRole('button',{name:'背景',exact:true}).click();
   await expect(page.getByRole('heading',{name:'2Dグリッド背景'})).toBeVisible();
   const toggle=page.getByLabel('グリッド背景を有効化');
