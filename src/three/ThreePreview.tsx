@@ -1,7 +1,7 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
 import {useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
-import {ACESFilmicToneMapping, CanvasTexture, Mesh, SRGBColorSpace, Vector2} from 'three';
+import {ACESFilmicToneMapping, CanvasTexture, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
@@ -15,6 +15,7 @@ import {effectiveThreeQuality, themeMaterial, threeResolutionError, type ThreePr
 import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
+import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 
 type Props = {
   composition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
@@ -39,6 +40,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries;
 }) {
   const mesh = useRef<Mesh>(null);
+  const surfaceRef=useRef<MeshStandardMaterial|MeshPhysicalMaterial>(null);
   const segments = low ? 16 : 40;
   const kind = object.kind;
   const material = settings.material === 'theme' ? themeMaterial(visualTheme) : settings.material;
@@ -48,13 +50,20 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const neon=settings.neon??neonDefaults;
   const surfaceVisible=!neon.enabled||neon.display!=='lines';
   const translucent=neon.enabled&&neon.display==='transparent';
+  const appearance=settings.visibilityAnimation??visibilityDefaults;
+  const fades=visibilityUsesFade(appearance),scales=visibilityUsesScale(appearance);
+  const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
   useFrame(() => {
     if (!mesh.current) return;
     const pose = threePose(object, seconds.current, settings.floatAmount, settings.rotationAmount);
     mesh.current.position.set(...pose.position);
     mesh.current.rotation.set(...pose.rotation);
+    const visibility=threeVisibility(object,seconds.current,appearance);
+    mesh.current.visible=visibility>.001;
+    mesh.current.scale.setScalar(object.radius*(scales?Math.max(.001,visibility):1));
+    if(surfaceRef.current&&fades)surfaceRef.current.opacity=baseOpacity*visibility;
   });
-  return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent} receiveShadow={!low}>
+  return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent&&!fades} receiveShadow={!low}>
     {kind === 'sphere' && <sphereGeometry args={[1, segments, segments / 2]}/>}
     {kind === 'cube' && <boxGeometry args={[2 / Math.sqrt(3), 2 / Math.sqrt(3), 2 / Math.sqrt(3)]}/>}
     {kind === 'torus' && <torusGeometry args={[.72, .23, low ? 8 : 16, low ? 32 : 64]}/>}
@@ -70,15 +79,15 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
     {kind === 'torus-knot' && <torusKnotGeometry args={[.50, .15, low ? 48 : 112, low ? 6 : 12, 2, 3]}/>} 
     {/* Transparency changes the compiled OPAQUE shader variant; replace the
         material on this boundary so alpha sliders never use a stale program. */}
-    {material === 'glass' ? <meshPhysicalMaterial key={translucent?'translucent':'surface'} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
-      transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={translucent?neon.faceOpacity:low ? .65 : .92}
-      depthWrite={!translucent} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
-      : <meshStandardMaterial key={translucent?'translucent':'surface'} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
-        transparent={translucent} opacity={translucent?neon.faceOpacity:1} depthWrite={!translucent}
+    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
+      transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={baseOpacity}
+      depthWrite={!translucent&&!fades} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
+      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
+        transparent={translucent||fades} opacity={baseOpacity} depthWrite={!translucent&&!fades}
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
-    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds}/>}
   </mesh>;
 }
 
@@ -243,7 +252,9 @@ export default function ThreePreview(props: Props) {
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
   return <div className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
-    data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}>
+    data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
+    data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
+    data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 150}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
