@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {floorGridDefaults,floorGridOffset,floorGridPlacement,validateFloorGrid} from './floor-grid';
+import {FLOOR_GRID_DIAMETER_MULTIPLIER,floorGridDefaults,floorGridDiameter,floorGridOffset,floorGridPlacement,validateFloorGrid} from './floor-grid';
 import {validateThreeSettings,threeDefaults} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
@@ -8,9 +8,16 @@ describe('perspective 3D floor grid',()=>{
     expect(floorGridDefaults.enabled).toBe(false);
     expect(floorGridOffset(10,floorGridDefaults)).toBe(0);
     expect(validateThreeSettings({...threeDefaults,floorGrid:undefined}).floorGrid).toEqual(floorGridDefaults);
-    expect(floorGridPlacement(8,70)[1]).toBeCloseTo(-4.08);
-    expect(floorGridPlacement(8,70)[2]).toBeCloseTo(-11.2);
-    expect(floorGridPlacement(3,70)[1]).toBe(-3.3);
+    expect(floorGridPlacement(8)[1]).toBeCloseTo(-4.08);
+    expect(floorGridPlacement(8)).toEqual([0,-4.08,-.4]);
+    expect(floorGridPlacement(3)[1]).toBe(-3.3);
+    // A restored custom camera target must also be the floor center in X/Z.
+    expect(floorGridPlacement(8,[3,1,-7])).toEqual([3,-4.08,-7]);
+    expect(floorGridPlacement(3,[-12,-4,9])).toEqual([-12,-3.3,9]);
+    expect(FLOOR_GRID_DIAMETER_MULTIPLIER).toBe(10);
+    expect(floorGridDiameter(floorGridDefaults.extent)).toBe(700);
+    expect(floorGridDiameter(24)).toBe(240);
+    expect(floorGridDiameter(120)).toBe(1200);
   });
   it('scrolls in world units, wraps seamlessly and pauses when the clock pauses',()=>{
     const grid={...floorGridDefaults,enabled:true,scrollSpeed:2,spacing:2.5};
@@ -30,6 +37,10 @@ describe('perspective 3D floor grid',()=>{
       background:{mode:'solid',solid:'#111526',colors:['#111526','#201133','#142030'],angle:0},
       settings:{...threeDefaults,floorGrid},elapsedSeconds:12.4,exportWidth:512,exportHeight:512};
     expect(parseThreeProject(threeProjectText(project)).settings.floorGrid).toEqual(floorGrid);
+    // Existing JSON still stores the original 24..120 extent while drawing a 10x diameter.
+    const restoredExtent=parseThreeProject(threeProjectText(project)).settings.floorGrid!.extent;
+    expect(restoredExtent).toBe(70);
+    expect(floorGridDiameter(restoredExtent)).toBe(700);
     const {floorGrid:_,...oldSettings}=project.settings;
     expect(parseThreeProject(JSON.stringify({...project,settings:oldSettings})).settings.floorGrid).toEqual(floorGridDefaults);
     for(const bad of [{opacity:-.1},{opacity:1.1},{spacing:0},{extent:121},{scrollSpeed:9},{glow:201},{thickness:NaN},{color:'red'},{enabled:'yes'}]){

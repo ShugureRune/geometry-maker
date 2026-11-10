@@ -306,6 +306,10 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   await expect(preview).toHaveAttribute('data-floor-grid','off');
   await page.getByLabel('3D床グリッドを有効化').check();
   await expect(preview).toHaveAttribute('data-floor-grid','on');
+  // Show the real rendered diameter; underlying saved extent remains legacy-compatible.
+  await expect(page.locator('#floor-grid-extent')).toHaveValue('700');
+  await page.locator('#floor-grid-extent').fill('1000');
+  await expect(page.locator('#floor-grid-extent')).toHaveValue('1000');
   await page.locator('#floor-grid-opacity').fill('.9');
   await page.locator('#floor-grid-thickness').fill('3');
   await page.locator('#floor-grid-spacing').fill('2');
@@ -331,7 +335,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   const bytes=await readFile((await (await pending).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.floorGrid).toMatchObject({
-    enabled:true,color:'#ff4499',opacity:.9,thickness:3,spacing:2,glow:160,scrollSpeed:2.5,
+    enabled:true,color:'#ff4499',opacity:.9,thickness:3,spacing:2,glow:160,scrollSpeed:2.5,extent:100,
   });
   await category(page,'背景');
   await page.getByLabel('3D床グリッドを有効化').uncheck();
@@ -345,6 +349,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   await category(page,'背景');
   await expect(page.getByLabel('3D床グリッドを有効化')).toBeChecked();
   await expect(page.locator('#floor-grid-scroll')).toHaveValue('2.5');
+  await expect(page.locator('#floor-grid-extent')).toHaveValue('1000');
   await expect(preview).toHaveAttribute('data-object-count',shapeCount!);
   expect(digest(await png(page))).toBe(neonGrid);
   await page.getByRole('button',{name:'2Dモード',exact:true}).click();

@@ -44,7 +44,15 @@ export function floorGridOffset(seconds:number,grid:FloorGridSettings):number{
   return Math.abs(offset-grid.spacing)<1e-8?0:offset;
 }
 
-/** The plane is below every generated hero, while extending both near and far. */
-export function floorGridPlacement(sceneHeight:number,extent:number):[number,number,number]{
-  return [0,-Math.max(3.3,sceneHeight*.51),-extent*.16];
+/** Stored extent (24..120) remains compatible with old 3D JSON.
+ * Only the rendered diameter is enlarged, so grid spacing and motion stay unchanged. */
+export const FLOOR_GRID_DIAMETER_MULTIPLIER = 10;
+export function floorGridDiameter(extent:number):number{
+  return extent*FLOOR_GRID_DIAMETER_MULTIPLIER;
+}
+
+/** Center horizontally under the OrbitControls look-at target, not an
+ * extent-dependent Z offset. Keep the plane below the scene's solids. */
+export function floorGridPlacement(sceneHeight:number,target:readonly [number,number,number]=[0,0,-.4]):[number,number,number]{
+  return [target[0],-Math.max(3.3,sceneHeight*.51),target[2]];
 }
