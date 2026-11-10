@@ -2,6 +2,7 @@ import { memo, useId, useMemo } from 'react';
 import { contoursOf, pathData, radians, shapeBounds, worldPoint, trimContour } from './geometry';
 import { gradientEndpoints, type Background, type Point, type Scene, type Shape, NEW_SHAPE_KINDS } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
+import { GridBackground } from './GridBackground';
 import { TextOverlay } from './TextOverlay';
 import type {TextOverlaySettings} from './text-overlay';
 
@@ -88,6 +89,7 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
     {!transparent&&backgroundBlend&&<rect data-testid="transition-background" width={width} height={height}
       fill={backgroundBlend.next.mode==='solid'?backgroundBlend.next.solid:`url(#${gradientId}-next)`}
       opacity={backgroundBlend.opacity}/>} 
+    {!transparent&&<GridBackground background={background} width={width} height={height}/> }
     {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background} seconds={textSeconds}/>} 
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
