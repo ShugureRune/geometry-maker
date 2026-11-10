@@ -136,7 +136,8 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
    {focus==='area'&&<div className="image-palette-selection">
     <p className="help">画像の取り込みたい部分を指やマウスで囲んでください。タップだけでも範囲を移動できます。</p>
     <div className="image-palette-pick-area" role="group" aria-label="色を抽出する画像範囲"
-     style={{aspectRatio:(sampleRef.current?.width??1)+' / '+(sampleRef.current?.height??1)}}
+     style={{aspectRatio:(sampleRef.current?.width??1)+' / '+(sampleRef.current?.height??1),
+      width:Math.min(280,320*(sampleRef.current?.width??1)/(sampleRef.current?.height??1))+'px'}}
      onPointerDown={startSelection} onPointerMove={moveSelection}
      onPointerUp={finishSelection} onPointerCancel={()=>{dragRef.current=null;}}>
      <img src={preview} alt="抽出範囲を指定する画像" draggable={false}/>
