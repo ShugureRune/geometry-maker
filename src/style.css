@@ -137,3 +137,36 @@
 .text-neon-preset:focus-visible{outline:2px solid #bb9aff}
 [data-theme=light] .text-neon-preset{background:#e4d6fb;color:#4b2679;border-color:#9c78ce}
 [data-theme=light] .text-hollow-controls>label{color:#493863}
+
+/* Preview-only text interaction. This layer is HTML adjacent to the SVG and is
+   never serialized in still/video output. */
+.preview-text-interaction{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
+.preview-text-interaction>.canvas-frame{max-width:100%}
+.preview-text-interaction svg [data-testid="text-overlay"]{cursor:grab;touch-action:none;pointer-events:bounding-box}
+.preview-text-interaction svg [data-testid="text-overlay"] text{pointer-events:bounding-box}
+.preview-text-interaction.is-moving svg [data-testid="text-overlay"]{cursor:grabbing}
+.preview-text-launch{position:absolute;top:9px;right:9px;z-index:5;background:#161923db;color:#fff;border:1px solid #b4a0f0;border-radius:7px;padding:8px 12px;font-size:12px;min-height:36px;backdrop-filter:blur(8px)}
+.preview-text-launch:hover{background:#342b4c}
+.preview-text-popover{position:absolute;top:53px;right:9px;z-index:7;width:min(310px,calc(100% - 18px));max-height:min(420px,calc(100% - 58px));overflow:auto;border:1px solid #ad97ef;border-radius:10px;background:#1b1d2bf5;box-shadow:0 12px 30px #0008;padding:13px;color:#ece9fa;overscroll-behavior:contain}
+.preview-text-popover-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
+.preview-text-popover-head strong{font-size:13px}
+.preview-text-popover-head button{background:transparent;color:inherit;border:1px solid #65637a;border-radius:6px;font-size:18px;min-width:36px;min-height:36px}
+.preview-text-popover label{font-size:11px;display:block;color:#d5cdec}
+.preview-text-popover textarea{display:block;width:100%;margin:7px 0 11px;min-height:58px;resize:vertical;border:1px solid #777084;border-radius:6px;background:#11141a;color:#fff;padding:8px;font-size:14px;line-height:1.5}
+.preview-text-quick-row{display:flex;align-items:center;gap:10px}
+.preview-text-quick-row>label:first-child{min-width:0;flex:1}
+.preview-text-quick-row input[type=range]{display:block;margin:11px 0 0;min-height:16px}
+.preview-text-quick-row output{color:#d4c7ff;font-size:11px;font-family:monospace}
+.preview-text-quick-row input[type=color]{display:block;width:48px;height:38px;margin-top:4px;cursor:pointer}
+.preview-text-popover-actions{display:flex;gap:8px;margin-top:13px}
+.preview-text-popover-actions button{flex:1;border:1px solid #8577a5;background:#30283e;color:#f3eafd;border-radius:7px;min-height:40px;font-size:12px}
+.preview-text-popover-actions button:last-child{background:#ac95ef;color:#21182f;font-weight:600}
+.preview-text-popover p{font-size:10px;line-height:1.5;color:#c3b9d0;margin:10px 0 0}
+[data-theme=light] .preview-text-popover{background:#faf8fff8;color:#372b4a;border-color:#9679c0}
+[data-theme=light] .preview-text-popover label{color:#48315c}
+[data-theme=light] .preview-text-popover textarea{background:#fff;color:#2e243c;border-color:#b8aacb}
+[data-theme=light] .preview-text-popover-head button{color:#39274c}
+[data-theme=light] .preview-text-popover p{color:#60556b}
+[data-theme=light] .preview-text-popover-actions button:first-child{background:#eae3f7;color:#35254d}
+@media(max-width:720px){.preview-text-launch{font-size:11px;padding:7px 9px;min-height:34px}.preview-text-popover{top:49px;max-height:min(330px,calc(100% - 54px))}}
+@media(prefers-reduced-motion:reduce){.preview-text-popover,.preview-text-launch{transition:none}}
