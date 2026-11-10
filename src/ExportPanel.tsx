@@ -24,7 +24,7 @@ export function ExportPanel({ textOverlay, videoArtwork, version, animation, den
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
   function snapshot(): ProjectSettings {
-    return { ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...(visualTheme&&visualTheme!=='standard'?{visualTheme}:{}), ...(enabledShapeKinds&&!isAllShapeKindsEnabled(enabledShapeKinds)?{enabledShapeKinds:[...enabledShapeKinds]}:{}), ...video, lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), textOverlay, schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
+    return { ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...(visualTheme&&visualTheme!=='standard'?{visualTheme}:{}), ...(enabledShapeKinds&&!isAllShapeKindsEnabled(enabledShapeKinds)?{enabledShapeKinds:[...enabledShapeKinds]}:{}), ...video, ...(background.grid?{gridBackground:background.grid}:{}), lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), textOverlay, schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }
