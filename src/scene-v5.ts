@@ -73,7 +73,17 @@ export function generateDiverseScene(seed:string,ratio:Ratio,enabledKinds?:reado
     const w=unit*.33*scale,h=unit*.24*scale;
     pockets.push({x:clamp(width*x-w/2,unit*.025,width-w-unit*.025),y:clamp(height*y-h/2,unit*.025,height-h-unit*.025),width:w,height:h});
   }
-  const reservation=pockets.find(q=>heroes.every(s=>!crossesRect(s,q,unit*.025)));
+  let reservation=pockets.find(q=>heroes.every(s=>!crossesRect(s,q,unit*.025)));
+  // A restrictive allowlist can replace a small original silhouette with a
+  // much larger one (e.g. every figure becomes a gear). Recover a title pocket
+  // by scaling just those constrained heroes before drawing any attachments.
+  // Unrestricted/default v5 seeds retain their exact existing geometry.
+  if(!reservation&&enabledKinds){
+    for(let attempt=0;attempt<10&&!reservation;attempt++){
+      for(const h of heroes){h.size*=.83;fit(h);}
+      reservation=pockets.find(q=>heroes.every(h=>!crossesRect(h,q,unit*.025)));
+    }
+  }
   if(!reservation)throw new Error('v5: title pocket unavailable');
   const quiet:Rect=reservation;
   const plan:Composition={type,direction,quiet,unit,focus,noiseSeed:Math.floor(random()*2**32),
