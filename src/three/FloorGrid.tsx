@@ -1,7 +1,8 @@
 import {useFrame} from '@react-three/fiber';
 import {useMemo,useRef,type RefObject} from 'react';
-import {Color,DoubleSide,ShaderMaterial} from 'three';
-import {floorGridOffset,floorGridPlacement,type FloorGridSettings} from './floor-grid';
+import {Color,DoubleSide,Mesh,ShaderMaterial} from 'three';
+import {floorGridDiameter,floorGridOffset,floorGridPlacement,type FloorGridSettings} from './floor-grid';
+import type {ThreeView} from './settings';
 
 /** One anti-aliased floor plane: two triangles regardless of how many lines appear.
  * Real 3D depth, orbit-camera parallax and distance fog, with no mesh intersections.
@@ -38,26 +39,31 @@ void main(){
   #include <colorspace_fragment>
 }`;
 
-export function FloorGrid({grid,sceneHeight,seconds}:{
-  grid:FloorGridSettings;sceneHeight:number;seconds:RefObject<number>;
+export function FloorGrid({grid,sceneHeight,seconds,view}:{
+  grid:FloorGridSettings;sceneHeight:number;seconds:RefObject<number>;view:RefObject<ThreeView|undefined>;
 }){
   const material=useRef<ShaderMaterial>(null);
+  const mesh=useRef<Mesh>(null);
+  const diameter=floorGridDiameter(grid.extent);
   const uniforms=useMemo(()=>({
     uGridColor:{value:new Color(grid.color)},
     uSpacing:{value:grid.spacing},
     uThickness:{value:grid.thickness},
     uOpacity:{value:grid.opacity},
     uGlow:{value:grid.glow},
-    uExtent:{value:grid.extent},
+    uExtent:{value:diameter},
     uOffset:{value:floorGridOffset(seconds.current,grid)},
   }),[grid,seconds]);
   useFrame(()=>{
     if(material.current)material.current.uniforms.uOffset.value=floorGridOffset(seconds.current,grid);
+    // OrbitControls updates view.current when its target changes (including JSON restore).
+    // Match its X/Z target without moving the floor upward into the shapes.
+    if(mesh.current)mesh.current.position.set(...floorGridPlacement(sceneHeight,view.current?.target));
   });
   if(!grid.enabled)return null;
-  return <mesh name="perspective-floor-grid" rotation={[-Math.PI/2,0,0]}
-    position={floorGridPlacement(sceneHeight,grid.extent)} frustumCulled={false} renderOrder={-1}>
-    <planeGeometry args={[grid.extent,grid.extent]}/>
+  return <mesh ref={mesh} name="perspective-floor-grid" rotation={[-Math.PI/2,0,0]}
+    position={floorGridPlacement(sceneHeight,view.current?.target)} frustumCulled={false} renderOrder={-1}>
+    <planeGeometry args={[diameter,diameter]}/>
     <shaderMaterial ref={material} vertexShader={vertexShader} fragmentShader={fragmentShader}
       uniforms={uniforms} transparent depthWrite={false} depthTest={true}
       side={DoubleSide} toneMapped={false}/>
