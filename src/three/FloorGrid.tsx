@@ -1,4 +1,4 @@
-import {useFrame} from '@react-three/fiber';
+import {useFrame,useThree} from '@react-three/fiber';
 import {useMemo,useRef,type RefObject} from 'react';
 import {Color,DoubleSide,Mesh,ShaderMaterial} from 'three';
 import {floorGridDiameter,floorGridOffset,floorGridPlacement,floorGridStrokeWidth,type FloorGridSettings} from './floor-grid';
@@ -53,15 +53,17 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
   const material=useRef<ShaderMaterial>(null);
   const mesh=useRef<Mesh>(null);
   const diameter=floorGridDiameter(grid.extent);
+  const {size}=useThree();
+  const physicalWidth=floorGridStrokeWidth(grid.thickness,sceneHeight,size.height);
   const uniforms=useMemo(()=>({
     uGridColor:{value:new Color(grid.color)},
     uSpacing:{value:grid.spacing},
-    uWorldLineWidth:{value:floorGridStrokeWidth(grid.thickness)},
+    uWorldLineWidth:{value:physicalWidth},
     uOpacity:{value:grid.opacity},
     uGlow:{value:grid.glow},
     uExtent:{value:diameter},
     uOffset:{value:floorGridOffset(seconds.current,grid)},
-  }),[grid,seconds]);
+  }),[grid,seconds,physicalWidth]);
   useFrame(()=>{
     if(material.current)material.current.uniforms.uOffset.value=floorGridOffset(seconds.current,grid);
     // OrbitControls updates view.current when its target changes (including JSON restore).
