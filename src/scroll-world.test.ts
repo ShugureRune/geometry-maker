@@ -2,7 +2,7 @@ import {shapeBounds} from './geometry';
 import {describe,it,expect} from 'vitest';
 import {ambientDefaults,type AmbientInput} from './ambient';
 import {defaults} from './animation';
-import {createScrollWorld,chunkSeed,entryTime,scrollPathAt,scrollVelocity,growthSeconds,SCROLL_CACHE_LIMIT} from './scroll-world';
+import {createScrollWorld,chunkSeed,entryTime,scrollPathAt,scrollVelocity,growthSeconds,SCROLL_CACHE_LIMIT,SCROLL_GROUP_CACHE_LIMIT} from './scroll-world';
 const input:AmbientInput={seed:'scroll-test',version:'2d-v5',ratio:'16:9',density:50,background:{mode:'solid',solid:'#101020',colors:['#101020','#101020','#101020'],angle:0},animation:defaults,settings:{...ambientDefaults,enabled:true,mode:'scroll'}};
 describe('deterministic infinite world',()=>{
  it('restores evicted chunk plans and group geometry with bounded caches',()=>{
@@ -52,6 +52,30 @@ describe('deterministic infinite world',()=>{
    expect(addedHeroes).toBeGreaterThan(0);
   }
  });
+ it('adds independent main figures from 100 to 400 percent without changing existing groups',()=>{
+  for(const version of ['2d-v4','2d-v5'] as const){
+   const world=createScrollWorld({...input,version});
+   const densities=[100,200,300,400];
+   const frames=densities.map(scrollDensity=>world.frame(8,{...input.settings,scrollDensity}).groups);
+   for(let i=1;i<frames.length;i++){
+    const next=new Map(frames[i].map(g=>[g.key,g]));
+    expect(frames[i].length).toBeGreaterThan(frames[i-1].length);
+    for(const group of frames[i-1]){
+     const present=next.get(group.key);
+     expect(present).toBeDefined();
+     expect(present!.scene.shapes).toEqual(group.scene.shapes);
+     expect(present!.scale).toBe(group.scale);
+    }
+   }
+   const max=frames.at(-1)!;
+   expect(max.every(g=>g.kind==='hero'&&g.scene.shapes.some(s=>s.role==='hero'))).toBe(true);
+   expect(new Set(max.map(g=>g.seed)).size).toBe(max.length);
+   expect(world.cache.size).toBeLessThanOrEqual(SCROLL_CACHE_LIMIT);
+   expect(world.groupCache.size).toBeLessThanOrEqual(SCROLL_GROUP_CACHE_LIMIT);
+   const again=createScrollWorld({...input,version}).frame(8,{...input.settings,scrollDensity:400}).groups;
+   expect(again.map(g=>[g.key,g.anchorX,g.anchorY,g.seed])).toEqual(max.map(g=>[g.key,g.anchorX,g.anchorY,g.seed]));
+  }
+ },15000);
  it('contains main figures in all groups and gives each group its own entry time',()=>{
   for(const version of ['2d-v4','2d-v5'] as const){const world=createScrollWorld({...input,version}),groups=world.frame(0,input.settings).groups;
    expect(groups.length).toBeGreaterThan(0);for(const g of groups){expect(g.kind).toBe('hero');expect(g.scene.shapes.some(s=>s.role==='hero')).toBe(true);for(const shape of g.scene.shapes.filter(s=>s.role==='hero')){const b=shapeBounds(shape);for(const x of [b.x,b.x+b.width])for(const y of [b.y,b.y+b.height])expect(Math.hypot(x-g.localX,y-g.localY)*g.scale).toBeLessThanOrEqual(g.coreRadius+.00001);}}
