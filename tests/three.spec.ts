@@ -288,6 +288,7 @@ test('3D figures fade, scale and disappear without changing IDs, and preserve pa
   await expect(page.getByLabel('出現・消失アニメーションを有効化')).toBeChecked();
   await expect(page.locator('#three-visibility-mode')).toHaveValue('fade-scale');
   await expect(preview).toHaveAttribute('data-object-count',count!);
+  await category(page,'書き出し');
   await expect(page.getByRole('button',{name:'3D PNGを書き出す',exact:true})).toBeEnabled();
   expect(digest(await png(page))).toBe(paused);
 });
