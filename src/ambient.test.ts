@@ -9,6 +9,18 @@ it('preserves deterministic initial seed and cycle sequence',()=>{const s={...am
 it('perfect loop clock returns exactly to its initial state',()=>{const s={...ambientDefaults,loop:'perfect' as const,speed:2};expect(ambientClock(s,0)).toEqual(ambientClock(s,s.duration/s.speed));expect(ambientVideoSeconds(s)).toBe(7);});
 it('rejects invalid imported settings and fills old optional fields',()=>{expect(ambientSettings({})).toEqual(ambientDefaults);for(const bad of [{speed:0},{duration:NaN},{mode:'3d'},{enabled:'true'},{transition:99}])expect(()=>ambientSettings(bad)).toThrow();});
 
+it('defaults scroll hero density to 100 and accepts up to 400 without changing regular density',()=>{
+ expect(ambientDefaults.scrollDensity).toBe(100);
+ expect(ambientSettings({}).scrollDensity).toBe(100);
+ for(const density of [0,50,100,200,300,400]){
+  const settings=ambientSettings({scrollDensity:density});
+  expect(settings.scrollDensity).toBe(density);
+  expect(ambientSettings(JSON.parse(JSON.stringify(settings))).scrollDensity).toBe(density);
+ }
+ expect(()=>ambientSettings({scrollDensity:401})).toThrow();
+ expect(()=>ambientSettings({scrollDensity:-1})).toThrow();
+});
+
 it('hold duration changes the actual start of disappearance',()=>{const s={...ambientDefaults,interval:20,hold:5};expect(ambientEnvelope(s,8,6,1).fade).toBe(0);expect(ambientEnvelope({...s,hold:1},8,6,1).fade).toBeCloseTo(1/3);expect(ambientEnvelope(s,14,6,1).fade).toBe(1);});
 
 it('preserves manually edited palette at the initial seed',()=>{const bg={mode:'solid' as const,solid:'#111526',colors:['#111526','#111526','#111526'] as [string,string,string],angle:0,glowIntensity:0};const colors={...legacyColors(bg),mode:'seed' as const};colors.slots.primary.color='#ff0000';const text=renderToStaticMarkup(createElement(AmbientView,{seconds:0,input:{seed:'neon-city',version:'2d-v5',ratio:'16:9',density:50,background:coloredBackground(bg,colors),colors,animation:defaults,settings:{...ambientDefaults,enabled:true,mode:'float'}}}));expect(text).toContain('stroke="#ff0000"');});

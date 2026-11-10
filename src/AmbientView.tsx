@@ -38,7 +38,9 @@ export function AmbientView({input,seconds,world,scrollCamera='parent',figureCac
  const nextIndex=s.loop==='perfect'?0:s.autoSeed?c.index+1:0;
 
  const scroll=s.mode==='scroll';
- const scrollInput=scroll?{...input,density:s.scrollDensity,background:scrollBackgroundAt(input,seconds)}:input;
+ // Perfect loop tiles use regular figure detail density; hero-frequency layers apply
+ // to evolving scroll only, so values above 100 never feed into visibleScene.
+ const scrollInput=scroll?{...input,density:input.density,background:scrollBackgroundAt(input,seconds)}:input;
  const painter=scroll?createFigurePainter(input,seconds,scrollInput.background,figureCache??localFigureCache):undefined;
  const fraction=(c.phase*Math.max(1,Math.round(s.scrollSpeed)))%1;
  return <svg data-testid="ambient-preview" className="artwork" viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" overflow="hidden" aria-label="自動待機画面">

@@ -39,16 +39,25 @@ export function growthSeconds(start:number,end:number,s:AmbientSettings,path?:Sc
 export const chunkSeed=(seed:string,x:number,y:number)=>`${seed}::scroll-world-v1:${x}:${y}`;
 export type ScrollGroup=GroupPlan&{localX:number;localY:number;scale:number;scene:Scene;cues:ReturnType<typeof schedule>};
 export type ScrollChunk={key:string;x:number;y:number;groups:GroupPlan[]};
-export const SCROLL_CACHE_LIMIT=48;
-export const SCROLL_GROUP_CACHE_LIMIT=48;
+export const SCROLL_CACHE_LIMIT=128;
+export const SCROLL_GROUP_CACHE_LIMIT=128;
 /** Chunks own cheap plans only. Full SVG geometry is created lazily near the viewport. */
 export function createScrollWorld(input:AmbientInput){
  const [width,height]=RATIOS[input.ratio],unit=Math.min(width,height),pitch=unit;
- const layout=createScrollLayout(input.seed,unit),cache=new Map<string,ScrollChunk>(),groupCache=new Map<string,ScrollGroup>();
+ // Extra independent, deterministic worlds increase hero frequency above 100%,
+ // without increasing the number of decorations inside an individual scene.
+ const layouts=[createScrollLayout(input.seed,unit),...Array.from({length:3},(_,i)=>createScrollLayout(`${input.seed}::scroll-hero-layer:${i+1}`,unit))];
+ const layout=layouts[0],cache=new Map<string,ScrollChunk>(),groupCache=new Map<string,ScrollGroup>();
  const empty=generateScene(input.seed,input.ratio,input.version);empty.shapes=[];
- function chunk(x:number,y:number){
-  const key=`${x}:${y}`,hit=cache.get(key);if(hit){cache.delete(key);cache.set(key,hit);return hit;}
-  const value={key,x,y,groups:layout.plansForChunk(x,y)};cache.set(key,value);
+ function chunk(x:number,y:number,layer=0){
+  const key=layer===0?`${x}:${y}`:`layer-${layer}:${x}:${y}`,hit=cache.get(key);
+  if(hit){cache.delete(key);cache.set(key,hit);return hit;}
+  const plans=layouts[layer].plansForChunk(x,y);
+  const groups=layer===0?plans:plans.map(plan=>({
+   ...plan,key:`layer-${layer}:${plan.key}`,clusterId:`layer-${layer}:${plan.clusterId}`,
+   startDensity:layer*100+Math.max(1,plan.startDensity),
+  }));
+  const value={key,x,y,groups};cache.set(key,value);
   while(cache.size>SCROLL_CACHE_LIMIT)cache.delete(cache.keys().next().value!);return value;
  }
  function group(plan:GroupPlan){
@@ -68,7 +77,10 @@ export function createScrollWorld(input:AmbientInput){
  }
  return{figureCache:createFigureColorCache(),width,height,pitch,renderMargin:unit*.82,empty,cache,groupCache,layout,chunk,frame(time:number,s:AmbientSettings,path?:ScrollLeg[]){
   const camera=scrollPathAt(s,time,path),cx=camera.x*width,cy=camera.y*height,chunks:ScrollChunk[]=[],groups:ScrollGroup[]=[];
-  for(let y=Math.floor(cy/pitch)-1;y<=Math.floor((cy+height)/pitch)+1;y++)for(let x=Math.floor(cx/pitch)-1;x<=Math.floor((cx+width)/pitch)+1;x++)chunks.push(chunk(x,y));
+  // Only request the extra layers needed at the selected frequency.
+  // The original 0–100% world (layer 0) keeps its existing seeds and geometry.
+  const maxLayer=Math.min(3,Math.max(0,Math.ceil(s.scrollDensity/100)-1));
+  for(let layer=0;layer<=maxLayer;layer++)for(let y=Math.floor(cy/pitch)-1;y<=Math.floor((cy+height)/pitch)+1;y++)for(let x=Math.floor(cx/pitch)-1;x<=Math.floor((cx+width)/pitch)+1;x++)chunks.push(chunk(x,y,layer));
   for(const tile of chunks)for(const plan of tile.groups){
    // Scroll density changes the frequency of primary (hero) groups only.
    // Per-group decoration is independent of this setting.
