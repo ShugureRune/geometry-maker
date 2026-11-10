@@ -105,8 +105,8 @@ export function extractImagePalette(pixels:Uint8ClampedArray):ImagePalette{
  // actual source hues toward readable light/dark inks rather than making strokes
  // disappear into the dominant backdrop.
  const minContrast=(c:RGB)=>Math.min(...gradient.map(bg=>contrastRatio(hex(c),bg)));
- const darkBackground=luminance(dominant)<.19;
- const ink=darkBackground?white:black;
+ // Choose the ink with the strongest *minimum* contrast across the full gradient.
+ const ink=minContrast(white)>=minContrast(black)?white:black;
  const figures:RGB[]=[];
  const candidates=selected.slice(1).concat([selected[0],secondary,tertiary]);
  for(const candidate of candidates){
