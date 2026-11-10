@@ -8,6 +8,8 @@ import { AnimationControls,usePlayback } from './AnimationControls';
 import { defaults,schedule,progressAt,type AnimationSettings } from './animation';
 import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
+import {GridBackgroundControls} from './GridBackgroundControls';
+import {gridBackgroundDefaults} from './grid-background';
 import {ImagePaletteControls} from './ImagePaletteControls';
 import {TextControls} from './TextControls';
 import {useTextEntrancePreview} from './preview-text-animation';
@@ -173,6 +175,7 @@ export default function App() {
           </>}
           <p className="help">背景の各色は「カラー」で編集できます。</p>
         </section>
+        {renderMode==='2d'&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
 
 
         </div>
@@ -246,7 +249,7 @@ export default function App() {
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
             setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
             setSeed(settings.seed); setRatio(settings.aspectRatio);
-            const bg:Background={lineWidth:settings.lineWidth??100,glowIntensity:settings.glowIntensity??0,mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
+            const bg:Background={grid:settings.gridBackground??gridBackgroundDefaults,lineWidth:settings.lineWidth??100,glowIntensity:settings.glowIntensity??0,mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
             setColorSettings(settings.colorSettings);
             setBackground(settings.colorSettings ? coloredBackground(bg,settings.colorSettings) : bg);
             setRegenerations(0);
