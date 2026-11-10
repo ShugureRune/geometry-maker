@@ -1,4 +1,4 @@
-import {BoxGeometry, CapsuleGeometry, ConeGeometry, CylinderGeometry, DodecahedronGeometry, EdgesGeometry, IcosahedronGeometry, OctahedronGeometry, TetrahedronGeometry, TorusKnotGeometry} from 'three';
+import {BoxGeometry, ConeGeometry, CylinderGeometry, DodecahedronGeometry, EdgesGeometry, IcosahedronGeometry, OctahedronGeometry, TetrahedronGeometry, TorusKnotGeometry} from 'three';
 import type {ThreeKind} from './model';
 
 /** Smooth solids use designed circular contours, never tessellation diagonals.
