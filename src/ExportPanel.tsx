@@ -3,14 +3,15 @@ import { videoDefaults, videoSettings, type VideoSettings } from './video-settin
 import type { VideoArtwork } from './video-frame';
 import type { AnimationSettings } from './animation';
 import type { ColorSettings } from './colors';
+import type {VisualTheme} from './themes';
 import { useRef, useState } from 'react';
 import { RATIOS, type AlgorithmVersion, type Background, type Ratio } from './scene';
 import { downloadBlob, pngBlob, serializeArtwork } from './export';
 import { EXPORT_PRESETS, fileStem, MAX_PNG_PIXELS, MAX_SETTINGS_BYTES, parseSettings, resolutionError, settingsText, type ProjectSettings } from './settings';
 
-type Props = { videoArtwork: VideoArtwork; version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
+type Props = { videoArtwork: VideoArtwork; version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; visualTheme?:VisualTheme; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
   onRatio: (ratio: Ratio) => void; onRestore: (settings: ProjectSettings) => void };
-export function ExportPanel({ videoArtwork, version, animation, density, colorSettings, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
+export function ExportPanel({ videoArtwork, version, animation, density, colorSettings, visualTheme, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
   const [video, setVideo] = useState<VideoSettings>({...videoDefaults});
   const [custom, setCustom] = useState(false);
@@ -21,7 +22,7 @@ export function ExportPanel({ videoArtwork, version, animation, density, colorSe
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
   function snapshot(): ProjectSettings {
-    return { ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...video, lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
+    return { ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...(visualTheme&&visualTheme!=='standard'?{visualTheme}:{}), ...video, lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }
