@@ -5,7 +5,7 @@ import {
   Group,Mesh,ShaderMaterial,
 } from 'three';
 import {seededRandom} from '../scene';
-import {skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
+import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
 
 type SkyProps={
@@ -124,7 +124,7 @@ function CyberTunnel({sky,seconds}:{
     const neon:number[]=[],magenta:number[]=[];
     const add=(arr:number[],a:number[],b:number[])=>arr.push(...a,...b);
     // Density must affect the actual 3D frames, not just the background tint.
-    const width=16,height=11,step=7.5,frames=Math.round(34*sky.density/100);
+    const width=16,height=11,step=7.5,frames=cyberTunnelFrameCount(sky.density);
     for(let i=0;i<frames;i++){
       const z=8-i*step;
       const points=[
