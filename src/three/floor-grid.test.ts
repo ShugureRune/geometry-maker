@@ -20,12 +20,16 @@ describe('perspective 3D floor grid',()=>{
     expect(floorGridDiameter(120)).toBe(1200);
   });
   it('uses constant world-space line width, making its projected width shrink with distance',()=>{
-    expect(floorGridStrokeWidth(.5)).toBeCloseTo(.006);
-    expect(floorGridStrokeWidth(1.5)).toBeCloseTo(.018);
-    expect(floorGridStrokeWidth(5)).toBeCloseTo(.06);
+    // CSS viewport size calibrates near lines for desktop and mobile alike.
+    expect(floorGridStrokeWidth(.5,7.5,750)).toBeCloseTo(.006);
+    expect(floorGridStrokeWidth(1.5,7.5,750)).toBeCloseTo(.018);
+    expect(floorGridStrokeWidth(5,7.5,750)).toBeCloseTo(.06);
+    expect(floorGridStrokeWidth(1.5,7.5,225)).toBeCloseTo(.06);
+    expect(floorGridStrokeWidth(1.5,7.5,750)*750).toBeCloseTo(
+      floorGridStrokeWidth(1.5,7.5,225)*225);
     // With perspective, projected pixel size grows with depth: the same
     // physical line occupies fewer pixels at larger distances.
-    const physicalWidth=floorGridStrokeWidth(1.5);
+    const physicalWidth=floorGridStrokeWidth(1.5,7.5,750);
     expect(physicalWidth/.01).toBeGreaterThan(physicalWidth/.08);
     expect(physicalWidth/.08).toBeLessThan(.5);
     expect(floorGridDefaults.extent).toBe(70);
