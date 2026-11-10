@@ -75,6 +75,11 @@ export function gridAnimationFrame(grid:GridBackgroundSettings,seconds=0){
   return {moveX,moveY,rotation,opacityMultiplier};
 }
 
+/** Ensures regular video exports include at least one complete animated grid cycle. */
+export function gridAnimationSeconds(grid?:GridBackgroundSettings):number {
+  return grid?.enabled&&grid.animation?.enabled?grid.animation.duration:0;
+}
+
 /** Other grid settings remain backward-compatible when animation is absent. */
 export function validateGridBackground(value: unknown): GridBackgroundSettings {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('グリッド背景設定が不正です。');
