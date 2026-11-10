@@ -78,3 +78,36 @@ test('outline-only neon can be dragged and edited in the ambient preview',async(
  await popup.getByRole('button',{name:'編集を終了'}).click();
  await expect(ambient.getByTestId('text-overlay')).toContainText('光る枠線');
 });
+
+
+test('touch drag and tap can edit an outline title on a narrow portrait canvas',async({browser})=>{
+ const context=await browser.newContext({hasTouch:true,isMobile:true,deviceScaleFactor:1,viewport:{width:390,height:844}});
+ try{
+  const page=await context.newPage();
+  await page.goto('http://127.0.0.1:5173/');
+  await page.getByLabel('キャンバスの比率').selectOption('9:16');
+  const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+  await nav.getByRole('button',{name:'文字',exact:true}).click();
+  await page.getByLabel('表示する文字').fill('ネオン');
+  await page.getByRole('button',{name:'中抜きネオンを一発設定'}).click();
+  const sharp=page.getByTestId('preview').getByTestId('text-overlay').locator('text').last();
+  await sharp.scrollIntoViewIfNeeded();
+  const box=await sharp.boundingBox();
+  if(!box)throw new Error('Touch title bounding box is missing');
+  const original=Number(await sharp.getAttribute('y'));
+  const cx=box.x+box.width/2,cy=box.y+box.height/2;
+  const cdp=await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx,y:cy,id:1}]});
+  for(let i=1;i<=5;i++)await cdp.send('Input.dispatchTouchEvent',
+   {type:'touchMove',touchPoints:[{x:cx+10*i,y:cy-9*i,id:1}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect.poll(async()=>Number(await sharp.getAttribute('y'))).toBeLessThan(original-50);
+  const movedBox=await sharp.boundingBox();
+  if(!movedBox)throw new Error('Moved touch title disappeared');
+  await page.touchscreen.tap(movedBox.x+movedBox.width/2,movedBox.y+movedBox.height/2);
+  const editor=page.getByRole('group',{name:'プレビュー上で文字を編集'});
+  await expect(editor).toBeVisible();
+  await editor.getByLabel('文字の内容').fill('スマホ編集OK');
+  await expect(page.getByTestId('preview').getByTestId('text-overlay')).toContainText('スマホ編集OK');
+ }finally{await context.close();}
+});
