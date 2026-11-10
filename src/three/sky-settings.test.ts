@@ -1,5 +1,6 @@
 import {describe,expect,it} from 'vitest';
-import {skyDefaults,SKY_KINDS,SKY_LABELS,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {skyFragmentShader,retroFloorFragmentShader} from './sky-shaders';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
@@ -42,6 +43,25 @@ describe('eight procedural 3D sky presets',()=>{
     expect(skyIsAnimated({...skyDefaults,kind:'aurora'})).toBe(true);
     expect(skyIsAnimated({...skyDefaults,kind:'aurora',motion:0})).toBe(false);
     expect(skyIsAnimated({...skyDefaults,kind:'aurora',intensity:0})).toBe(false);
+  });
+  it('makes tunnel frame density change the actual 3D geometry',()=>{
+    expect(cyberTunnelFrameCount(0)).toBe(0);
+    expect(cyberTunnelFrameCount(50)).toBe(17);
+    expect(cyberTunnelFrameCount(100)).toBe(34);
+    expect(cyberTunnelFrameCount(150)).toBe(51);
+    expect(cyberTunnelFrameCount(200)).toBe(68);
+  });
+  it('keeps digital rain descending, hides the rear duplicate sun and reduces low mode shader work',()=>{
+    // Shader source checks complement PNG tests: a different image hash alone
+    // cannot detect reversed rain, missing depth cues or disconnected sliders.
+    expect(skyFragmentShader).toContain('float head=mod(hash21(vec2(column,8.0))*56.0-t*speed,56.0);');
+    expect(skyFragmentShader).toContain('float tail=mod(row-head+56.0,56.0);');
+    expect(skyFragmentShader).toContain('*(1.0-smoothstep(-.25,.2,d.z))');
+    expect(skyFragmentShader).toContain('if(uLow>.5 && i>=2)break;');
+    expect(skyFragmentShader).toContain('sphereUV');
+    expect(skyFragmentShader).toContain('lon*(2.0+f)');
+    expect(retroFloorFragmentShader).toContain('uniform float uDensity;');
+    expect(retroFloorFragmentShader).toContain('5.0/max(.25,density)');
   });
   it('saves/restores every sky preset with existing 3D settings, preserving legacy projects',()=>{
     const base:ThreeProject={
