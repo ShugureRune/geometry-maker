@@ -1,6 +1,6 @@
 import { SettingsCategories, type Category } from './SettingsCategories';
 import { AmbientControls, AmbientStage, useAmbientClock, ambientDefaults } from './AmbientControls';
-import { darkTheme } from './themes';
+import { darkTheme,VISUAL_THEMES,THEME_PRESETS,applyThemePalette,themeScene,type VisualTheme } from './themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AnimationControls,usePlayback } from './AnimationControls';
 import { defaults,schedule,progressAt,type AnimationSettings } from './animation';
@@ -17,6 +17,7 @@ const initialBackground: Background = {glowIntensity:100,mode:'gradient',solid:'
 
 export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
+  const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
   const lastGlow=useRef(100);
   const [ambient,setAmbient]=useState({...ambientDefaults});
   const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient);
@@ -41,7 +42,7 @@ export default function App() {
   const [density,setDensity] = useState(50);
   const baseScene = useMemo(() => generateScene(seed, ratio, version), [seed, ratio, version]);
   const candidates = useMemo(()=>densityCandidates(baseScene,seed),[baseScene,seed]);
-  const scene = useMemo(()=>visibleScene(baseScene,candidates,density),[baseScene,candidates,density]);
+  const scene = useMemo(()=>themeScene(visibleScene(baseScene,candidates,density),visualTheme,seed),[baseScene,candidates,density,visualTheme,seed]);
 
   const [animation,setAnimation]=useState<AnimationSettings>({...defaults,animationEnabled:true});
   const playback=usePlayback(animation);
@@ -51,6 +52,19 @@ export default function App() {
   function replayOnRegenerate(){if(animation.animationEnabled)playback.restart(true);}
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
   function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
+  function chooseVisualTheme(theme:VisualTheme){
+   setVisualTheme(theme);
+   if(theme==='standard'){
+    const colors=reseedColors({...activeColors,mode:'seed',appearance:'seed'},seed);
+    applyColors(colors);
+    setBackground(bg=>({...coloredBackground(bg,colors),mode:'gradient',angle:135,lineWidth:125,glowIntensity:100}));
+   }else{
+    const preset=applyThemePalette(activeColors,background,theme);
+    setColorSettings(preset.colors);setBackground(preset.background);
+    if(preset.background.glowIntensity)lastGlow.current=preset.background.glowIntensity;
+   }
+   replayOnRegenerate();
+  }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
   function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
@@ -114,11 +128,24 @@ export default function App() {
         </div>
         <div id="panel-colors" className="category-panel" data-category="colors" role="region" aria-labelledby="category-colors" hidden={category!=='colors'}>
           <h2 className="category-title">カラー</h2>
+        <section className="control-section" aria-labelledby="theme-heading">
+          <h3 id="theme-heading">ビジュアルテーマ</h3>
+          <label htmlFor="visual-theme">テーマを選ぶ</label>
+          <select id="visual-theme" value={visualTheme} onChange={e=>chooseVisualTheme(e.target.value as VisualTheme)}>
+            {VISUAL_THEMES.map(theme=><option key={theme.id} value={theme.id}>{theme.label}</option>)}
+          </select>
+          <p className="help">{VISUAL_THEMES.find(theme=>theme.id===visualTheme)?.description}。テーマを変えてもシード値は維持します。</p>
+          {visualTheme!=='standard'&&<div className="theme-swatches" aria-label="テーマのカラー">
+            {[THEME_PRESETS[visualTheme].primary,THEME_PRESETS[visualTheme].support,THEME_PRESETS[visualTheme].accent,
+              ...THEME_PRESETS[visualTheme].colors].map((color,i)=><span key={i} style={{backgroundColor:color}} title={color} aria-label={color}/>)}
+          </div>}
+          <p className="help">テーマに応じて図形の強弱・線・発光・背景色を変更します。下のカラー・装飾設定からさらに調整できます。</p>
+        </section>
         <section className="control-section">
           <h3>背景と図形の配色</h3>
           {editor('solid','背景色')}
           {editor('gradient0','グラデーション色1')}{editor('gradient1','グラデーション色2')}{editor('gradient2','グラデーション色3')}
-          <div className="play-buttons" aria-label="暗色テーマ"><button onClick={()=>applyColors(darkTheme(activeColors,seed,'night'))}>ミッドナイト</button><button onClick={()=>applyColors(darkTheme(activeColors,seed,'neon'))}>ネオンナイト</button></div>
+          <div className="play-buttons" aria-label="従来の暗色配色"><button onClick={()=>{setVisualTheme('standard');applyColors(darkTheme(activeColors,seed,'night'));}}>ミッドナイト（配色のみ）</button><button onClick={()=>{setVisualTheme('standard');applyColors(darkTheme(activeColors,seed,'neon'));}}>ネオンナイト（配色のみ）</button></div>
           <p className="help">暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</p>
           <label htmlFor="color-mode">カラー変更モード</label>
           <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
@@ -146,17 +173,17 @@ export default function App() {
         </div>
         <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={category!=='animation'}>
           <h2 className="category-title">アニメーション</h2>
-        <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
+        <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
 
         </div>
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={category!=='export'}>
           <h2 className="category-title">書き出し</h2>
       <div className="export-area">
-        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}}} version={version} density={density} colorSettings={activeColors} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel videoArtwork={{scene,candidates,seed,background,animation,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme}}} version={version} density={density} colorSettings={activeColors} visualTheme={visualTheme} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
-            setDensity(settings.density ?? 50);
+            setDensity(settings.density ?? 50);setVisualTheme(settings.visualTheme??'standard');
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
             setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
             setSeed(settings.seed); setRatio(settings.aspectRatio);
@@ -171,7 +198,7 @@ export default function App() {
 
       <section className="preview-panel" aria-labelledby="preview-heading">
         <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
-        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth}/>}</></div></div>
+        <div className="canvas-stage"><div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}><>{ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth}/>}</></div></div>
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> SVG · 2D</span><span>{scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{version}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
