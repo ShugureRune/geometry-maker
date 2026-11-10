@@ -3,7 +3,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {Preview} from './Preview';
 import {generateScene} from './scene';
 import {settingsText,parseSettings} from './settings';
-import {textOverlayDefaults,validateTextOverlay} from './text-overlay';
+import {textOverlayDefaults,validateTextOverlay,type TextOverlaySettings} from './text-overlay';
 
 const background={mode:'solid' as const,solid:'#111526',colors:['#111526','#223344','#556677'] as [string,string,string],angle:135};
 const project={schemaVersion:1 as const,algorithmVersion:'2d-v5',seed:'text-overlay',aspectRatio:'16:9' as const,
@@ -109,10 +109,10 @@ describe('palette-linked text ink and independent glow',()=>{
 describe('hollow outline-only neon titles',()=>{
  const scene=generateScene('hollow-title-seed','16:9','2d-v5');
  const backgroundWithInk={...background,figureColors:{primary:'#ee44ca',support:'#44ddcc',accent:'#ffbb55'}};
- const hollow={...textOverlayDefaults,enabled:true,text:'中抜き Neon',colorMode:'primary' as const,
-  fillMode:'transparent' as const,strokeEnabled:true,strokeColorMode:'text' as const,
-  strokeWidth:9,glowEnabled:true,glowTarget:'outline' as const,glowColorMode:'text' as const,glowStrength:140};
- const render=(settings= hollow)=>renderToStaticMarkup(<Preview scene={scene} background={backgroundWithInk} textOverlay={settings}/>);
+ const hollow:TextOverlaySettings={...textOverlayDefaults,enabled:true,text:'中抜き Neon',colorMode:'primary',
+  fillMode:'transparent',strokeEnabled:true,strokeColorMode:'text',
+  strokeWidth:9,glowEnabled:true,glowTarget:'outline',glowColorMode:'text',glowStrength:140};
+ const render=(settings:TextOverlaySettings=hollow)=>renderToStaticMarkup(<Preview scene={scene} background={backgroundWithInk} textOverlay={settings}/>);
  it('keeps all text interiors transparent in the sharp text and in the glow mask',()=>{
   const markup=render();
   expect(markup).toContain('data-text-fill-mode="transparent"');
