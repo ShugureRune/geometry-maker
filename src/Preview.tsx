@@ -2,6 +2,8 @@ import { memo, useId, useMemo } from 'react';
 import { contoursOf, pathData, radians, shapeBounds, worldPoint, trimContour } from './geometry';
 import { gradientEndpoints, type Background, type Point, type Scene, type Shape, NEW_SHAPE_KINDS } from './scene';
 import { backgroundVector, inkAt, paintFor } from './paint';
+import { TextOverlay } from './TextOverlay';
+import type {TextOverlaySettings} from './text-overlay';
 
 // All strokes and glow radii use scene units. Pixel-fixed strokes become thinner
 // when a high-resolution export is displayed at the preview size.
@@ -36,7 +38,7 @@ function localPoint(shape: Shape, p: Point): Point {
   return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
 }
 
-export function Preview({ scene, background, growth, motion, transparent=false, shapeColors, backgroundBlend }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean; shapeColors?:Record<string,string>; backgroundBlend?:{next:Background;opacity:number} }) {
+export function Preview({ scene, background, growth, motion, transparent=false, shapeColors, backgroundBlend, textOverlay }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean; shapeColors?:Record<string,string>; backgroundBlend?:{next:Background;opacity:number}; textOverlay?:TextOverlaySettings }) {
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
@@ -86,6 +88,7 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
     {!transparent&&backgroundBlend&&<rect data-testid="transition-background" width={width} height={height}
       fill={backgroundBlend.next.mode==='solid'?backgroundBlend.next.solid:`url(#${gradientId}-next)`}
       opacity={backgroundBlend.opacity}/>} 
+    {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height}/>} 
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
@@ -103,5 +106,6 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
         </g>;
       })}
     </g>
+    {textOverlay?.layer==='front'&&<TextOverlay settings={textOverlay} width={width} height={height}/>} 
   </svg>;
 }
