@@ -3,11 +3,11 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {Preview} from './Preview';
 import {generateScene} from './scene';
 import {parseSettings,settingsText} from './settings';
-import {textOverlayDefaults,validateTextOverlay} from './text-overlay';
+import {textOverlayDefaults,validateTextOverlay,type TextOverlaySettings} from './text-overlay';
 import {textEntranceEnd,textEntranceFrame} from './text-entrance';
 import {videoTimeline} from './video-settings';
 
-const text={...textOverlayDefaults,enabled:true,entrance:'fade' as const,
+const text:TextOverlaySettings={...textOverlayDefaults,enabled:true,entrance:'fade',
  entranceDelay:1,entranceDuration:2,entranceEasing:'linear' as const,text:'こんにちは🌟\n世界'};
 const background={mode:'solid' as const,solid:'#111526',colors:['#111526','#223344','#556677'] as [string,string,string],angle:135};
 const scene=generateScene('entrance-test','16:9','2d-v5');
