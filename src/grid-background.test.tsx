@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {GridBackground} from './GridBackground';
-import {gridBackgroundDefaults,validateGridBackground} from './grid-background';
+import {gridAnimationDefaults,gridAnimationFrame,gridAnimationSeconds,gridBackgroundDefaults,validateGridBackground} from './grid-background';
 import {Preview} from './Preview';
 import {generateScene,type Background} from './scene';
 
@@ -32,6 +32,35 @@ describe('2D SVG grid background',()=>{
     expect(html).toContain('cx="0" cy="0" r="2"');
     expect(html).toContain('fill="#aabbcc"');
     expect(html).toContain('feGaussianBlur');
+  });
+  it('animates scroll, rotation and pulse deterministically by explicit timestamp',()=>{
+    const scroll=make({spacing:80,animation:{...gridAnimationDefaults,enabled:true,duration:8}});
+    expect(gridAnimationFrame(scroll,0).moveX).toBe(0);
+    expect(gridAnimationFrame(scroll,2).moveX).toBe(20);
+    expect(gridAnimationFrame(scroll,8).moveX).toBe(0);
+    expect(gridAnimationFrame({...scroll,animation:{...scroll.animation!,direction:'diagonal'}},2)).toMatchObject({moveX:20,moveY:20});
+    expect(gridAnimationFrame({...scroll,animation:{...scroll.animation!,direction:'up'}},2)).toMatchObject({moveX:0,moveY:-20});
+    const rotate=make({rotation:30,animation:{...gridAnimationDefaults,enabled:true,mode:'rotate',duration:8,reverse:true}});
+    expect(gridAnimationFrame(rotate,4).rotation).toBe(-150);
+    expect(gridAnimationFrame(rotate,8).rotation).toBe(30);
+    const pulse=make({animation:{...gridAnimationDefaults,enabled:true,mode:'pulse'}});
+    expect(gridAnimationFrame(pulse,0).opacityMultiplier).toBeCloseTo(.35);
+    expect(gridAnimationFrame(pulse,4).opacityMultiplier).toBeCloseTo(1);
+    expect(gridAnimationFrame(pulse,8).opacityMultiplier).toBeCloseTo(.35);
+    expect(gridAnimationSeconds(scroll)).toBe(8);
+    expect(gridAnimationSeconds(make())).toBe(0);
+  });
+  it('keeps static grids unchanged and renders SVG patterns at supplied timestamps',()=>{
+    const staticGrid=make({animation:{...gridAnimationDefaults}});
+    expect(gridAnimationFrame(staticGrid,3).moveX).toBe(0);
+    const scene=generateScene('grid-motion','16:9');
+    const moving=make({type:'dot',spacing:80,animation:{...gridAnimationDefaults,enabled:true,duration:8}});
+    const first=renderToStaticMarkup(<Preview scene={scene} background={{...base,grid:moving}} gridSeconds={0}/>);
+    const later=renderToStaticMarkup(<Preview scene={scene} background={{...base,grid:moving}} gridSeconds={2}/>);
+    expect(first).toContain('data-grid-motion="scroll"');
+    expect(first).toContain('patternTransform="rotate(0 960 540)"');
+    expect(later).toContain('patternTransform="rotate(0 960 540) translate(20 0)"');
+    expect(later).toContain('data-grid-motion="scroll"');
   });
   it('validates user data without changing the input',()=>{
     const grid=make({spacing:120,opacity:7});
