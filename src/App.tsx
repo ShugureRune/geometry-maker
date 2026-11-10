@@ -28,6 +28,7 @@ import {ThreeExportPanel} from './three/ThreeExportPanel';
 import {ThreeBoundary} from './three/ThreeBoundary';
 import {ThreeStyleControls} from './three/ThreeStyleControls';
 import {FloorGridControls} from './three/FloorGridControls';
+import {SkyControls} from './three/SkyControls';
 import {floorGridDefaults} from './three/floor-grid';
 import type {ThreeProject} from './three/project';
 import './three/three.css';
@@ -187,7 +188,7 @@ export default function App() {
           <p className="help">背景の各色は「カラー」で編集できます。</p>
         </section>
         {renderMode==='2d'&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
-        {renderMode==='3d'&&<FloorGridControls value={threeSettings.floorGrid??floorGridDefaults} onChange={floorGrid=>setThreeSettings(settings=>({...settings,floorGrid}))}/>}
+        {renderMode==='3d'&&<><SkyControls value={threeSettings.sky} onChange={sky=>setThreeSettings(settings=>({...settings,sky}))}/><FloorGridControls value={threeSettings.floorGrid??floorGridDefaults} onChange={floorGrid=>setThreeSettings(settings=>({...settings,floorGrid}))}/></>}
 
 
         </div>
@@ -288,7 +289,7 @@ export default function App() {
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
-                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
+                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
               </Suspense>
             </ThreeBoundary>
           </div>}

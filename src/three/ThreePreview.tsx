@@ -16,13 +16,15 @@ import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
+import {SkyRenderer} from './SkyRenderer';
+import {skyDefaults} from './sky-settings';
 import {generateCelestialBodies,spaceCelestialBodies,celestialDefaults} from './celestial';
 import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 
 type Props = {
-  composition: ThreeComposition; sourceComposition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
+  composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
@@ -200,7 +202,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const network=settings.network??networkDefaults,neon=settings.neon??neonDefaults;
     const floor=settings.floorGrid??floorGridDefaults;
     const celestial=settings.celestial??celestialDefaults;
-    const styled=network.enabled||neon.enabled||floor.enabled||celestial.enabled;
+    const styled=network.enabled||neon.enabled||floor.enabled||celestial.enabled||(settings.sky?.kind??'classic')!=='classic';
     const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0) / 100;
     if (pipeline.current) {
       pipeline.current.bloom.enabled = glow > 0;
@@ -287,10 +289,13 @@ export default function ThreePreview(props: Props) {
     data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
-    data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}>
+    data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}
+    data-sky-kind={(props.settings.sky??skyDefaults).kind}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
+      <SkyRenderer sky={props.settings.sky} seed={props.skySeed} seconds={seconds} low={low}
+        sceneHeight={props.composition.height} floorGridEnabled={(props.settings.floorGrid??floorGridDefaults).enabled}/>
       <ambientLight intensity={props.settings.lightIntensity * .5}/>
       <directionalLight position={[5, 6, 7]} intensity={props.settings.lightIntensity * 2} castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
