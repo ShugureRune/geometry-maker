@@ -30,6 +30,22 @@ describe('portable, versioned settings', () => {
   expect(()=>parseSettings(JSON.stringify({...valid,visualTheme:123}))).toThrow();
  });
  it('round trips animation settings with legacy compatibility',()=>{const a={...valid,animationEnabled:true,animationDuration:12,playbackSpeed:2,easingType:'ease-out-in' as const};expect(parseSettings(settingsText(a))).toEqual(a);expect(parseSettings(settingsText(valid)).animationEnabled).toBeUndefined();expect(()=>parseSettings(JSON.stringify({...a,animationDuration:31}))).toThrow();});
+ it('round-trips animated grid settings and rejects malformed motion',()=>{
+  const gridBackground={
+   enabled:true,type:'line' as const,colorMode:'custom' as const,color:'#aabbcc',opacity:65,
+   spacing:60,thickness:2,glow:30,rotation:45,
+   animation:{enabled:true,mode:'rotate' as const,duration:12,direction:'right' as const,reverse:true},
+  };
+  expect(parseSettings(settingsText({...valid,gridBackground})).gridBackground).toEqual(gridBackground);
+  for(const animation of [
+   {...gridBackground.animation,duration:0},
+   {...gridBackground.animation,mode:'fake'},
+   {...gridBackground.animation,direction:'center'},
+   {...gridBackground.animation,reverse:0},
+   {...gridBackground.animation,enabled:'true'},
+   null,
+  ])expect(()=>parseSettings(JSON.stringify({...valid,gridBackground:{...gridBackground,animation}}))).toThrow();
+ });
  it('round-trips grid backgrounds and keeps older files compatible',()=>{
   const gridBackground={enabled:true,type:'dot' as const,colorMode:'custom' as const,color:'#aabbcc',opacity:65,spacing:60,thickness:2,glow:30,rotation:45};
   expect(parseSettings(settingsText({...valid,gridBackground})).gridBackground).toEqual(gridBackground);
