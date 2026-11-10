@@ -49,7 +49,7 @@ export function createScrollWorld(input:AmbientInput){
  // without increasing the number of decorations inside an individual scene.
  const layouts=[createScrollLayout(input.seed,unit),...Array.from({length:3},(_,i)=>createScrollLayout(`${input.seed}::scroll-hero-layer:${i+1}`,unit))];
  const layout=layouts[0],cache=new Map<string,ScrollChunk>(),groupCache=new Map<string,ScrollGroup>();
- const empty=generateScene(input.seed,input.ratio,input.version);empty.shapes=[];
+ const empty=generateScene(input.seed,input.ratio,input.version,input.enabledShapeKinds);empty.shapes=[];
  function chunk(x:number,y:number,layer=0){
   const key=layer===0?`${x}:${y}`:`layer-${layer}:${x}:${y}`,hit=cache.get(key);
   if(hit){cache.delete(key);cache.set(key,hit);return hit;}
@@ -63,7 +63,7 @@ export function createScrollWorld(input:AmbientInput){
  }
  function group(plan:GroupPlan){
   const hit=groupCache.get(plan.key);if(hit){groupCache.delete(plan.key);groupCache.set(plan.key,hit);return hit;}
-  const base=generateScene(plan.seed,input.ratio,input.version);const candidates=densityCandidates(base,plan.seed);
+  const base=generateScene(plan.seed,input.ratio,input.version,input.enabledShapeKinds);const candidates=densityCandidates(base,plan.seed);
   const anchor=base.shapes.find(s=>s.role==='hero')??{x:width/2,y:height/2};
   const radiusFrom=(b:ReturnType<typeof shapeBounds>)=>Math.max(...[b.x,b.x+b.width].flatMap(x=>[b.y,b.y+b.height].map(y=>Math.hypot(x-anchor.x,y-anchor.y))));
   let radius=unit*.15,heroRadius=1;
