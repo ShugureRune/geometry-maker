@@ -62,6 +62,8 @@ test('animated grid scrolls, rotates and pulses independently of shape growth',a
  await page.getByLabel('グリッド背景を有効化').check();
  await page.getByLabel('グリッドアニメーションを有効化').check();
  await page.locator('#grid-animation-duration').fill('4');
+ await page.locator('#grid-animation-speed').fill('7.5');
+ await expect(page.locator('#grid-animation-speed')).toHaveValue('7.5');
  const pattern=page.getByTestId('grid-background').locator('pattern');
  await expect(page.getByTestId('grid-background')).toHaveAttribute('data-grid-motion','scroll');
  const start=await pattern.getAttribute('patternTransform');
@@ -80,11 +82,14 @@ test('animated grid scrolls, rotates and pulses independently of shape growth',a
  await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
  const bytes=await readFile((await(await saved).path())!);
  const settings=JSON.parse(bytes.toString());
- expect(settings.gridBackground.animation).toMatchObject({enabled:true,mode:'pulse',duration:4,reverse:true});
+ expect(settings.gridBackground.animation).toMatchObject({enabled:true,mode:'pulse',duration:4,speed:7.5,reverse:true});
  await page.getByLabel('設定JSONファイル').setInputFiles({name:'grid-animated.json',mimeType:'application/json',buffer:bytes});
  await nav.getByRole('button',{name:'背景',exact:true}).click();
  await expect(page.getByLabel('グリッドアニメーションを有効化')).toBeChecked();
  await expect(page.locator('#grid-animation-mode')).toHaveValue('pulse');
+ await page.locator('#grid-animation-mode').selectOption('scroll');
+ await expect(page.locator('#grid-animation-speed')).toHaveValue('7.5');
+ await expect(page.locator('#grid-animation-direction')).toHaveCount(0);
  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
  await expect(page.getByTestId('grid-background')).toHaveCount(0);
 });
