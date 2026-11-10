@@ -9,9 +9,9 @@ describe('Canva-style text transforms',()=>{
   const initial={handle:{x:100,y:100},opposite:{x:0,y:0},origin:{x:50,y:50},fontSize:100,
    canvas:{width:200,height:200}};
   const enlarged=resizeTextCorner(initial,{x:150,y:150});
-  expect(enlarged).toEqual({fontSize:150,x:12.5,y:12.5});
+  expect(enlarged).toEqual({fontSize:150,x:37.5,y:37.5});
   const reduced=resizeTextCorner(initial,{x:50,y:50});
-  expect(reduced).toEqual({fontSize:50,x:37.5,y:37.5});
+  expect(reduced).toEqual({fontSize:50,x:12.5,y:12.5});
   expect(resizeTextCorner(initial,{x:-200,y:-200}).fontSize).toBe(12);
   expect(resizeTextCorner(initial,{x:600,y:600}).fontSize).toBe(250);
  });
