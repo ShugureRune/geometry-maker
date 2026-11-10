@@ -198,3 +198,45 @@ test('mobile touch rotates and pinches with automatic lightweight rendering and 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await context.close();
 });
+
+
+test('13 solid kinds are individually selectable, save to 3D JSON, and render with neon outlines', async ({page}) => {
+  await start(page);
+  await category(page,'図形');
+  const preview=page.getByTestId('three-preview');
+  const allCount=Number(await preview.getAttribute('data-object-count'));
+  const kinds=['円柱','円すい','カプセル','三角柱','四角すい','トーラスノット'];
+  for(const name of kinds)await expect(page.getByLabel(name+'を生成')).toBeChecked();
+  await page.getByRole('button',{name:'新しい6種類',exact:true}).click();
+  for(const name of kinds)await expect(page.getByLabel(name+'を生成')).toBeChecked();
+  await expect(page.getByLabel('球体を生成')).not.toBeChecked();
+  expect(Number(await preview.getAttribute('data-object-count'))).toBe(allCount);
+  const newlyStyled=await png(page);expect(newlyStyled.length).toBeGreaterThan(10_000);
+  await category(page,'図形');
+  await page.getByRole('button',{name:'従来の7種類',exact:true}).click();
+  expect(Number(await preview.getAttribute('data-object-count'))).toBe(allCount);
+  expect(digest(await png(page))).not.toBe(digest(newlyStyled));
+  await category(page,'図形');
+  await page.getByRole('button',{name:'新しい6種類',exact:true}).click();
+  await category(page,'装飾');
+  await page.getByLabel('ネオン線画を有効化').check();
+  await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await expect(preview).toHaveAttribute('data-neon-mode','lines');
+  expect((await png(page)).length).toBeGreaterThan(10_000);
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  const json=await readFile((await (await pending).path())!,'utf8');
+  const settings=JSON.parse(json).settings;
+  expect(settings.enabledKinds).toEqual(['cylinder','cone','capsule','prism','pyramid','torus-knot']);
+  await page.getByRole('button',{name:'3D設定JSONを読込',exact:true}).click();
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({name:'shapes.json',mimeType:'application/json',buffer:Buffer.from(json)});
+  await category(page,'図形');
+  await expect(page.getByLabel('カプセルを生成')).toBeChecked();
+  await expect(page.getByLabel('立方体を生成')).not.toBeChecked();
+  await page.getByLabel('カプセルを生成').uncheck();
+  await expect(page.getByLabel('カプセルを生成')).not.toBeChecked();
+  await page.getByRole('button',{name:'全種類',exact:true}).click();
+  for(const name of kinds)await expect(page.getByLabel(name+'を生成')).toBeChecked();
+  expect(Number(await preview.getAttribute('data-object-count'))).toBe(allCount);
+});
