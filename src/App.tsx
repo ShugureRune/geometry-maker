@@ -20,7 +20,7 @@ import {textOverlayDefaults,type TextOverlaySettings} from './text-overlay';
 import {applyImagePalette} from './image-palette';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import {generateThreeComposition, THREE_ALGORITHM_VERSION, visibleThreeObjects} from './three/model';
+import {generateThreeComposition, spaceThreeComposition, THREE_ALGORITHM_VERSION, visibleThreeObjects} from './three/model';
 import {generateCelestialBodies, celestialDefaults} from './three/celestial';
 import {threeDefaults, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './three/settings';
 import {ThreeShapeControls, ThreeMaterialControls, ThreeAnimationControls} from './three/ThreeControls';
@@ -101,7 +101,12 @@ export default function App() {
     }
     setRenderMode(next);
   }
-  const threeComposition=useMemo(()=>renderMode==='3d'?generateThreeComposition(seed,ratio):null,[renderMode,seed,ratio]);
+  // Transform spacing only after deterministic geometry has been generated.
+  // The scene seed, candidate selection, IDs and density remain unchanged.
+  const threeBaseComposition=useMemo(()=>renderMode==='3d'?generateThreeComposition(seed,ratio):null,[renderMode,seed,ratio]);
+  const threeComposition=useMemo(()=>threeBaseComposition?
+    spaceThreeComposition(threeBaseComposition,threeSettings.spacingPercent??100):null,
+    [threeBaseComposition,threeSettings.spacingPercent]);
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
   function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
   function chooseVisualTheme(theme:VisualTheme){
@@ -283,7 +288,7 @@ export default function App() {
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
-                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
+                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
               </Suspense>
             </ThreeBoundary>
           </div>}

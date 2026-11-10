@@ -10,19 +10,19 @@ import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {backgroundVector, luminance} from '../paint';
 import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
-import {threePose, visibleThreeObjects, type ThreeComposition, type ThreeObject} from './model';
+import {threePose, threeSpacingFactor, visibleThreeObjects, type ThreeComposition, type ThreeObject} from './model';
 import {effectiveThreeQuality, themeMaterial, threeResolutionError, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './settings';
 import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
-import {generateCelestialBodies, celestialDefaults} from './celestial';
+import {generateCelestialBodies,spaceCelestialBodies,celestialDefaults} from './celestial';
 import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 
 type Props = {
-  composition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
+  composition: ThreeComposition; sourceComposition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
@@ -144,7 +144,22 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
 
   // Reframe on aspect-ratio changes, while material/color/density changes retain the view.
   const lastAspect = useRef(aspect);
-  useEffect(() => {if (lastAspect.current !== aspect) {lastAspect.current = aspect; resetView();}}, [aspect]);
+  useEffect(() => {if (Math.abs(lastAspect.current - aspect) > 1e-6) {lastAspect.current = aspect; resetView();}}, [aspect]);
+  // Keep the user's viewing angle and point of interest while reframing the
+  // widened layout. A saved camera is left untouched on initial JSON restore.
+  const spacingPercent=settings.spacingPercent??100;
+  const lastSpacing=useRef(spacingPercent);
+  useEffect(() => {
+    const previous=lastSpacing.current;
+    lastSpacing.current=spacingPercent;
+    if(previous===spacingPercent)return;
+    const orbit=controls.current;
+    if(!orbit)return;
+    const ratio=threeSpacingFactor(spacingPercent)/threeSpacingFactor(previous);
+    camera.position.sub(orbit.target).multiplyScalar(ratio).add(orbit.target);
+    orbit.update();
+    invalidate();
+  },[spacingPercent,camera,invalidate]);
   useEffect(() => {if(lastRestart.current!==restartKey)seconds.current=0;lastRestart.current=restartKey;skipDelta.current = true; invalidate();}, [restartKey, seconds, invalidate]);
   useEffect(() => {skipDelta.current = true; invalidate();}, [settings.animation, invalidate]);
   // A style may update only shader buffers (no changed JSX host properties).
@@ -253,9 +268,18 @@ export default function ThreePreview(props: Props) {
   const seconds = useRef(props.initialTime??0);
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
-  const edges=useMemo(()=>network.enabled?networkConnections(objects,network.distance,network.maxConnections):[],[objects,network.enabled,network.distance,network.maxConnections]);
+  // Preserve network topology as the entire figure constellation spreads.
+  const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
+  const edges=useMemo(()=>network.enabled?
+    networkConnections(objects,network.distance*spacingFactor,network.maxConnections):[],
+    [objects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
-  const celestialObjects=useMemo(()=>generateCelestialBodies(props.composition,celestial,props.density),[props.composition,celestial,props.density]);
+  // Generate celestial appearance from unscaled positions, then spread the
+  // constellation without re-rolling its sizes, phases or surface patterns.
+  const celestialBase=useMemo(()=>generateCelestialBodies(props.sourceComposition,celestial,props.density),
+    [props.sourceComposition,celestial,props.density]);
+  const celestialObjects=useMemo(()=>spaceCelestialBodies(celestialBase,props.settings.spacingPercent??100),
+    [celestialBase,props.settings.spacingPercent]);
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;

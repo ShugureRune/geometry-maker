@@ -1,5 +1,5 @@
 import {seededRandom} from '../scene';
-import type {ThreeComposition, Vector3Tuple} from './model';
+import {threeSpacingFactor,type ThreeComposition,type Vector3Tuple} from './model';
 
 /** Optional space objects: a separate stream keeps all 3d-v1 geometric scenes intact. */
 export const CELESTIAL_KINDS = ['star', 'planet', 'ringed-planet', 'moon', 'black-hole', 'neutron-star'] as const;
@@ -52,6 +52,13 @@ export function generateCelestialBodies(composition: ThreeComposition, settings:
     radius: planet.radius / 4, phase: random() * Math.PI * 2,
   });
   return bodies.filter(body => settings.kinds.includes(body.kind));
+}
+
+/** Move celestial centers with 3D spacing, without re-rolling their
+ * appearances, spins, sizes or the planet/moon radius ratio. */
+export function spaceCelestialBodies(bodies: readonly CelestialBody[], percent:number):CelestialBody[]{
+  const factor=threeSpacingFactor(percent);
+  return bodies.map(body=>({...body,position:body.position.map(n=>n*factor) as Vector3Tuple}));
 }
 
 /** Pure clock-driven rotation: zero at pause and reproducible after JSON restore. */

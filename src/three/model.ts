@@ -69,6 +69,27 @@ export function generateThreeComposition(seed: string, ratio: Ratio): ThreeCompo
   return {version: THREE_ALGORITHM_VERSION, objects, width, height};
 }
 
+/** Spacing=100% is the new, roomier layout (1.5x legacy distances).
+ * This layout transform never participates in seeded generation: positions,
+ * IDs, types, density thresholds and motion are stable as the slider moves. */
+export const THREE_SPACING_DEFAULT = 100;
+export const THREE_SPACING_BASELINE = 1.5;
+export function threeSpacingFactor(percent:number):number {
+  return THREE_SPACING_BASELINE*percent/THREE_SPACING_DEFAULT;
+}
+export function spaceThreeComposition(composition:ThreeComposition,percent:number=THREE_SPACING_DEFAULT):ThreeComposition {
+  const factor=threeSpacingFactor(percent);
+  return {
+    ...composition,
+    width:composition.width*factor,
+    height:composition.height*factor,
+    objects:composition.objects.map(object=>({
+      ...object,
+      position:object.position.map(value=>value*factor) as Vector3Tuple,
+    })),
+  };
+}
+
 /** Changing the allowed types never re-rolls positions, IDs, animation or density.
  * Excluded shapes deterministically morph into the selected set instead of vanishing. */
 export function visibleThreeObjects(composition: ThreeComposition, density: number, enabledKinds: readonly ThreeKind[] = THREE_KINDS): ThreeObject[] {
