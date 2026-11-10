@@ -297,7 +297,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await start(page);
   await category(page,'アニメーション');
-  await page.getByRole('button',{name:'3Dを一時停止',exact:true}).click();
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
   const original=digest(await png(page));
   const preview=page.getByTestId('three-preview');
   const shapeCount=await preview.getAttribute('data-object-count');
