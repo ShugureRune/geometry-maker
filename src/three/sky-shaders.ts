@@ -60,8 +60,9 @@ export const skyFragmentShader = [
   '  vec3 c=vec3(.006,.010,.033);',
   '  if(uMode==1){',
   '    // Infinite starfield: midnight blue with a faint Milky Way dust band.',
-  '    float dust=fbm(uv*vec2(8.0,13.0)+vec2(0.0,t*.004));',
-  '    float band=exp(-pow((uv.y-.53+sin(uv.x*7.0)*.045)*10.0,2.0));',
+  '    float dust=fbm(vec2(d.x*7.0+d.y*1.8,d.z*7.0-d.y*2.4)',
+  '      +vec2(0.0,t*.004));'
+  '    float band=exp(-pow((uv.y-.53+sin(lon*3.0)*.045)*10.0,2.0));'
   '    c+=vec3(.020,.027,.065)*dust*band*density;',
   '    c+=vec3(.75,.84,1.0)*st*gain;',
   '  }else if(uMode==2){',
