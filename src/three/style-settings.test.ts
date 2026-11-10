@@ -30,6 +30,16 @@ describe('safe 3D styles and standalone settings',()=>{
     for(const [key,value] of [['quality','super'],['material','texture'],['speed',0],['animation','false'],['floatAmount',3],['roughness',NaN]] as const)
       expect(()=>validateThreeSettings({...threeDefaults,[key]:value})).toThrow();
   });
+  it('validates new 3D kind selections and restores older projects with all kinds enabled',()=>{
+    const kinds=['capsule','torus-knot','prism'] as const;
+    const configured={...project,settings:{...project.settings,enabledKinds:[...kinds]}};
+    expect(parseThreeProject(threeProjectText(configured)).settings.enabledKinds).toEqual([...kinds]);
+    const {enabledKinds:_,...legacy}=project.settings;
+    expect(parseThreeProject(JSON.stringify({...project,settings:legacy})).settings.enabledKinds).toEqual(threeDefaults.enabledKinds);
+    for(const enabledKinds of [['fake'],['sphere','sphere'],[null],33,'sphere'])
+      expect(()=>validateThreeSettings({...threeDefaults,enabledKinds})).toThrow();
+    expect(validateThreeSettings({...threeDefaults,enabledKinds:[]}).enabledKinds).toEqual([]);
+  });
   it('round trips camera, paused time, colors, style and output size without unsafe properties',()=>{
     expect(parseThreeProject(threeProjectText(project))).toEqual(project);
     const parsed=parseThreeProject(JSON.stringify({...project,unknown:'ignored',settings:{...project.settings,unexpected:'ignored'}}));
