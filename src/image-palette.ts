@@ -64,7 +64,7 @@ function paletteWeights(pixels:Uint8ClampedArray,options?:ImagePaletteOptions):F
   const dx=((x+.5-(left+right)/2)/((right-left)/2));
   const dy=((y+.5-(top+bottom)/2)/((bottom-top)/2));
   const closeness=Math.max(0,1-(dx*dx+dy*dy)/1.6);
-  weights[index]=focus==='center'?.02+3*closeness**5:.15+1.85*closeness**2;
+  weights[index]=focus==='center' ? 0.02+3*closeness**5 : 0.15+1.85*closeness**2;
  }
  if(focus!=='subject'||right-left<8||bottom-top<8)return weights;
  // A broad, connected border color is often the backdrop behind an illustration.
