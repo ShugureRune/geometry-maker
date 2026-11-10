@@ -83,7 +83,7 @@ export function PreviewTextEditor({children,settings,onChange,onAdvanced}:Props)
   if(view.width<=0||view.height<=0||rect.width<=0||rect.height<=0)return null;
   const localCenter=average(average(local[0],local[2]),average(local[1],local[3]));
   const xs=quad.map(p=>p.x),ys=quad.map(p=>p.y);
-  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys);
   const scale=rect.width/view.width;
   const textLeft=(minX-view.x)*scale+rect.left-wrap.left;
   const textTop=(minY-view.y)*scale+rect.top-wrap.top;
