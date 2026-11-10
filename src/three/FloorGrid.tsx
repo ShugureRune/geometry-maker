@@ -1,7 +1,7 @@
 import {useFrame} from '@react-three/fiber';
 import {useMemo,useRef,type RefObject} from 'react';
 import {Color,DoubleSide,Mesh,ShaderMaterial} from 'three';
-import {floorGridDiameter,floorGridOffset,floorGridPlacement,type FloorGridSettings} from './floor-grid';
+import {floorGridDiameter,floorGridOffset,floorGridPlacement,floorGridStrokeWidth,type FloorGridSettings} from './floor-grid';
 import type {ThreeView} from './settings';
 
 /** One anti-aliased floor plane: two triangles regardless of how many lines appear.
@@ -16,7 +16,7 @@ void main(){
 const fragmentShader=`
 uniform vec3 uGridColor;
 uniform float uSpacing;
-uniform float uThickness;
+uniform float uWorldLineWidth;
 uniform float uOpacity;
 uniform float uGlow;
 uniform float uExtent;
@@ -29,7 +29,7 @@ void main(){
   vec2 fromLine=abs(fract(tile-0.5)-0.5);
   vec2 footprint=max(fwidth(tile),vec2(0.000001));
   // Approx. uThickness pixels at the initial camera framing, not at all depths.
-  float halfWidth=uThickness*0.006/uSpacing;
+  float halfWidth=0.5*uWorldLineWidth/uSpacing;
   // Derivative-based anti-aliasing; coverage drops as a line becomes subpixel.
   vec2 coverage=clamp((halfWidth+0.5*footprint-fromLine)/footprint,0.0,1.0);
   coverage*=clamp(vec2(2.0*halfWidth)/footprint,0.0,1.0);
@@ -56,7 +56,7 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
   const uniforms=useMemo(()=>({
     uGridColor:{value:new Color(grid.color)},
     uSpacing:{value:grid.spacing},
-    uThickness:{value:grid.thickness},
+    uWorldLineWidth:{value:floorGridStrokeWidth(grid.thickness)},
     uOpacity:{value:grid.opacity},
     uGlow:{value:grid.glow},
     uExtent:{value:diameter},
