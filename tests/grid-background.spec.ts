@@ -10,9 +10,9 @@ test('2D grid controls, SVG/PNG export, JSON round-trip, and 3D isolation',async
   await toggle.check();
   await expect(page.getByTestId('grid-background')).toHaveAttribute('data-grid-type','line');
   await page.getByLabel('種類',{exact:true}).selectOption('dot');
-  await page.getByLabel('間隔').fill('80');
-  await page.getByLabel('不透明度').fill('50');
-  await page.getByLabel('回転角度').fill('20');
+  await page.locator('#grid-spacing').fill('80');
+  await page.locator('#grid-opacity').fill('50');
+  await page.locator('#grid-rotation').fill('20');
   await page.getByLabel('グリッドの色').selectOption('custom');
   await page.getByLabel('カスタム色').fill('#ff3355');
   await expect(page.getByTestId('grid-background')).toHaveAttribute('data-grid-type','dot');
