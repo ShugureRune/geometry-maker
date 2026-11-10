@@ -103,3 +103,12 @@
 [data-theme=light] .image-palette-actions button:first-child{background:#d2b9fc}
 [data-theme=light] .image-palette-notice{color:#247255}
 [data-theme=light] .image-palette-error{color:#ad2638}
+
+/* Foreground-aware palette: touch-friendly optional crop for busy backgrounds. */
+.image-palette-selection{margin:12px 0}
+.image-palette-pick-area{position:relative;width:min(100%,280px);max-height:330px;overflow:hidden;border:1px solid #8b76a5;border-radius:8px;background:#20202b;touch-action:none;cursor:crosshair;user-select:none}
+.image-palette-pick-area img{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none;user-select:none}
+.image-palette-selection-rect{position:absolute;box-sizing:border-box;border:2px solid #fff;outline:1px solid #252034;box-shadow:0 0 0 999px #0006;pointer-events:none;border-radius:2px}
+.image-palette-reset-area{margin:9px 0;min-height:40px;padding:8px 12px;border-radius:7px;border:1px solid #827298;background:#30253e;color:#eae2f6}
+[data-theme=light] .image-palette-pick-area{background:#f1eef7;border-color:#8d76b0}
+[data-theme=light] .image-palette-reset-area{background:#eae2f3;color:#392755}
