@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {FLOOR_GRID_DIAMETER_MULTIPLIER,floorGridDefaults,floorGridDiameter,floorGridOffset,floorGridPlacement,validateFloorGrid} from './floor-grid';
+import {FLOOR_GRID_DIAMETER_MULTIPLIER,floorGridDefaults,floorGridDiameter,floorGridOffset,floorGridPlacement,floorGridStrokeWidth,validateFloorGrid} from './floor-grid';
 import {validateThreeSettings,threeDefaults} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
@@ -18,6 +18,18 @@ describe('perspective 3D floor grid',()=>{
     expect(floorGridDiameter(floorGridDefaults.extent)).toBe(700);
     expect(floorGridDiameter(24)).toBe(240);
     expect(floorGridDiameter(120)).toBe(1200);
+  });
+  it('uses constant world-space line width, making its projected width shrink with distance',()=>{
+    expect(floorGridStrokeWidth(.5)).toBeCloseTo(.006);
+    expect(floorGridStrokeWidth(1.5)).toBeCloseTo(.018);
+    expect(floorGridStrokeWidth(5)).toBeCloseTo(.06);
+    // With perspective, projected pixel size grows with depth: the same
+    // physical line occupies fewer pixels at larger distances.
+    const physicalWidth=floorGridStrokeWidth(1.5);
+    expect(physicalWidth/.01).toBeGreaterThan(physicalWidth/.08);
+    expect(physicalWidth/.08).toBeLessThan(.5);
+    expect(floorGridDefaults.extent).toBe(70);
+    expect(floorGridDiameter(floorGridDefaults.extent)).toBe(700);
   });
   it('scrolls in world units, wraps seamlessly and pauses when the clock pauses',()=>{
     const grid={...floorGridDefaults,enabled:true,scrollSpeed:2,spacing:2.5};
