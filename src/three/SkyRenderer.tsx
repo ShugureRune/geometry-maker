@@ -5,12 +5,15 @@ import {
   Group,Mesh,ShaderMaterial,
 } from 'three';
 import {seededRandom} from '../scene';
-import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
+import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
+import {makeSkyGlyphAtlas} from './sky-glyphs';
+import {floorGridPlacement} from './floor-grid';
+import type {ThreeView} from './settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
 
 type SkyProps={
   sky?:SkySettings;seed:string;seconds:RefObject<number>;low:boolean;
-  sceneHeight:number;floorGridEnabled:boolean;
+  sceneHeight:number;floorGridEnabled:boolean;view:RefObject<ThreeView|undefined>;
 };
 
 /** A real inside-out 3D sky sphere, always centered on the moving camera.
@@ -22,14 +25,22 @@ function SkyDome({sky,seed,seconds,low}:{
   const {camera}=useThree();
   const mesh=useRef<Mesh>(null);
   const material=useRef<ShaderMaterial>(null);
+  const glyphAtlas=useMemo(makeSkyGlyphAtlas,[]);
+  useEffect(()=>()=>glyphAtlas.dispose(),[glyphAtlas]);
+  const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   const uniforms=useMemo(()=>({
+    uCustomColor:{value:sky.colors?.[sky.kind]?1:0},
+    uSkyBase:{value:new Color(palette.base)},
+    uSkyAccent:{value:new Color(palette.accent)},
+    uSkyHighlight:{value:new Color(palette.highlight)},
+    uGlyphAtlas:{value:glyphAtlas},
     uMode:{value:SKY_KINDS.indexOf(sky.kind)},
     uSeed:{value:skySeedNumber(seed,sky.kind)},
     uTime:{value:seconds.current*sky.motion/100},
     uIntensity:{value:sky.intensity/100},
     uDensity:{value:sky.density/100},
     uLow:{value:low?1:0},
-  }),[sky,seed,seconds,low]);
+  }),[sky,seed,seconds,low,glyphAtlas,palette.base,palette.accent,palette.highlight]);
   useFrame(()=>{
     mesh.current?.position.copy(camera.position);
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
@@ -104,9 +115,10 @@ function SkyParticles({sky,seed,seconds,low}:{
     if(group.current)group.current.rotation.y=seconds.current*sky.motion/100*.0018;
   });
   if(sky.density===0)return null;
+  const highlight=sky.colors?.[sky.kind]?.highlight;
   return <group ref={group}>
     <points name="3d-sky-particles" geometry={geometry} frustumCulled={false} renderOrder={-80}>
-      <pointsMaterial vertexColors size={low?1.6:2.2} sizeAttenuation={false}
+      <pointsMaterial vertexColors={!highlight} color={highlight??'#ffffff'} size={low?1.6:2.2} sizeAttenuation={false}
         transparent depthWrite={false} opacity={Math.min(.9,sky.intensity/120)}
         toneMapped={false}/>
     </points>
@@ -146,13 +158,14 @@ function CyberTunnel({sky,seconds}:{
   useFrame(()=>{
     if(group.current)group.current.position.z=(seconds.current*sky.motion/100*5)%7.5;
   });
+  const palette=sky.colors?.[sky.kind];
   return <group name="cyber-tunnel-3d-frames" ref={group}>
     <lineSegments geometry={geometries[0]} frustumCulled={false}>
-      <lineBasicMaterial color={new Color('#36cfff')} transparent opacity={Math.min(.85,sky.intensity*.006)}
+      <lineBasicMaterial color={new Color(palette?.accent??'#36cfff')} transparent opacity={Math.min(.85,sky.intensity*.006)}
         depthWrite={false} toneMapped={false}/>
     </lineSegments>
     <lineSegments geometry={geometries[1]} frustumCulled={false}>
-      <lineBasicMaterial color={new Color('#ff5bcf')} transparent opacity={Math.min(.8,sky.intensity*.006)}
+      <lineBasicMaterial color={new Color(palette?.highlight??'#ff5bcf')} transparent opacity={Math.min(.8,sky.intensity*.006)}
         depthWrite={false} toneMapped={false}/>
     </lineSegments>
   </group>;
@@ -161,20 +174,30 @@ function CyberTunnel({sky,seconds}:{
 /** Retrowave grid is a real horizontal plane with camera perspective.
  * It avoids drawing a duplicate grid when the user's 3D floor grid is enabled.
  */
-function RetroFloor({sky,seconds,sceneHeight}:{
+function RetroFloor({sky,seconds,sceneHeight,floorGridEnabled,view}:{
   sky:SkySettings;seconds:RefObject<number>;sceneHeight:number;
+  floorGridEnabled:boolean;view:RefObject<ThreeView|undefined>;
 }){
   const material=useRef<ShaderMaterial>(null);
+  const mesh=useRef<Mesh>(null);
+  const color=sky.colors?.[sky.kind]?.accent??SKY_PALETTES.retrowave.accent;
   const uniforms=useMemo(()=>({
+    uCustomColor:{value:sky.colors?.[sky.kind]?1:0},
+    uRetroColor:{value:new Color(color)},
     uTime:{value:seconds.current*sky.motion/100},
     uIntensity:{value:sky.intensity/100},
     uDensity:{value:sky.density/100},
   }),[seconds,sky]);
   useFrame(()=>{
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
+    if(mesh.current){
+      const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
+      mesh.current.position.set(x,y-(floorGridEnabled?.035:0),z);
+    }
   });
-  return <mesh name="retrowave-3d-floor" rotation={[-Math.PI/2,0,0]}
-    position={[0,-Math.max(3.3,sceneHeight*.51),-.4]} frustumCulled={false}>
+  const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
+  return <mesh ref={mesh} name="retrowave-3d-floor" rotation={[-Math.PI/2,0,0]}
+    position={[x,y-(floorGridEnabled?.035:0),z]} renderOrder={-2} frustumCulled={false}>
     <planeGeometry args={[700,700]}/>
     <shaderMaterial ref={material} vertexShader={retroFloorVertexShader}
       fragmentShader={retroFloorFragmentShader} uniforms={uniforms} side={DoubleSide}
@@ -182,7 +205,7 @@ function RetroFloor({sky,seconds,sceneHeight}:{
   </mesh>;
 }
 
-export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGridEnabled}:SkyProps){
+export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGridEnabled,view}:SkyProps){
   const sky=maybeSky??skyDefaults;
   if(sky.kind==='classic')return null;
   const particles=['starfield','galaxy','aurora','deep-sea','nebula','digital'].includes(sky.kind);
@@ -190,6 +213,7 @@ export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGrid
     <SkyDome sky={sky} seed={seed} seconds={seconds} low={low}/>
     {particles&&<SkyParticles sky={sky} seed={seed} seconds={seconds} low={low}/>}
     {sky.kind==='cyber-tunnel'&&<CyberTunnel sky={sky} seconds={seconds}/>}
-    {sky.kind==='retrowave'&&!floorGridEnabled&&<RetroFloor sky={sky} seconds={seconds} sceneHeight={sceneHeight}/>}
+    {sky.kind==='retrowave'&&<RetroFloor sky={sky} seconds={seconds} sceneHeight={sceneHeight}
+      floorGridEnabled={floorGridEnabled} view={view}/>}
   </>;
 }

@@ -1,6 +1,7 @@
 import {describe,expect,it} from 'vitest';
-import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
 import {skyFragmentShader,retroFloorFragmentShader} from './sky-shaders';
+import {SKY_DIGITAL_GLYPHS,SKY_GLYPH_COLUMNS} from './sky-glyphs';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
@@ -62,6 +63,49 @@ describe('eight procedural 3D sky presets',()=>{
     expect(skyFragmentShader).toContain('lon*(2.0+f)');
     expect(retroFloorFragmentShader).toContain('uniform float uDensity;');
     expect(retroFloorFragmentShader).toContain('5.0/max(.25,density)');
+  });
+  it('uses actual letter/digit glyphs and sky material samples them instead of block pixels',()=>{
+    expect(SKY_DIGITAL_GLYPHS).toHaveLength(64);
+    expect(SKY_GLYPH_COLUMNS).toBe(8);
+    expect(SKY_DIGITAL_GLYPHS).toMatch(/[A-Z]/);
+    expect(SKY_DIGITAL_GLYPHS).toMatch(/[0-9]/);
+    expect(SKY_DIGITAL_GLYPHS).toMatch(/[#$@]/);
+    expect(skyFragmentShader).toContain('texture2D(uGlyphAtlas,glyphUV).a;');
+    expect(skyFragmentShader).toContain('float glyphId=floor(');
+    expect(skyFragmentShader).not.toContain('float glyph=step(');
+  });
+  it('validates independent colors for each sky and leaves original palettes on old JSON',()=>{
+    for(const kind of SKY_KINDS)for(const color of Object.values(SKY_PALETTES[kind]))
+      expect(color).toMatch(/^#[0-9a-f]{6}$/);
+    const colors={nebula:{base:'#080015',accent:'#abcdef',highlight:'#fedcba'},
+      'deep-sea':{base:'#001100',accent:'#00cc99',highlight:'#99ffcc'}};
+    const settings=validateSky({...skyDefaults,kind:'nebula',colors});
+    expect(settings.colors).toEqual(colors);
+    expect(settings.colors?.nebula?.accent).toBe('#abcdef');
+    expect(settings.colors?.['deep-sea']?.accent).toBe('#00cc99');
+    expect(validateSky(skyDefaults)).toEqual(skyDefaults);
+    for(const bad of [
+      {nebula:{base:'#000000',accent:'blue',highlight:'#ffffff'}},
+      {nebula:{base:'red',accent:'#abcdef',highlight:'#fff000'}},
+      {nebula:{base:'#111111',accent:'#222222'}},
+      {evil:{base:'#000000',accent:'#111111',highlight:'#222222'}},
+      ['not-a-map'],null,
+    ])expect(()=>validateSky({...skyDefaults,colors:bad})).toThrow();
+    const project:ThreeProject={
+      kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:'3d-v1',seed:'palette-seed',aspectRatio:'16:9',
+      density:50,visualTheme:'standard',
+      background:{mode:'solid',solid:'#111526',colors:['#101b2d','#241938','#102a30'],angle:135},
+      settings:{...threeDefaults,sky:{...skyDefaults,kind:'nebula',colors}},elapsedSeconds:2,exportWidth:512,exportHeight:512,
+    };
+    expect(parseThreeProject(threeProjectText(project)).settings.sky?.colors).toEqual(colors);
+    const {colors:_,...originalSky}=project.settings.sky!;
+    expect(parseThreeProject(JSON.stringify({...project,settings:{...project.settings,sky:originalSky}})).settings.sky?.colors).toBeUndefined();
+  });
+  it('allows retrowave-specific grid to remain alongside the separate 3D floor grid',()=>{
+    // Extra checks target the component source; the browser test verifies actual pixels.
+    expect(retroFloorFragmentShader).toContain('uniform vec3 uRetroColor;');
+    expect(skyFragmentShader).toContain('uCustomColor');
+    expect(skyFragmentShader).toContain('uSkyHighlight');
   });
   it('saves/restores every sky preset with existing 3D settings, preserving legacy projects',()=>{
     const base:ThreeProject={
