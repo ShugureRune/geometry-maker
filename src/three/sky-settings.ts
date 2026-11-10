@@ -17,11 +17,31 @@ export const SKY_LABELS: Record<SkyKind,string> = {
   digital:'デジタル空間',
 };
 
+export type SkyEffectKind=Exclude<SkyKind,'classic'>;
+export type SkyPalette={base:string;primary:string;accent:string};
+/** Each preset keeps its recognizable default colors until the user edits them. */
+export const SKY_PALETTES:Record<SkyEffectKind,SkyPalette>={
+  starfield:{base:'#070d2b',primary:'#4463aa',accent:'#c8e3ff'},
+  galaxy:{base:'#080923',primary:'#6156fc',accent:'#f3a6c6'},
+  aurora:{base:'#031d2b',primary:'#20e6a5',accent:'#a45dff'},
+  'deep-sea':{base:'#021127',primary:'#147aa0',accent:'#6ae7e6'},
+  nebula:{base:'#100824',primary:'#7d32cf',accent:'#32b9f2'},
+  'cyber-tunnel':{base:'#06061b',primary:'#36cfff',accent:'#ff5bcf'},
+  retrowave:{base:'#220a4b',primary:'#d53ca9',accent:'#ff9d46'},
+  digital:{base:'#01180e',primary:'#0ef187',accent:'#70ffd6'},
+};
+export function skyPalette(settings:SkySettings):SkyPalette{
+  if(settings.kind==='classic')return SKY_PALETTES.starfield;
+  return settings.palettes?.[settings.kind]??SKY_PALETTES[settings.kind];
+}
+
 export type SkySettings = {
   kind:SkyKind;
   intensity:number;
   density:number;
   motion:number;
+  /** Only explicitly edited presets are serialized. Switching modes keeps edits. */
+  palettes?:Partial<Record<SkyEffectKind,SkyPalette>>;
 };
 export const skyDefaults:SkySettings={
   kind:'classic',intensity:100,density:100,motion:100,
@@ -36,7 +56,29 @@ export function validateSky(value:unknown):SkySettings{
     if(typeof v[key]!=='number'||!Number.isFinite(v[key])||v[key]<min||v[key]>max)
       throw new Error('3D背景の'+key+'が範囲外です。');
   }
-  return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,motion:v.motion as number};
+  let palettes:SkySettings['palettes'];
+  if(v.palettes!==undefined){
+    if(!v.palettes||typeof v.palettes!=='object'||Array.isArray(v.palettes))
+      throw new Error('3D背景のカラー設定が不正です。');
+    palettes={};
+    const entries=Object.entries(v.palettes as Record<string,unknown>);
+    for(const [kind,value] of entries){
+      if(kind==='classic'||!SKY_KINDS.includes(kind as SkyKind))
+        throw new Error('3D背景のカラー対象が不正です。');
+      if(!value||typeof value!=='object'||Array.isArray(value))
+        throw new Error('3D背景のカラー設定が不正です。');
+      const colors=value as Record<string,unknown>;
+      const hex=(field:string):string=>{
+        const candidate=colors[field];
+        if(typeof candidate!=='string'||!/^#[0-9a-fA-F]{6}$/.test(candidate))
+          throw new Error('3D背景のカラー値が不正です。');
+        return candidate.toLowerCase();
+      };
+      palettes[kind as SkyEffectKind]={base:hex('base'),primary:hex('primary'),accent:hex('accent')};
+    }
+  }
+  return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,
+    motion:v.motion as number,...(palettes!==undefined?{palettes}:{})};
 }
 /** No frame-time random numbers. Repeated seed + kind produces the same universe. */
 export function skySeedNumber(seed:string,kind:SkyKind):number{
