@@ -67,7 +67,7 @@ export function generateDiverseScene(seed:string,ratio:Ratio):Scene {
   }
   // Choose an actual clear title pocket, rather than forcing a fixed empty quadrant.
   const pockets:Rect[]=[];
-  for(const scale of [1,.82]) for(const y of [.5,.25,.75,.12,.88]) for(const x of [.5,.25,.75,.12,.88]) {
+  for(const scale of [1,.82,.65]) for(const y of [.5,.25,.75,.12,.88,.06,.94]) for(const x of [.5,.25,.75,.12,.88,.06,.94]) {
     const w=unit*.33*scale,h=unit*.24*scale;
     pockets.push({x:clamp(width*x-w/2,unit*.025,width-w-unit*.025),y:clamp(height*y-h/2,unit*.025,height-h-unit*.025),width:w,height:h});
   }
