@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyPalette,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
 import {skyFragmentShader,retroFloorFragmentShader} from './sky-shaders';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
@@ -62,6 +62,53 @@ describe('eight procedural 3D sky presets',()=>{
     expect(skyFragmentShader).toContain('lon*(2.0+f)');
     expect(retroFloorFragmentShader).toContain('uniform float uDensity;');
     expect(retroFloorFragmentShader).toContain('5.0/max(.25,density)');
+  });
+  it('supports independent editable palettes for all eight skies and rejects invalid colors',()=>{
+    const kinds=SKY_KINDS.filter(kind=>kind!=='classic');
+    for(const kind of kinds){
+      expect(SKY_PALETTES[kind].primary).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(SKY_PALETTES[kind].secondary).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(skyPalette({...skyDefaults,kind})).toEqual(SKY_PALETTES[kind]);
+    }
+    const palettes={
+      aurora:{primary:'#001122',secondary:'#aabbcc'},
+      digital:{primary:'#ff0000',secondary:'#00ff11'},
+      retrowave:{primary:'#ffaa00',secondary:'#bc00ef'},
+    };
+    const sky={...skyDefaults,kind:'aurora' as const,palettes};
+    expect(validateSky(sky)).toEqual(sky);
+    expect(skyPalette(sky)).toEqual(palettes.aurora);
+    expect(skyPalette({...sky,kind:'digital'})).toEqual(palettes.digital);
+    expect(skyPalette({...sky,kind:'galaxy'})).toEqual(SKY_PALETTES.galaxy);
+    expect(skyPalette({...sky,kind:'retrowave'})).toEqual(palettes.retrowave);
+    const invalid=[
+      null,[],false,{galaxy:{primary:'cyan',secondary:'#ffffff'}},
+      {aurora:{primary:'#abf',secondary:'#123456'}},
+      {aurora:{primary:'#123456'}},
+      {invalid:{primary:'#123456',secondary:'#abcdef'}},
+      {aurora:{primary:'#123456',secondary:'#abcdef'},__proto__:[]},
+    ];
+    for(const palettes of invalid)
+      expect(()=>validateSky({...skyDefaults,palettes})).toThrow();
+  });
+  it('draws real 5 by 7 hexadecimal glyph masks and feeds both chosen sky colors to the shaders',()=>{
+    const masks=[...skyFragmentShader.matchAll(/(?:if|else if)\(code<([\d.]+)\)masks=vec2\(([\d.]+),([\d.]+)\);/g)];
+    expect(masks.length).toBe(16);
+    const bit=(glyph:number,x:number,y:number)=>{
+      const low=Number(masks[glyph][2]),high=Number(masks[glyph][3]);
+      const offset=x+5*y;
+      return (Math.floor((offset<20?low:high)/2**(offset%20))%2);
+    };
+    // Glyph 0 is a hollow ring, glyph 1 a narrow upright, A has a crossbar.
+    expect(bit(0,2,6)).toBe(1);
+    expect(bit(0,2,3)).toBe(0);
+    expect(bit(1,2,3)).toBe(1);
+    expect([0,1,2,3,4].map(x=>bit(10,x,3))).toEqual([1,1,1,1,1]);
+    expect([0,1,2,3,4].map(x=>bit(15,x,0))).toEqual([1,0,0,0,0]);
+    expect(skyFragmentShader).toContain('uniform vec3 uPrimary;');
+    expect(skyFragmentShader).toContain('uniform vec3 uSecondary;');
+    expect(skyFragmentShader).toContain('pixel=glyphPixel(code,xy);');
+    expect(retroFloorFragmentShader).toContain('uniform vec3 uLineColor;');
   });
   it('saves/restores every sky preset with existing 3D settings, preserving legacy projects',()=>{
     const base:ThreeProject={
