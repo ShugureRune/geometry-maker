@@ -12,11 +12,15 @@ import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
 import {threePose, visibleThreeObjects, type ThreeComposition, type ThreeObject} from './model';
 import {effectiveThreeQuality, themeMaterial, threeResolutionError, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './settings';
+import {networkConnections} from './network';
+import {networkDefaults,neonDefaults} from './style-settings';
+import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 
 type Props = {
   composition: ThreeComposition; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
+  initialTime?:number;
 };
 type Clock = RefObject<number>;
 
@@ -31,8 +35,8 @@ function drawBackground(context: CanvasRenderingContext2D, width: number, height
   context.fillRect(0, 0, width, height);
 }
 
-function Solid({object, settings, background, visualTheme, low, seconds}: {
-  object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock;
+function Solid({object, settings, background, visualTheme, low, seconds, outlines}: {
+  object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries;
 }) {
   const mesh = useRef<Mesh>(null);
   const segments = low ? 16 : 40;
@@ -41,13 +45,16 @@ function Solid({object, settings, background, visualTheme, low, seconds}: {
   const color = background.figureColors?.[object.role] ?? {primary: '#b995ff', support: '#76cfe8', accent: '#beffd4'}[object.role];
   const glow = (background.glowIntensity ?? 0) / 100;
   const emissive = glow * (object.role === 'primary' ? .45 : object.role === 'accent' ? .3 : .16);
+  const neon=settings.neon??neonDefaults;
+  const surfaceVisible=!neon.enabled||neon.display!=='lines';
+  const translucent=neon.enabled&&neon.display==='transparent';
   useFrame(() => {
     if (!mesh.current) return;
     const pose = threePose(object, seconds.current, settings.floatAmount, settings.rotationAmount);
     mesh.current.position.set(...pose.position);
     mesh.current.rotation.set(...pose.rotation);
   });
-  return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low} receiveShadow={!low}>
+  return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent} receiveShadow={!low}>
     {kind === 'sphere' && <sphereGeometry args={[1, segments, segments / 2]}/>}
     {kind === 'cube' && <boxGeometry args={[2 / Math.sqrt(3), 2 / Math.sqrt(3), 2 / Math.sqrt(3)]}/>}
     {kind === 'torus' && <torusGeometry args={[.72, .23, low ? 8 : 16, low ? 32 : 64]}/>}
@@ -55,11 +62,17 @@ function Solid({object, settings, background, visualTheme, low, seconds}: {
     {kind === 'dodecahedron' && <dodecahedronGeometry args={[1, 0]}/>}
     {kind === 'octahedron' && <octahedronGeometry args={[1, 0]}/>}
     {kind === 'tetrahedron' && <tetrahedronGeometry args={[1, 0]}/>}
-    {material === 'glass' ? <meshPhysicalMaterial color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
-      transmission={low ? 0 : .65} thickness={.6} transparent opacity={low ? .65 : .92} emissive={color} emissiveIntensity={emissive * .45}/>
-      : <meshStandardMaterial color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
-        metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'}
+    {/* Transparency changes the compiled OPAQUE shader variant; replace the
+        material on this boundary so alpha sliders never use a stale program. */}
+    {material === 'glass' ? <meshPhysicalMaterial key={translucent?'translucent':'surface'} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
+      transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={translucent?neon.faceOpacity:low ? .65 : .92}
+      depthWrite={!translucent} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
+      : <meshStandardMaterial key={translucent?'translucent':'surface'} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
+        transparent={translucent} opacity={translucent?neon.faceOpacity:1} depthWrite={!translucent}
+        polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
+        metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={kind !== 'sphere' && kind !== 'torus'} emissive={color} emissiveIntensity={emissive}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low}/>}
   </mesh>;
 }
 
@@ -68,6 +81,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const controls = useRef<OrbitControls | null>(null);
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
+  const lastRestart=useRef(restartKey),ready=useRef(false);
   const aspect = composition.width / composition.height;
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
   function resetView() {
@@ -112,8 +126,11 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   // Reframe on aspect-ratio changes, while material/color/density changes retain the view.
   const lastAspect = useRef(aspect);
   useEffect(() => {if (lastAspect.current !== aspect) {lastAspect.current = aspect; resetView();}}, [aspect]);
-  useEffect(() => {seconds.current = 0; skipDelta.current = true; invalidate();}, [restartKey, seconds, invalidate]);
+  useEffect(() => {if(lastRestart.current!==restartKey)seconds.current=0;lastRestart.current=restartKey;skipDelta.current = true; invalidate();}, [restartKey, seconds, invalidate]);
   useEffect(() => {skipDelta.current = true; invalidate();}, [settings.animation, invalidate]);
+  // A style may update only shader buffers (no changed JSX host properties).
+  // Demand rendering must still refresh colors/pulses/poses while paused.
+  useEffect(() => {invalidate();}, [settings, background, invalidate]);
   useFrame((_, delta) => {
     if (settings.animation && !document.hidden && !skipDelta.current) seconds.current += delta * settings.speed;
     skipDelta.current = false;
@@ -146,21 +163,26 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
 
   function render() {
     if (gl.getContext().isContextLost()) throw new Error('3D描画が中断されました。解像度を下げて再度お試しください。');
-    const glow = (background.glowIntensity ?? 0) / 100;
+    const network=settings.network??networkDefaults,neon=settings.neon??neonDefaults;
+    const styled=network.enabled||neon.enabled;
+    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0) / 100;
     if (pipeline.current) {
       pipeline.current.bloom.enabled = glow > 0;
       pipeline.current.bloom.strength = Math.min(.55, glow * .28);
       // Dark scenes can reveal colored glow without overexposing the surface;
       // lift the threshold on pale backgrounds so the background itself won't bloom.
       const backgroundColors = background.mode === 'solid' ? [background.solid] : background.colors;
-      pipeline.current.bloom.threshold = .4 + Math.max(...backgroundColors.map(luminance)) * .9;
+      const threshold=.4 + Math.max(...backgroundColors.map(luminance)) * .9;
+      // Style lines use HDR only when their own glow is positive. Keep ordinary
+      // [0,1] line colors outside bloom even if the base shapes still glow.
+      pipeline.current.bloom.threshold = styled?Math.max(1.01,threshold):threshold;
       pipeline.current.composer.render();
     } else gl.render(scene, camera);
   }
-  useFrame(() => {if (!gl.getContext().isContextLost()) render();}, 1);
-  useEffect(() => {onReady(true); return () => onReady(false);}, [onReady]);
+  useFrame(() => {if (!gl.getContext().isContextLost()) {render();if(!ready.current){ready.current=true;onReady(true);}}}, 1);
+  useEffect(() => () => onReady(false), [onReady]);
 
-  useImperativeHandle(api, () => ({resetView, async savePNG(width, height) {
+  useImperativeHandle(api, () => ({resetView,getElapsedSeconds:()=>seconds.current, async savePNG(width, height) {
     const error = threeResolutionError(width, height); if (error) throw new Error(error);
     const maxSize = Math.min(gl.capabilities.maxTextureSize, gl.getContext().getParameter(gl.getContext().MAX_RENDERBUFFER_SIZE));
     if (width > maxSize || height > maxSize || (low && width * height > 4_194_304)) throw new Error('この描画設定では解像度が大きすぎます。軽量設定では合計4,194,304画素以内にしてください。');
@@ -207,11 +229,15 @@ export default function ThreePreview(props: Props) {
     query.addEventListener('change', update); return () => query.removeEventListener('change', update);
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
-  const seconds = useRef(0);
+  const seconds = useRef(props.initialTime??0);
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density), [props.composition, props.density]);
+  const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
+  const edges=useMemo(()=>network.enabled?networkConnections(objects,network.distance,network.maxConnections):[],[objects,network.enabled,network.distance,network.maxConnections]);
+  const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
-  return <div className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}>
+  return <div className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
+    data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 150}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
@@ -219,7 +245,8 @@ export default function ThreePreview(props: Props) {
       <directionalLight position={[5, 6, 7]} intensity={props.settings.lightIntensity * 2} castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
-      {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds}/>)}
+      {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines}/>)}
+      {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
     </Canvas>
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>

@@ -4,6 +4,16 @@
 [data-theme=light] .algorithm-label{color:#49566c}
 .category-navigation button:disabled{opacity:.45;cursor:not-allowed}
 .three-controls{min-width:0}
+.three-style-controls fieldset{min-width:0;margin:18px 0;padding:10px;border:1px solid #78718e;border-radius:8px}
+.three-style-controls legend{font-size:12px;padding:0 6px}
+.three-style-controls fieldset>label:not(.three-checkbox){display:block;font-size:12px;margin:14px 0 8px}
+.three-style-presets{display:flex;flex-wrap:wrap;gap:7px}
+.three-style-presets button{flex:1 1 80px;min-height:44px;padding:8px 6px;border:1px solid #88759f;border-radius:7px;background:#30293e;color:#eee4ff;font-size:11px}
+.three-style-presets button[aria-pressed=true]{background:#b8a5f5;color:#201b30}
+.three-custom-color{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.three-custom-color label{min-width:0;flex:1;display:grid;gap:6px;font-size:12px}
+.three-custom-color input{min-width:0;width:100%;min-height:44px;border-radius:6px;border:1px solid #88759f;background:#11141a;color:#ece5f5;padding:6px}
+.three-custom-color input[aria-invalid=true]{border-color:#fa9d9d}
 .three-controls h3{font-size:13px;margin:0 0 16px}
 .three-controls>label{margin-top:16px}
 .three-range{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;margin:14px 0;min-width:0}

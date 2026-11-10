@@ -21,6 +21,8 @@ import {threeDefaults, type ThreePreviewHandle, type ThreeSettings, type ThreeVi
 import {ThreeShapeControls, ThreeMaterialControls, ThreeAnimationControls} from './three/ThreeControls';
 import {ThreeExportPanel} from './three/ThreeExportPanel';
 import {ThreeBoundary} from './three/ThreeBoundary';
+import {ThreeStyleControls} from './three/ThreeStyleControls';
+import type {ThreeProject} from './three/project';
 import './three/three.css';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
@@ -39,6 +41,7 @@ export default function App() {
   const threeApi=useRef<ThreePreviewHandle|null>(null);
   const threeView=useRef<ThreeView|undefined>(undefined);
   const [threeReady,setThreeReady]=useState(false);
+  const [threeRestore,setThreeRestore]=useState({serial:0,time:0});
   const resume2D=useRef({growth:false,ambient:false});
   const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
   const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>({...textOverlayDefaults});
@@ -222,7 +225,7 @@ export default function App() {
           <input id="glow-intensity" type="range" min="0" max="200" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
           <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
         </section>
-        {renderMode==='3d'&&<ThreeMaterialControls settings={threeSettings} onChange={setThreeSettings}/>}
+        {renderMode==='3d'&&<><ThreeStyleControls settings={threeSettings} onChange={setThreeSettings}/><ThreeMaterialControls settings={threeSettings} onChange={setThreeSettings}/></>}
         </div>
         <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={activeCategory!=='animation'}>
           <h2 className="category-title">アニメーション</h2>
@@ -249,7 +252,14 @@ export default function App() {
             setRegenerations(0);
           }} />
       </div>
-        {renderMode==='3d'&&<ThreeExportPanel api={threeApi} seed={seed} ready={threeReady}/>}
+        {renderMode==='3d'&&<ThreeExportPanel api={threeApi} seed={seed} ready={threeReady}
+          project={()=>({kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed,aspectRatio:ratio,density,visualTheme,background,
+            colorSettings:activeColors,settings:threeSettings,...(threeView.current?{view:threeView.current}:{})})}
+          onRestore={(project:ThreeProject)=>{
+            setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
+            setVisualTheme(project.visualTheme);setColorSettings(project.colorSettings);setBackground(project.colorSettings?coloredBackground(project.background,project.colorSettings):project.background);
+            setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds}));
+          }}/>}
         </div>
       </aside>
 
@@ -263,7 +273,7 @@ export default function App() {
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
-                {threeComposition&&<ThreePreview composition={threeComposition} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
+                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
               </Suspense>
             </ThreeBoundary>
           </div>}
