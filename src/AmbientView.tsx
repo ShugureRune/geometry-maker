@@ -11,7 +11,7 @@ import { coloredBackground, reseedColors } from './colors';
 import { ambientClock, ambientEnvelope, ambientSeed, type AmbientInput } from './ambient';
 function Tile({input,index,progress,phase,opacity=1,scale=1,figurePainter,figureKey='loop',backgroundBlend}:{figurePainter?:FigurePainter;figureKey?:string;input:AmbientInput;index:number;progress:number;phase:number;opacity?:number;scale?:number;backgroundBlend?:{next:Background;opacity:number}}){
  const seed=ambientSeed(input.seed,index),s=input.settings;
- const generated=useMemo(()=>{const base=generateScene(seed,input.ratio,input.version);const candidates=densityCandidates(base,seed);return{scene:themeScene(visibleScene(base,candidates,input.density),input.visualTheme??'standard',seed),cues:schedule(candidates,seed,input.version)};},[seed,input.ratio,input.version,input.density,input.visualTheme]);
+ const generated=useMemo(()=>{const base=generateScene(seed,input.ratio,input.version,input.enabledShapeKinds);const candidates=densityCandidates(base,seed);return{scene:themeScene(visibleScene(base,candidates,input.density),input.visualTheme??'standard',seed),cues:schedule(candidates,seed,input.version)};},[seed,input.ratio,input.version,input.density,input.visualTheme,input.enabledShapeKinds]);
  const background=useMemo(()=>input.colors&&index!==0?coloredBackground(input.background,reseedColors(input.colors,seed)):input.background,[input.background,input.colors,seed]);
  const float=s.mode==='float'||s.mode==='combined';
  // A single transform moves every connected shape together, preserving junctions.
@@ -29,7 +29,7 @@ function Tile({input,index,progress,phase,opacity=1,scale=1,figurePainter,figure
 }
 export function AmbientView({input,seconds,world,scrollCamera='parent',figureCache}:{input:AmbientInput;seconds:number;world?:ScrollWorld;scrollCamera?:'parent'|'per-chunk';figureCache?:FigureColorCache}){
  const localFigureCache=useMemo(createFigureColorCache,[input.seed]);
- const localWorld=useMemo(()=>input.settings.mode==='scroll'&&input.settings.loop==='evolving'&&!world?createScrollWorld(input):undefined,[input.seed,input.ratio,input.version,input.density,input.visualTheme,input.settings.scrollDensity,input.settings.mode,input.settings.loop,world]);
+ const localWorld=useMemo(()=>input.settings.mode==='scroll'&&input.settings.loop==='evolving'&&!world?createScrollWorld(input):undefined,[input.seed,input.ratio,input.version,input.density,input.visualTheme,input.enabledShapeKinds,input.settings.scrollDensity,input.settings.mode,input.settings.loop,world]);
  if(input.settings.mode==='scroll'&&input.settings.loop==='evolving')return <ChunkScroll input={input} seconds={seconds} world={(world??localWorld)!} camera={scrollCamera}/>;
  const s=input.settings,c=ambientClock(s,seconds),[width,height]=RATIOS[input.ratio];
  const cycleGrowth=s.mode==='growth'||s.mode==='combined';
