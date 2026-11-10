@@ -1,7 +1,9 @@
 import {RATIOS, seededRandom, type Ratio} from '../scene';
 
 export const THREE_ALGORITHM_VERSION = '3d-v1';
-export const THREE_KINDS = ['sphere', 'cube', 'torus', 'icosahedron', 'dodecahedron', 'octahedron', 'tetrahedron'] as const;
+export const THREE_CLASSIC_KINDS = ['sphere', 'cube', 'torus', 'icosahedron', 'dodecahedron', 'octahedron', 'tetrahedron'] as const;
+export const THREE_NEW_KINDS = ['cylinder', 'cone', 'capsule', 'prism', 'pyramid', 'torus-knot'] as const;
+export const THREE_KINDS = [...THREE_CLASSIC_KINDS, ...THREE_NEW_KINDS] as const;
 export type ThreeKind = typeof THREE_KINDS[number];
 export type Vector3Tuple = [number, number, number];
 export type ThreeObject = {
@@ -67,8 +69,16 @@ export function generateThreeComposition(seed: string, ratio: Ratio): ThreeCompo
   return {version: THREE_ALGORITHM_VERSION, objects, width, height};
 }
 
-export function visibleThreeObjects(composition: ThreeComposition, density: number) {
-  return density <= 0 ? [] : composition.objects.filter(object => object.startDensity <= density);
+/** Changing the allowed types never re-rolls positions, IDs, animation or density.
+ * Excluded shapes deterministically morph into the selected set instead of vanishing. */
+export function visibleThreeObjects(composition: ThreeComposition, density: number, enabledKinds: readonly ThreeKind[] = THREE_KINDS): ThreeObject[] {
+  if (density <= 0 || enabledKinds.length === 0) return [];
+  const allowed = new Set<ThreeKind>(enabledKinds);
+  return composition.objects.filter(object => object.startDensity <= density).map(object => {
+    if (allowed.has(object.kind)) return object;
+    const random=seededRandom(`${composition.version}:${object.id}:${object.kind}:kind-selection`);
+    return {...object,kind:enabledKinds[Math.floor(random()*enabledKinds.length)]};
+  });
 }
 
 /** A pure, seekable pose. The renderer owns a pausable clock; no frame randoms. */
