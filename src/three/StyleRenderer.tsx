@@ -6,12 +6,12 @@ import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
 import type {Background} from '../scene';
-import {THREE_KINDS,threePose,type ThreeKind,type ThreeObject} from './model';
+import {THREE_KINDS,type ThreeKind,type ThreeObject} from './model';
 import type {ThreeSettings} from './settings';
 import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
-import type {networkConnections} from './network';
+import {visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade} from './visibility';
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
@@ -71,19 +71,24 @@ export function NetworkLines({objects,edges,settings,background,low,seconds}:{ob
   useFrame(()=>{
     const start=geometry.getAttribute('instanceStart') as InterleavedBufferAttribute, end=geometry.getAttribute('instanceEnd') as InterleavedBufferAttribute;
     const colorStart=geometry.getAttribute('instanceColorStart') as InterleavedBufferAttribute, colorEnd=geometry.getAttribute('instanceColorEnd') as InterleavedBufferAttribute;
+    let active=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
-      const pa=threePose(a,seconds.current,settings.floatAmount,settings.rotationAmount).position;
-      const pb=threePose(b,seconds.current,settings.floatAmount,settings.rotationAmount).position;
-      start.setXYZ(i,...pa);end.setXYZ(i,...pb);
+      const segment=visibleNetworkSegment(a,b,seconds.current,settings.visibilityAnimation??visibilityDefaults,
+        settings.floatAmount,settings.rotationAmount);
+      // Do not keep a zero-brightness opaque line in the draw list: that is
+      // the black ghost left behind after the original figure disappears.
+      if(!segment)continue;
+      start.setXYZ(active,...segment.start);end.setXYZ(active,...segment.end);
       const pulse=network.animation==='pulse'?networkPulse(seconds.current,a.phase+b.phase):1;
-      // Fixed topology avoids flicker/reconnections; the whole segment fades
-      // whenever either endpoint enters/exits or is temporarily invisible.
-      const appearance=settings.visibilityAnimation??visibilityDefaults;
-      const alpha=Math.min(threeVisibility(a,seconds.current,appearance),threeVisibility(b,seconds.current,appearance));
-      const factor=pulse*alpha;
-      const [ca,cb]=colors[i];colorStart.setXYZ(i,ca.r*factor,ca.g*factor,ca.b*factor);colorEnd.setXYZ(i,cb.r*factor,cb.g*factor,cb.b*factor);
+      const [ca,cb]=colors[i];
+      colorStart.setXYZ(active,ca.r*pulse,ca.g*pulse,ca.b*pulse);
+      colorEnd.setXYZ(active,cb.r*pulse,cb.g*pulse,cb.b*pulse);
+      active++;
     }
+    // Pack visible edges into the existing GPU buffers and skip hidden
+    // instances altogether, including when every linked figure is invisible.
+    geometry.instanceCount=active;
     start.data.needsUpdate=true;colorStart.data.needsUpdate=true;
   });
   return <primitive object={line} dispose={null}/>;

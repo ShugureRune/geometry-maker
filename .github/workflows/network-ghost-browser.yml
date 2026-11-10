@@ -1,0 +1,35 @@
+name: 3D disappearing network regression
+
+on:
+  pull_request:
+    paths:
+      - 'src/three/StyleRenderer.tsx'
+      - 'src/three/network.ts'
+      - 'src/three/visibility.ts'
+      - 'tests/neon-network.spec.ts'
+      - '.github/workflows/network-ghost-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ghost-lines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Ensure hidden 3D objects leave no network lines
+        run: npx playwright test tests/neon-network.spec.ts --grep "fully disappeared figures leave no black ghost connections"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: network-ghost-regression-failures
+          path: test-results/
+          retention-days: 7
