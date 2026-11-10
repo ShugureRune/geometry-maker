@@ -148,3 +148,72 @@ test('sky density changes cyber tunnel frames and retrowave ground independently
   expect(normalRetro).not.toBe(emptyRetro);
   await expect(preview).toHaveAttribute('data-object-count',objectCount!);
 });
+
+test('custom colors are distinct per background and survive JSON restoration',async({page})=>{
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  const select=page.getByLabel('3D背景の種類');
+  await select.selectOption('starfield');
+  const original=digest(await png(page));
+  await category(page,'背景');
+  await page.locator('#three-sky-color-primary').fill('#ff3300');
+  await expect(page.locator('#three-sky-color-primary')).toHaveValue('#ff3300');
+  expect(digest(await png(page))).not.toBe(original);
+  await category(page,'背景');
+  await select.selectOption('nebula');
+  await page.locator('#three-sky-color-accent').fill('#22f4a8');
+  await expect(page.locator('#three-sky-color-accent')).toHaveValue('#22f4a8');
+  await select.selectOption('starfield');
+  await expect(page.locator('#three-sky-color-primary')).toHaveValue('#ff3300');
+  await select.selectOption('nebula');
+  await expect(page.locator('#three-sky-color-accent')).toHaveValue('#22f4a8');
+
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  const bytes=await readFile((await (await pending).path())!);
+  const project=JSON.parse(bytes.toString());
+  expect(project.settings.sky.palettes.starfield.primary).toBe('#ff3300');
+  expect(project.settings.sky.palettes.nebula.accent).toBe('#22f4a8');
+
+  await category(page,'背景');
+  await page.getByRole('button',{name:'この背景の色を初期値に戻す'}).click();
+  await expect(page.locator('#three-sky-color-accent')).not.toHaveValue('#22f4a8');
+  await category(page,'書き出し');
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+    name:'custom-skies.json',mimeType:'application/json',buffer:bytes,
+  });
+  await category(page,'背景');
+  await expect(select).toHaveValue('nebula');
+  await expect(page.locator('#three-sky-color-accent')).toHaveValue('#22f4a8');
+  await select.selectOption('starfield');
+  await expect(page.locator('#three-sky-color-primary')).toHaveValue('#ff3300');
+  await page.getByRole('button',{name:'2Dモード',exact:true}).click();
+  await expect(page.getByTestId('preview')).toBeVisible();
+});
+
+test('retrowave pink ground still renders together with normal 3D grid',async({page})=>{
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  await page.getByLabel('3D背景の種類').selectOption('retrowave');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  const preview=page.getByTestId('three-preview');
+  await expect(preview).toHaveAttribute('data-floor-grid','on');
+  const initial=digest(await png(page));
+  await category(page,'背景');
+  await page.locator('#three-sky-color-primary').fill('#00ff44');
+  expect(digest(await png(page))).not.toBe(initial);
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').uncheck();
+  const withoutNormalGrid=digest(await png(page));
+  expect(withoutNormalGrid).not.toBe(initial);
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  await expect(preview).toHaveAttribute('data-floor-grid','on');
+  // The retro floor remains enabled regardless of the normal grid toggle.
+  await expect(preview).toHaveAttribute('data-sky-kind','retrowave');
+});
