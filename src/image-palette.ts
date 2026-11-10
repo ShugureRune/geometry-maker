@@ -11,6 +11,13 @@ export type ImagePalette={
  figures:[string,string,string];
 };
 export type PaletteScope='all'|'background'|'figures';
+export type PaletteFocus='subject'|'center'|'all';
+export type ImagePaletteOptions={
+ width:number;
+ focus?:PaletteFocus;
+ /** Normalized [0..1] crop on the sampled image (not the original dimensions). */
+ crop?:{x:number;y:number;width:number;height:number};
+};
 const clamp=(v:number)=>Math.max(0,Math.min(255,Math.round(v)));
 const rgb=(color:string):RGB=>({
  r:parseInt(color.slice(1,3),16),
@@ -33,11 +40,88 @@ export const contrastRatio=(a:string,b:string)=>{
  return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
 };
 
-function clusters(pixels:Uint8ClampedArray,max=8):{color:RGB;weight:number}[]{
+
+/** Downweight likely background, while keeping the old pixel histogram available
+ * through focus='all'. Coordinates are from the small, on-device Canvas sample. */
+function paletteWeights(pixels:Uint8ClampedArray,options?:ImagePaletteOptions):Float32Array|undefined{
+ if(!options||options.focus==='all'&&!options.crop)return;
+ const count=pixels.length/4;
+ const width=options.width;
+ if(!Number.isInteger(width)||width<1||count%width!==0)
+  throw new Error('画像の幅が正しくありません。');
+ const height=count/width;
+ const crop=options.crop;
+ const left=crop?Math.max(0,Math.floor(crop.x*width)):0;
+ const top=crop?Math.max(0,Math.floor(crop.y*height)):0;
+ const right=crop?Math.min(width,Math.ceil((crop.x+crop.width)*width)):width;
+ const bottom=crop?Math.min(height,Math.ceil((crop.y+crop.height)*height)):height;
+ if(right<=left||bottom<=top)throw new Error('色を抽出する範囲を広げてください。');
+ const weights=new Float32Array(count);
+ const focus=options.focus??'all';
+ for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
+  const index=y*width+x;
+  if(focus==='all'){weights[index]=1;continue;}
+  const dx=((x+.5-(left+right)/2)/((right-left)/2));
+  const dy=((y+.5-(top+bottom)/2)/((bottom-top)/2));
+  const closeness=Math.max(0,1-(dx*dx+dy*dy)/1.6);
+  weights[index]=focus==='center'?.02+3*closeness**5:.15+1.85*closeness**2;
+ }
+ if(focus!=='subject'||right-left<8||bottom-top<8)return weights;
+ // A broad, connected border color is often the backdrop behind an illustration.
+ // Do not assume a colorful/textured border is a removable background.
+ const border:number[]=[];
+ for(let x=left;x<right;x++){border.push(top*width+x,(bottom-1)*width+x);}
+ for(let y=top+1;y<bottom-1;y++){border.push(y*width+left,y*width+right-1);}
+ const buckets=new Map<number,{r:number;g:number;b:number;n:number}>();
+ for(const index of border){
+  if(pixels[index*4+3]<128)continue;
+  const r=pixels[index*4],g=pixels[index*4+1],b=pixels[index*4+2];
+  const key=((r>>4)<<8)|((g>>4)<<4)|(b>>4);
+  const entry=buckets.get(key);
+  if(entry){entry.r+=r;entry.g+=g;entry.b+=b;entry.n++;}
+  else buckets.set(key,{r,g,b,n:1});
+ }
+ const main=[...buckets.entries()].sort((a,b)=>b[1].n-a[1].n||a[0]-b[0])[0]?.[1];
+ if(!main||main.n<border.length*.22)return weights;
+ const bg={r:main.r/main.n,g:main.g/main.n,b:main.b/main.n};
+ const isBackground=(index:number)=>{
+  const at=index*4;
+  return pixels[at+3]>=128&&dist(bg,{r:pixels[at],g:pixels[at+1],b:pixels[at+2]})<5400;
+ };
+ const matched=border.filter(isBackground);
+ if(matched.length<border.length*.38)return weights;
+ const seen=new Uint8Array(count);
+ const queue:number[]=[];
+ for(const index of matched)if(!seen[index]){seen[index]=1;queue.push(index);}
+ // Flood-fill only the connected border-colored region, not identical colors
+ // surrounded by an independently colored subject.
+ for(let head=0;head<queue.length;head++){
+  const index=queue[head],x=index%width,y=Math.floor(index/width);
+  for(const next of [x>left?index-1:-1,x<right-1?index+1:-1,
+   y>top?index-width:-1,y<bottom-1?index+width:-1]){
+   if(next>=0&&!seen[next]&&isBackground(next)){
+    seen[next]=1;queue.push(next);
+   }
+  }
+ }
+ let visible=0,foreground=0;
+ for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
+  const index=y*width+x;
+  if(pixels[index*4+3]>=128){visible++;if(!seen[index])foreground++;}
+ }
+ // A solid-color picture has no subject to isolate; preserve its original palette.
+ if(queue.length<visible*.2||foreground<Math.max(3,visible*.005))return weights;
+ for(const index of queue)weights[index]=0;
+ return weights;
+}
+
+function clusters(pixels:Uint8ClampedArray,max=8,pixelWeights?:Float32Array):{color:RGB;weight:number}[]{
  const bins=new Map<number,Bucket>();
  for(let i=0;i+3<pixels.length;i+=4){
-  const alpha=pixels[i+3]/255;
-  if(alpha<.5)continue;
+  const coverage=pixels[i+3]/255;
+  if(coverage<.5)continue;
+  const alpha=coverage*(pixelWeights?.[i/4]??1);
+  if(alpha<=0)continue;
   const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
   // 4-bit RGB histogram removes pixel-level noise before weighted k-means.
   const key=((r>>4)<<8)|((g>>4)<<4)|(b>>4);
@@ -82,9 +166,9 @@ function clusters(pixels:Uint8ClampedArray,max=8):{color:RGB;weight:number}[]{
 }
 
 /** 5–8 visual swatches, a dominant background, and readable figure colors. */
-export function extractImagePalette(pixels:Uint8ClampedArray):ImagePalette{
+export function extractImagePalette(pixels:Uint8ClampedArray,options?:ImagePaletteOptions):ImagePalette{
  if(pixels.length%4!==0||pixels.length===0)throw new Error('画像データが正しくありません。');
- const found=clusters(pixels);
+ const found=clusters(pixels,8,paletteWeights(pixels,options));
  const selected:RGB[]=[];
  for(const item of found)if(selected.every(c=>dist(c,item.color)>1000))selected.push(item.color);
  const dominant=found[0].color;
