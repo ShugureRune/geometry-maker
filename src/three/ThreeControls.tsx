@@ -1,4 +1,5 @@
 import type {ThreeSettings} from './settings';
+import {visibilityDefaults,type ThreeVisibilitySettings} from './visibility';
 import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,type ThreeKind} from './model';
 
 export const THREE_KIND_LABELS: Record<ThreeKind,string> = {
@@ -69,6 +70,26 @@ export function ThreeAnimationControls({settings, onChange}: Props) {
     <ThreeRange id="three-speed" label="3D再生速度" value={settings.speed} min={.25} max={4} step={.25} unit="倍" onChange={speed => onChange({...settings, speed})}/>
     <ThreeRange id="three-float" label="3D浮遊量" value={settings.floatAmount} min={0} max={2} step={.1} onChange={floatAmount => onChange({...settings, floatAmount})}/>
     <ThreeRange id="three-rotation" label="3D回転量" value={settings.rotationAmount} min={0} max={2} step={.1} onChange={rotationAmount => onChange({...settings, rotationAmount})}/>
+    <fieldset className="three-kind-fieldset"><legend>3D出現・消失アニメーション</legend>
+      <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).enabled}
+        onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),enabled:event.target.checked}})}/> 出現・消失アニメーションを有効化</label>
+      {(settings.visibilityAnimation??visibilityDefaults).enabled&&<>
+        <label htmlFor="three-visibility-mode">登場・消失の演出</label>
+        <select id="three-visibility-mode" value={(settings.visibilityAnimation??visibilityDefaults).mode}
+          onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),mode:event.target.value as ThreeVisibilitySettings['mode']}})}>
+          <option value="fade">フェード</option><option value="scale">拡大・縮小</option><option value="fade-scale">フェード＋拡大・縮小</option>
+        </select>
+        <ThreeRange id="three-visibility-duration" label="出現・消失の周期" value={(settings.visibilityAnimation??visibilityDefaults).duration}
+          min={4} max={30} step={1} unit="秒" onChange={duration=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),duration}})}/>
+        <ThreeRange id="three-visibility-ratio" label="表示している割合" value={(settings.visibilityAnimation??visibilityDefaults).visibleRatio*100}
+          min={10} max={90} step={5} unit="%" onChange={visibleRatio=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),visibleRatio:visibleRatio/100}})}/>
+        <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).stagger}
+          onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),stagger:event.target.checked}})}/> 図形ごとにタイミングをずらす</label>
+        <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).keepPrimaryVisible}
+          onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),keepPrimaryVisible:event.target.checked}})}/> 主役図形は常に表示</label>
+        <p className="help">回転・浮遊と同じ再生時計でループします。ネオン輪郭と接続線も図形に合わせて消えます。再生停止中は現在の状態で静止します。</p>
+      </>}
+    </fieldset>
     <p className="help">再生成すると同じ構図の初期姿勢へ戻ります。色・密度・マテリアルの変更では再生時刻をリセットしません。非表示タブでは休止します。</p>
   </section>;
 }
