@@ -44,6 +44,14 @@ export function floorGridOffset(seconds:number,grid:FloorGridSettings):number{
   return Math.abs(offset-grid.spacing)<1e-8?0:offset;
 }
 
+
+/** Physical stroke width in world units, independent of camera zoom/distance.
+ * uThickness is a familiar relative slider, ~1–2px at the home camera.
+ * Projection (rather than a fixed pixel thickness) determines distant width. */
+export function floorGridStrokeWidth(thickness:number):number{
+  return thickness*.012;
+}
+
 /** Stored extent (24..120) remains compatible with old 3D JSON.
  * Only the rendered diameter is enlarged, so grid spacing and motion stay unchanged. */
 export const FLOOR_GRID_DIAMETER_MULTIPLIER = 10;
