@@ -2,10 +2,10 @@ import {useFrame,useThree} from '@react-three/fiber';
 import {useEffect,useMemo,useRef,type RefObject} from 'react';
 import {
   BackSide,BufferGeometry,Color,DoubleSide,Float32BufferAttribute,
-  Group,Mesh,Points,ShaderMaterial,
+  Group,Mesh,ShaderMaterial,
 } from 'three';
 import {seededRandom} from '../scene';
-import {skySeedNumber,skyDefaults,SKY_KINDS,type SkyKind,type SkySettings} from './sky-settings';
+import {skySeedNumber,skyDefaults,SKY_KINDS,type SkySettings} from './sky-settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
 
 type SkyProps={
