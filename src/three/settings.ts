@@ -28,7 +28,7 @@ export function validateThreeSettings(value: unknown): ThreeSettings {
     lightIntensity:numberField(d.lightIntensity,.1,3,'照明'), animation:booleanField(d.animation,'3Dアニメーション'),
     speed:numberField(d.speed,.25,4,'3D再生速度'), floatAmount:numberField(d.floatAmount,0,2,'浮遊量'),
     rotationAmount:numberField(d.rotationAmount,0,2,'回転量'), visibilityAnimation:validateThreeVisibility(d.visibilityAnimation),
-    floorGrid:validateFloorGrid(d.floorGrid), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
+    floorGrid:validateFloorGrid(d.floorGrid??floorGridDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
 }
 export type ThreeView = {position: Vector3Tuple; target: Vector3Tuple};
 export type ThreePreviewHandle = {savePNG: (width: number, height: number) => Promise<Blob>; resetView: () => void; getElapsedSeconds?:()=>number};
