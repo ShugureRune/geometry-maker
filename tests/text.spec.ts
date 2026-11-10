@@ -86,3 +86,51 @@ test('text colors track figure colors and glow survives SVG and JSON export',asy
  expect(svg).toContain('data-testid="text-glow"');
  expect(svg).toContain('feGaussianBlur');
 });
+
+
+test('one-click hollow neon creates outline-only SVG, exports settings and restores them',async({page})=>{
+ await page.goto('./');
+ const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
+ const seed=await page.getByTestId('current-seed').textContent();
+ await nav.getByRole('button',{name:'文字',exact:true}).click();
+ await page.getByLabel('表示する文字').fill('ネオン\nOUTLINE');
+ await page.getByRole('button',{name:'中抜きネオンを一発設定'}).click();
+ await expect(page.getByLabel('文字を表示')).toBeChecked();
+ await expect(page.getByLabel('文字の塗り')).toHaveValue('transparent');
+ await expect(page.getByLabel('発光対象')).toHaveValue('outline');
+ await expect(page.getByLabel('縁取り色モード')).toHaveValue('text');
+ const preview=page.getByTestId('preview').getByTestId('text-overlay');
+ await expect(preview).toHaveAttribute('data-text-fill-mode','transparent');
+ const sharp=preview.locator(':scope > text');
+ await expect(sharp).toHaveAttribute('fill','none');
+ expect(await sharp.getAttribute('stroke')).toMatch(/^#[a-f0-9]{6}$/i);
+ const glow=preview.getByTestId('text-glow').locator('text');
+ await expect(glow).toHaveCount(1);
+ await expect(glow).toHaveAttribute('fill','none');
+ const originalShape=await page.getByTestId('preview').getByTestId('shapes').evaluate(n=>n.outerHTML);
+ await page.getByLabel('文字色のモード').selectOption('accent');
+ expect(await page.getByTestId('preview').getByTestId('shapes').evaluate(n=>n.outerHTML)).toBe(originalShape);
+ await nav.getByRole('button',{name:'書き出し',exact:true}).click();
+ const jsonPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ const json=JSON.parse((await readFile((await (await jsonPromise).path())!)).toString());
+ expect(json.textOverlay).toMatchObject({enabled:true,fillMode:'transparent',strokeEnabled:true,
+  strokeColorMode:'text',glowEnabled:true,glowTarget:'outline',colorMode:'accent'});
+ const svgPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'SVGを書き出す'}).click();
+ const svg=(await readFile((await (await svgPromise).path())!)).toString();
+ expect(svg).toContain('data-text-fill-mode="transparent"');
+ expect(svg).toContain('data-testid="text-glow"');
+ expect(svg).toContain('fill="none"');
+ const pngPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'PNGを書き出す'}).click();
+ const png=await readFile((await (await pngPromise).path())!);
+ expect(png.subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
+ await nav.getByRole('button',{name:'文字',exact:true}).click();
+ await page.getByLabel('文字の塗り').selectOption('solid');
+ await nav.getByRole('button',{name:'書き出し',exact:true}).click();
+ await page.getByLabel('設定JSONファイル').setInputFiles({name:'neon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(json))});
+ await nav.getByRole('button',{name:'文字',exact:true}).click();
+ await expect(page.getByLabel('文字の塗り')).toHaveValue('transparent');
+ await expect(page.getByTestId('current-seed')).toHaveText(seed??'');
+});

@@ -129,3 +129,11 @@
 [data-theme=light] .text-controls textarea{background:#fbfaff;color:#2f293e;border-color:#b9afca}
 [data-theme=light] .text-control-range label,[data-theme=light] .text-controls .text-color-input{color:#493863}
 [data-theme=light] .text-control-range output{color:#68459e}
+
+/* Outline-only neon typography preset (touch-friendly and accessible). */
+.text-hollow-controls{margin:18px 0 10px}
+.text-hollow-controls>label{display:block;font-size:11px;color:#c4c9d3;margin-bottom:9px}
+.text-neon-preset{display:block;width:100%;min-height:44px;margin-top:12px;padding:10px 12px;background:#362454;color:#f4e9ff;border:1px solid #ab80f3;border-radius:8px;font-size:12px;font-weight:650;box-shadow:inset 0 0 12px #b67fff18}
+.text-neon-preset:focus-visible{outline:2px solid #bb9aff}
+[data-theme=light] .text-neon-preset{background:#e4d6fb;color:#4b2679;border-color:#9c78ce}
+[data-theme=light] .text-hollow-controls>label{color:#493863}

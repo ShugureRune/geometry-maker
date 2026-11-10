@@ -26,17 +26,25 @@ export function TextOverlay({settings,width,height,background}:{
  const midpoint={x:(vector.start.x+vector.end.x)/2,y:(vector.start.y+vector.end.y)/2};
  const stops=[colorFor('primary',vector.start),colorFor('support',midpoint),colorFor('accent',vector.end)];
  const fill=colorMode==='solid'?settings.color:colorMode==='gradient'?`url(#${id}-gradient)`:colorFor(colorMode);
- const glow=settings.glowEnabled&&settings.glowStrength>0;
+ const fillVisible=(settings.fillMode??'solid')!=='transparent';
+ const outline=settings.strokeEnabled&&settings.strokeWidth>0;
+ const strokePaint=settings.strokeColorMode==='text'?fill:settings.strokeColor;
+ const glowTarget=settings.glowTarget??'fill';
+ const glowOnFill=fillVisible&&(glowTarget==='fill'||glowTarget==='both');
+ const glowOnOutline=outline&&(glowTarget==='outline'||glowTarget==='both');
+ const glow=settings.glowEnabled&&settings.glowStrength>0&&(glowOnFill||glowOnOutline);
  const glowFill=settings.glowColorMode==='custom'?settings.glowColor:fill;
- const glyphs=(paint:string,outline:boolean)=>(
+ const glowStroke=settings.glowColorMode==='custom'?settings.glowColor:strokePaint;
+ const glyphs=(paint:string,strokePaint:string,strokeWidth=0)=>(
   <text x={x} y={startY} textAnchor={anchor} fontFamily={typeface} fontSize={settings.fontSize}
    fontWeight={settings.bold?700:400} fill={paint}
-   stroke={outline?settings.strokeColor:'none'} strokeWidth={outline?settings.strokeWidth:0}
+   stroke={strokePaint} strokeWidth={strokeWidth}
    strokeLinejoin="round" paintOrder="stroke" xmlSpace="preserve">
    {lines.map((line,index)=><tspan key={index} x={x} dy={index===0?0:spacing}>{line||' '}</tspan>)}
   </text>
  );
  return <g data-testid="text-overlay" data-text-layer={settings.layer} data-text-color-mode={colorMode}
+  data-text-fill-mode={settings.fillMode??'solid'} data-text-glow-target={glowTarget}
   opacity={settings.opacity/100} transform={`rotate(${settings.rotation} ${x} ${y})`}>
   {colorMode==='gradient'&&<defs>
    <linearGradient id={`${id}-gradient`} data-testid="text-gradient" gradientUnits="userSpaceOnUse"
@@ -57,12 +65,13 @@ export function TextOverlay({settings,width,height,background}:{
   </defs>}
   {settings.shadowEnabled&&<g transform="translate(4 5)" opacity=".75"
    filter={settings.shadowBlur>0?`url(#${id}-shadow)`:undefined}>
-   {glyphs(settings.shadowColor,false)}
+   {glyphs(fillVisible?settings.shadowColor:'none',!fillVisible&&outline?settings.shadowColor:'none',!fillVisible&&outline?settings.strokeWidth:0)}
   </g>}
   {glow&&<g data-testid="text-glow" opacity={Math.min(1,settings.glowStrength/100)}
    filter={`url(#${id}-glow)`}>
-   {glyphs(glowFill,false)}
+   {glowOnFill&&glyphs(glowFill,'none')}
+   {glowOnOutline&&glyphs('none',glowStroke,settings.strokeWidth)}
   </g>}
-  {glyphs(fill,settings.strokeEnabled)}
+  {glyphs(fillVisible?fill:'none',outline?strokePaint:'none',outline?settings.strokeWidth:0)}
  </g>;
 }
