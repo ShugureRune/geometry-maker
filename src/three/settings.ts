@@ -1,22 +1,24 @@
 import type {VisualTheme} from '../themes';
-import type {Vector3Tuple} from './model';
+import {THREE_KINDS,type ThreeKind,type Vector3Tuple} from './model';
 import {networkDefaults, neonDefaults, record, enumField, numberField, booleanField, validateNetwork, validateNeon, type NetworkSettings, type NeonSettings} from './style-settings';
 
 export type ThreeSettings = {
-  network?: NetworkSettings; neon?: NeonSettings;
+  network?: NetworkSettings; neon?: NeonSettings; enabledKinds?: ThreeKind[];
   quality: 'auto' | 'low' | 'high'; material: 'theme' | 'matte' | 'metal' | 'glass' | 'wireframe';
   roughness: number; metalness: number; lightIntensity: number;
   animation: boolean; speed: number; floatAmount: number; rotationAmount: number;
 };
 export const threeDefaults: ThreeSettings = {
-  network: {...networkDefaults}, neon: {...neonDefaults},
+  network: {...networkDefaults}, neon: {...neonDefaults}, enabledKinds: [...THREE_KINDS],
   quality: 'auto', material: 'theme', roughness: .32, metalness: .45, lightIntensity: 1,
   animation: true, speed: 1, floatAmount: 1, rotationAmount: 1,
 };
 /** Allowlisted rebuild: legacy settings without style fields keep normal 3D. */
 export function validateThreeSettings(value: unknown): ThreeSettings {
   const d={...threeDefaults,...record(value)};
-  return {quality:enumField(d.quality,['auto','low','high'],'3D描画品質'),
+  if(!Array.isArray(d.enabledKinds)||!d.enabledKinds.every(kind=>THREE_KINDS.includes(kind as ThreeKind))||new Set(d.enabledKinds).size!==d.enabledKinds.length)
+    throw new Error('3D図形の種類設定が不正です。');
+  return {enabledKinds:[...d.enabledKinds] as ThreeKind[],quality:enumField(d.quality,['auto','low','high'],'3D描画品質'),
     material:enumField(d.material,['theme','matte','metal','glass','wireframe'],'3Dマテリアル'),
     roughness:numberField(d.roughness,0,1,'粗さ'), metalness:numberField(d.metalness,0,1,'金属感'),
     lightIntensity:numberField(d.lightIntensity,.1,3,'照明'), animation:booleanField(d.animation,'3Dアニメーション'),
