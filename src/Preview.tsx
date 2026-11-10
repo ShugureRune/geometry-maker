@@ -38,7 +38,7 @@ function localPoint(shape: Shape, p: Point): Point {
   return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
 }
 
-export function Preview({ scene, background, growth, motion, transparent=false, shapeColors, backgroundBlend, textOverlay }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean; shapeColors?:Record<string,string>; backgroundBlend?:{next:Background;opacity:number}; textOverlay?:TextOverlaySettings }) {
+export function Preview({ scene, background, growth, motion, transparent=false, shapeColors, backgroundBlend, textOverlay, textSeconds }: { scene: Scene; background: Background; growth?:Record<string,number>; motion?:Record<string,string>; transparent?:boolean; shapeColors?:Record<string,string>; backgroundBlend?:{next:Background;opacity:number}; textOverlay?:TextOverlaySettings; textSeconds?:number }) {
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
@@ -88,7 +88,7 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
     {!transparent&&backgroundBlend&&<rect data-testid="transition-background" width={width} height={height}
       fill={backgroundBlend.next.mode==='solid'?backgroundBlend.next.solid:`url(#${gradientId}-next)`}
       opacity={backgroundBlend.opacity}/>} 
-    {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background}/>} 
+    {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background} seconds={textSeconds}/>} 
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
         const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
@@ -106,6 +106,6 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
         </g>;
       })}
     </g>
-    {textOverlay?.layer==='front'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background}/>} 
+    {textOverlay?.layer==='front'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background} seconds={textSeconds}/>} 
   </svg>;
 }

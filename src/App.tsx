@@ -10,6 +10,7 @@ import { densityCandidates, visibleScene } from './density';
 import { ColorEditor } from './ColorEditor';
 import {ImagePaletteControls} from './ImagePaletteControls';
 import {TextControls} from './TextControls';
+import {useTextEntrancePreview} from './preview-text-animation';
 import {PreviewTextEditor} from './PreviewTextEditor';
 import {textOverlayDefaults,type TextOverlaySettings} from './text-overlay';
 import {applyImagePalette} from './image-palette';
@@ -26,6 +27,7 @@ export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
   const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
   const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>({...textOverlayDefaults});
+  const entrancePreview=useTextEntrancePreview(textOverlay);
   const [enabledShapeKinds,setEnabledShapeKinds]=useState<ShapeKind[]>(()=>[...ALL_SHAPE_KINDS]);
   const lastGlow=useRef(100);
   const [ambient,setAmbient]=useState({...ambientDefaults});
@@ -173,7 +175,7 @@ export default function App() {
         </div>
         <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={category!=='text'}>
           <h2 className="category-title">文字</h2>
-          <TextControls settings={textOverlay} onChange={setTextOverlay}/>
+          <TextControls settings={textOverlay} onChange={setTextOverlay} onReplay={entrancePreview.replay} previewPlaying={entrancePreview.playing}/>
         </div>
         <div id="panel-decoration" className="category-panel" data-category="decoration" role="region" aria-labelledby="category-decoration" hidden={category!=='decoration'}>
           <h2 className="category-title">装飾</h2>
@@ -217,7 +219,7 @@ export default function App() {
         <div className="canvas-stage">
           <PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
-              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay}/>}
+              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds}/>}
             </div>
           </PreviewTextEditor>
         </div>
