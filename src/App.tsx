@@ -52,6 +52,7 @@ export default function App() {
   const entrancePreview=useTextEntrancePreview(textOverlay);
   const [enabledShapeKinds,setEnabledShapeKinds]=useState<ShapeKind[]>(()=>[...ALL_SHAPE_KINDS]);
   const lastGlow=useRef(100);
+  const [ratio, setRatio] = useState<Ratio>('16:9');
   const [ambient,setAmbient]=useState({...ambientDefaults});
   const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient,ratio);
   const artworkRef = useRef<HTMLDivElement>(null);
@@ -61,7 +62,6 @@ export default function App() {
   useEffect(()=>{document.documentElement.dataset.theme=uiTheme;try{localStorage.setItem('geometry-ui-theme',uiTheme);}catch{}},[uiTheme]);
   const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
   const committedSeed=useRef(seed);
-  const [ratio, setRatio] = useState<Ratio>('16:9');
   const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
   const gridSeconds=useGridClock(renderMode==='2d'&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
   const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
