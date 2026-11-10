@@ -23,15 +23,23 @@ uniform float uExtent;
 uniform float uOffset;
 varying vec2 vLocal;
 void main(){
-  // Anti-aliasing measured in screen pixels, stable under perspective.
+  // Constant WORLD-space width: projection makes lines thinner with distance.
+  // The old shader divided line distance by fwidth, keeping width in pixels.
   vec2 tile=(vLocal+vec2(0.0,uOffset))/uSpacing;
   vec2 fromLine=abs(fract(tile-0.5)-0.5);
-  vec2 pixels=max(fwidth(tile),vec2(0.000001));
-  float nearest=min(fromLine.x/pixels.x,fromLine.y/pixels.y);
-  float line=1.0-smoothstep(max(0.0,uThickness*0.5-0.65),uThickness*0.5+0.65,nearest);
+  vec2 footprint=max(fwidth(tile),vec2(0.000001));
+  // Approx. uThickness pixels at the initial camera framing, not at all depths.
+  float halfWidth=uThickness*0.006/uSpacing;
+  // Derivative-based anti-aliasing; coverage drops as a line becomes subpixel.
+  vec2 coverage=clamp((halfWidth+0.5*footprint-fromLine)/footprint,0.0,1.0);
+  coverage*=clamp(vec2(2.0*halfWidth)/footprint,0.0,1.0);
+  float line=max(coverage.x,coverage.y);
+  // When multiple cells approach a pixel, remove their contributions before
+  // they alias together into a bright cyan horizon band.
+  float horizonFade=1.0-smoothstep(0.35,0.85,max(footprint.x,footprint.y));
   // Fade into the distance and at the edges, with no opaque ground plane.
   float fog=1.0-smoothstep(uExtent*0.20,uExtent*0.49,length(vLocal));
-  float alpha=clamp(uOpacity*line*fog,0.0,1.0);
+  float alpha=clamp(uOpacity*line*horizonFade*fog,0.0,1.0);
   if(alpha<0.003)discard;
   vec3 lit=uGridColor*(1.0+uGlow*0.018);
   gl_FragColor=vec4(lit,alpha);
