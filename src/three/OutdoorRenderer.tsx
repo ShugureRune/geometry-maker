@@ -2,10 +2,11 @@ import {useFrame,useThree} from '@react-three/fiber';
 import {useEffect,useMemo,useRef,type RefObject} from 'react';
 import {
   BufferGeometry,Color,DoubleSide,Float32BufferAttribute,InstancedMesh,Mesh,
-  Object3D,Points,ShaderMaterial,Vector2,
+  Object3D,PlaneGeometry,Points,ShaderMaterial,Vector2,
 } from 'three';
 import {seededRandom} from '../scene';
 import {NaturalDetails} from './NaturalDetails';
+import {hasTerrainRelief,terrainDefaults,terrainHeightAt,terrainSegments} from './terrain';
 import {floorGridPlacement} from './floor-grid';
 import {outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
 import type {ThreeView} from './settings';
@@ -19,11 +20,30 @@ type Props={
   sky:SkySettings;seed:string;seconds:RefObject<number>;low:boolean;
   sceneHeight:number;floorGridEnabled:boolean;view:RefObject<ThreeView|undefined>;
 };
-function OutdoorSurface({sky,seed,seconds,sceneHeight,floorGridEnabled,view}:Props){
+function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}:Props){
   const material=useRef<ShaderMaterial>(null);
   const mesh=useRef<Mesh>(null);
   const {camera}=useThree();
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
+  const terrain=sky.terrain??terrainDefaults;
+  const geometry=useMemo(()=>{
+    const raised=hasTerrainRelief(sky.kind)&&terrain.relief>0;
+    const resolution=raised?terrainSegments(low):1;
+    const g=new PlaneGeometry(700,700,resolution,resolution);
+    if(raised){
+      const positions=g.getAttribute('position');
+      const seedValue=skySeedNumber(seed,sky.kind);
+      for(let i=0;i<positions.count;i++){
+        const x=positions.getX(i),z=-positions.getY(i);
+        positions.setZ(i,terrainHeightAt(sky.kind,x,z,terrain,seedValue));
+      }
+      positions.needsUpdate=true;
+      g.computeVertexNormals();
+      g.computeBoundingSphere();
+    }
+    return g;
+  },[sky.kind,seed,low,terrain.relief,terrain.detail,terrain.flatCenter]);
+  useEffect(()=>()=>geometry.dispose(),[geometry]);
   const uniforms=useMemo(()=>({
     uMode:{value:SKY_KINDS.indexOf(sky.kind)},
     uTime:{value:0},uSeed:{value:skySeedNumber(seed,sky.kind)},
@@ -46,9 +66,8 @@ function OutdoorSurface({sky,seed,seconds,sceneHeight,floorGridEnabled,view}:Pro
     }
   });
   const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
-  return <mesh ref={mesh} name="liminal-outdoor-ground" rotation={[-Math.PI/2,0,0]}
+  return <mesh ref={mesh} geometry={geometry} name="liminal-outdoor-ground" rotation={[-Math.PI/2,0,0]}
     position={[x,y-(floorGridEnabled?.055:.015),z]} renderOrder={-12} frustumCulled={false}>
-    <planeGeometry args={[700,700]}/>
     <shaderMaterial ref={material} uniforms={uniforms}
       vertexShader={outdoorVertexShader} fragmentShader={outdoorFragmentShader}
       side={DoubleSide} transparent depthTest depthWrite={false} toneMapped={false}/>
@@ -61,6 +80,8 @@ function OutdoorGrass({sky,seed,seconds,low,sceneHeight,view}:Props){
   const material=useRef<ShaderMaterial>(null);
   const {camera,invalidate}=useThree();
   const count=outdoorGrassCount(sky.density,low);
+  const terrain=sky.terrain??terrainDefaults;
+  const heightSeed=skySeedNumber(seed,sky.kind);
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   const uniforms=useMemo(()=>({
     uTime:{value:0},
@@ -74,7 +95,8 @@ function OutdoorGrass({sky,seed,seconds,low,sceneHeight,view}:Props){
     const rnd=seededRandom('liminal-meadow-v1:'+seed);
     const object=new Object3D();
     for(let i=0;i<count;i++){
-      object.position.set((rnd()-.5)*105,0,(rnd()-.5)*105);
+      const x=(rnd()-.5)*105,z=(rnd()-.5)*105;
+      object.position.set(x,terrainHeightAt(sky.kind,x,z,terrain,heightSeed),z);
       object.rotation.set(0,rnd()*Math.PI*2,0);
       object.scale.set(.12+rnd()*.21,.34+rnd()*.65,1);
       object.updateMatrix();
@@ -82,7 +104,7 @@ function OutdoorGrass({sky,seed,seconds,low,sceneHeight,view}:Props){
     }
     mesh.current.instanceMatrix.needsUpdate=true;
     invalidate();
-  },[seed,count,invalidate]);
+  },[seed,count,invalidate,sky.kind,terrain.relief,terrain.detail,terrain.flatCenter,heightSeed]);
   useFrame(()=>{
     if(material.current){
       material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
