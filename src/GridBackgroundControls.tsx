@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import {gridAnimationDefaults,type GridAnimationSettings,type GridBackgroundSettings} from './grid-background';
 
 export function GridBackgroundControls({value,onChange}:{value:GridBackgroundSettings;onChange:(value:GridBackgroundSettings)=>void}) {
@@ -40,13 +41,13 @@ export function GridBackgroundControls({value,onChange}:{value:GridBackgroundSet
           {motion.mode==='scroll'&&<>
             <label className="range-label" htmlFor="grid-animation-speed">グリッドのスクロール速度 <output htmlFor="grid-animation-speed">{(motion.speed??1).toFixed(1)}倍</output></label>
             <input id="grid-animation-speed" type="range" min="0.1" max="10" step="0.1" value={motion.speed??1} onChange={event=>updateMotion({speed:Number(event.target.value)})}/>
-            <p className="help">スクロール方向は図形に合わせます。無限スクロールの角度は「アニメーション」タブで調整できます。速度は図形と独立です。</p>
+            <HelpInfo>スクロール方向は図形に合わせます。無限スクロールの角度は「アニメーション」タブで調整できます。速度は図形と独立です。</HelpInfo>
           </>}
           {motion.mode==='rotate'&&<label className="glow-toggle"><input type="checkbox" checked={motion.reverse} onChange={event=>updateMotion({reverse:event.target.checked})}/> 反時計回り</label>}
-          <p className="help">図形の成長とは独立してループします。動画・待機画面にも反映されます。</p>
+          <HelpInfo>図形の成長とは独立してループします。動画・待機画面にも反映されます。</HelpInfo>
         </>}
       </fieldset>
     </>}
-    <p className="help">背景色の上・図形の下に描画します。SVG・PNG・動画の書き出しにも反映されます。</p>
+    <HelpInfo>背景色の上・図形の下に描画します。SVG・PNG・動画の書き出しにも反映されます。</HelpInfo>
   </section>;
 }
