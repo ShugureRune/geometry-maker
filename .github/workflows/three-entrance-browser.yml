@@ -26,6 +26,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Verify seeded 3D entrance replay and project compatibility
         run: npx playwright test tests/three-entrance.spec.ts
+      - name: Check exact paused 3D scene JSON restoration
+        run: npx playwright test tests/neon-network.spec.ts --grep "pulse shares the pausable"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
