@@ -128,7 +128,7 @@ export function FloorGrid({grid,sceneHeight,seconds,view,low=false}:{
       uniforms={uniforms} transparent depthWrite={false} depthTest={true}
       side={DoubleSide} toneMapped={false}/>
   </mesh>
-    {grid.style==='circuit'&&grid.circuitWorldEnabled&&<CircuitWorld grid={grid} seconds={seconds}
+    {grid.style==='circuit'&&<CircuitWorld grid={grid} seconds={seconds}
       sceneHeight={sceneHeight} view={view} low={low}/>}
   </>;
 }
