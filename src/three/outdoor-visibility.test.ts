@@ -11,10 +11,11 @@ import {threeDefaults} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
 describe('outdoor draw distance and fog toggle',()=>{
-  it('covers all ten outdoor backgrounds but leaves classic + cosmic modes unchanged',()=>{
+  it('covers all fifteen outdoor backgrounds but leaves classic + cosmic modes unchanged',()=>{
     expect(SKY_KINDS.filter(hasOutdoorVisibility)).toEqual([
       'shallow-water','whiteout-snow','foggy-grassland','endless-desert',
       'salt-flat','moonlit-flowers','forest-edge','twilight-plain','cloud-sea','dark-mirror',
+      'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
     ]);
     expect(hasOutdoorVisibility('starfield')).toBe(false);
     expect(hasOutdoorVisibility('classic')).toBe(false);
