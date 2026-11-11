@@ -21,7 +21,7 @@ export function validateTerrain(value:unknown):TerrainSettings{
     throw new Error('地形の中央を平坦にする設定が不正です。');
   return {relief:t.relief as number,detail:t.detail as number,flatCenter:t.flatCenter};
 }
-export const TERRAIN_KINDS=['endless-desert','foggy-grassland','forest-edge'] as const;
+export const TERRAIN_KINDS=['endless-desert','foggy-grassland','forest-edge','alpine-peaks','grand-canyon','volcanic-field','glacier'] as const;
 export function hasTerrainRelief(kind:SkyKind):boolean{
   return TERRAIN_KINDS.some(candidate=>candidate===kind);
 }
@@ -83,6 +83,25 @@ export function terrainHeightAt(
     elevation=(base-.47)*7.6+small*(.5+2.4*detail);
   }else if(kind==='forest-edge'){
     elevation=(base-.46)*5.2+small*(.3+1.8*detail);
+  }else if(kind==='alpine-peaks'){
+    const ridges=Math.pow(1-Math.abs(base*2-1),2.7);
+    const foot=noise2(x*.008+offsetZ,z*.008+offsetX,hashSeed^0xa5b3c5d7);
+    elevation=12+30*ridges*foot+small*(3+7*detail);
+  }else if(kind==='grand-canyon'){
+    // A long snaking riverbed: the sides rise into plateau mesas.
+    const centerline=12*Math.sin(z*.018+base*1.4);
+    const width=Math.abs(x-centerline);
+    const walls=Math.min(1,Math.max(0,(width-16)/55));
+    const wall=walls*walls*(3-2*walls);
+    elevation=wall*(22+base*14)+small*(1+3*detail)-12;
+  }else if(kind==='volcanic-field'){
+    const r=Math.hypot(x-76*Math.sin(offsetX),z-86*Math.cos(offsetZ));
+    const cone=Math.max(0,1-r/110);
+    const caldera=Math.exp(-Math.pow(r/15,2));
+    elevation=cone*48-caldera*32+base*10+small*(2+4*detail)-7;
+  }else if(kind==='glacier'){
+    const ridge=Math.pow(1-Math.abs(base*2-1),1.3);
+    elevation=ridge*20+small*(1.5+4*detail)-6;
   }
   return elevation*mask*(terrain.relief/100);
 }

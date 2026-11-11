@@ -5,7 +5,9 @@ import {
   Object3D,PlaneGeometry,Points,ShaderMaterial,Vector2,
 } from 'three';
 import {seededRandom} from '../scene';
+import {worldDefaults} from './world-settings';
 import {NaturalDetails} from './NaturalDetails';
+import {WorldExtras} from './WorldExtras';
 import {hasTerrainRelief,OUTDOOR_SURFACE_HALF_EXTENT,terrainDefaults,terrainHeightAt,terrainSegments,terrainStretchCoordinate} from './terrain';
 import {floorGridPlacement} from './floor-grid';
 import {outdoorGrassCount,outdoorSnowCount,outdoorVisibilityDefaults,outdoorVisibleDistance,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
@@ -27,6 +29,7 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   const terrain=sky.terrain??terrainDefaults;
   const visibility=sky.visibility??outdoorVisibilityDefaults;
+  const world=sky.world??worldDefaults;
   const geometry=useMemo(()=>{
     const raised=hasTerrainRelief(sky.kind)&&terrain.relief>0;
     const resolution=raised?terrainSegments(low):1;
@@ -49,6 +52,12 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   const uniforms=useMemo(()=>({
     uMode:{value:SKY_KINDS.indexOf(sky.kind)},
+    uWorldHour:{value:world.timeOfDay},
+    uSunStrength:{value:world.sunStrength/100},
+    uStorm:{value:world.weather==='storm'?world.weatherStrength/200:0},
+    uWaterReflection:{value:world.waterReflection/100},
+    uWaterWaves:{value:world.waterWaves/100},
+    uCameraWorld:{value:camera.position.clone()},
     uTime:{value:0},uSeed:{value:skySeedNumber(seed,sky.kind)},
     uDensity:{value:sky.density/100},
     uIntensity:{value:sky.intensity/100},
@@ -63,6 +72,7 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
     if(material.current){
       material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
       material.current.uniforms.uCameraXZ.value.set(camera.position.x,camera.position.z);
+      material.current.uniforms.uCameraWorld.value.copy(camera.position);
     }
     if(mesh.current){
       const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
@@ -179,17 +189,26 @@ function OutdoorSnow({sky,seed,seconds,low,sceneHeight,view}:Props){
   </points>;
 }
 
+/** During first-person exploration, the natural landscape must stay in fixed
+ * world coordinates; the saved orbit look-at target keeps moving with yaw.
+ * Orbit mode retains its original camera-target-following ground behavior. */
+const EXPLORE_WORLD_VIEW:RefObject<ThreeView|undefined>={
+  current:{position:[0,1,18],target:[0,0,-.4]},
+};
 export function OutdoorRenderer(props:Props){
   const kind=props.sky.kind;
   if(![
     'shallow-water','whiteout-snow','foggy-grassland',
     'endless-desert','salt-flat','moonlit-flowers','forest-edge',
     'twilight-plain','cloud-sea','dark-mirror',
+    'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
   ].includes(kind))return null;
+  const stationaryView=props.sky.world?.explore?EXPLORE_WORLD_VIEW:props.view;
   return <>
-    <OutdoorSurface {...props}/>
-    <NaturalDetails {...props}/>
-    {kind==='whiteout-snow'&&<OutdoorSnow {...props}/>}
-    {kind==='foggy-grassland'&&<OutdoorGrass {...props}/>}
+    <OutdoorSurface {...props} view={stationaryView}/>
+    <NaturalDetails {...props} view={stationaryView}/>
+    <WorldExtras {...props} view={stationaryView}/>
+    {kind==='whiteout-snow'&&<OutdoorSnow {...props} view={stationaryView}/>}
+    {kind==='foggy-grassland'&&<OutdoorGrass {...props} view={stationaryView}/>}
   </>;
 }

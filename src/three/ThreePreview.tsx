@@ -18,6 +18,8 @@ import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
 import {skyDefaults} from './sky-settings';
+import {worldDefaults,sunlightAtHour} from './world-settings';
+import {ExploreController} from './ExploreController';
 import {generateCelestialBodies,spaceCelestialBodies,celestialDefaults} from './celestial';
 import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
@@ -100,6 +102,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
 function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
+  const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
   const lastRestart=useRef(restartKey),ready=useRef(false);
@@ -144,6 +147,17 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     };
   }, [camera, gl, invalidate, view, onLost]);
 
+  useEffect(()=>{
+    const orbit=controls.current;
+    if(!orbit)return;
+    orbit.enabled=!explore;
+    if(!explore&&view.current){
+      orbit.target.set(...view.current.target);
+      orbit.update();
+    }
+    invalidate();
+  },[explore,invalidate,view]);
+
   // Reframe on aspect-ratio changes, while material/color/density changes retain the view.
   const lastAspect = useRef(aspect);
   useEffect(() => {if (Math.abs(lastAspect.current - aspect) > 1e-6) {lastAspect.current = aspect; resetView();}}, [aspect]);
@@ -170,7 +184,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   useFrame((_, delta) => {
     if (settings.animation && !document.hidden && !skipDelta.current) seconds.current += delta * settings.speed;
     skipDelta.current = false;
-    controls.current?.update();
+    if(!explore)controls.current?.update();
     if (settings.animation && !document.hidden) invalidate();
   }, -1);
 
@@ -268,6 +282,11 @@ export default function ThreePreview(props: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
+  const touchActions=useRef(new Set<string>());
+  const world=props.settings.sky?.world??worldDefaults;
+  const exploring=!!world.explore;
+  const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
+  const sunlight=sunlightAtHour(world.timeOfDay);
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
@@ -290,14 +309,18 @@ export default function ThreePreview(props: Props) {
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}
-    data-sky-kind={(props.settings.sky??skyDefaults).kind}>
+    data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
       <SkyRenderer sky={props.settings.sky} seed={props.skySeed} seconds={seconds} low={low}
         sceneHeight={props.composition.height} floorGridEnabled={(props.settings.floorGrid??floorGridDefaults).enabled} view={props.view}/>
-      <ambientLight intensity={props.settings.lightIntensity * .5}/>
-      <directionalLight position={[5, 6, 7]} intensity={props.settings.lightIntensity * 2} castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
+      <ambientLight intensity={props.settings.lightIntensity*.5*(outdoor?.24+.76*sunlight.strength:1)}/>
+      <directionalLight position={outdoor?
+        [Math.cos(sunlight.azimuth)*12,Math.max(1,sunlight.altitude*18),Math.sin(sunlight.azimuth)*12]:
+        [5,6,7]} intensity={props.settings.lightIntensity*2*(outdoor?sunlight.strength*world.sunStrength/100:1)}
+        color={outdoor&&(world.timeOfDay<8||world.timeOfDay>17)?'#ffb47a':'#ffffff'}
+        castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
@@ -305,7 +328,24 @@ export default function ThreePreview(props: Props) {
       {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds}/>)}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
+      <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
+        view={props.view} touchActions={touchActions}/>
     </Canvas>
+    {exploring&&<div className="three-explore-pad" aria-label="探索カメラの操作"
+      style={{position:'absolute',left:10,bottom:12,zIndex:6,display:'grid',
+        gridTemplateColumns:'repeat(5,43px)',gap:5,touchAction:'none',userSelect:'none'}}>
+      {([
+        ['w','↑'],['a','←'],['s','↓'],['d','→'],['ascend','上昇'],
+        ['turn-left','↶'],['turn-right','↷'],['look-up','仰ぐ'],['look-down','見下'],['descend','下降'],
+      ] as const).map(([action,label])=><button type="button" key={action}
+        aria-label={'探索 '+label}
+        onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);touchActions.current.add(action);}}
+        onPointerUp={()=>touchActions.current.delete(action)}
+        onPointerCancel={()=>touchActions.current.delete(action)}
+        onLostPointerCapture={()=>touchActions.current.delete(action)}
+        style={{background:'#162438dd',color:'#f4ffff',border:'1px solid #829bb2',borderRadius:7,
+          minHeight:38,fontSize:label.length>1?11:19}}>{label}</button>)}
+    </div>}
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>
   </div>;
 }

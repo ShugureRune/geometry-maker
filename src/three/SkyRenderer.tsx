@@ -7,6 +7,7 @@ import {
 import {seededRandom} from '../scene';
 import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
 import {makeSkyGlyphAtlas} from './sky-glyphs';
+import {worldDefaults} from './world-settings';
 import {OutdoorRenderer} from './OutdoorRenderer';
 import {floorGridPlacement} from './floor-grid';
 import type {ThreeView} from './settings';
@@ -29,6 +30,7 @@ function SkyDome({sky,seed,seconds,low}:{
   const glyphAtlas=useMemo(makeSkyGlyphAtlas,[]);
   useEffect(()=>()=>glyphAtlas.dispose(),[glyphAtlas]);
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
+  const world=sky.world??worldDefaults;
   const uniforms=useMemo(()=>({
     uCustomColor:{value:sky.colors?.[sky.kind]?1:0},
     uSkyBase:{value:new Color(palette.base)},
@@ -42,6 +44,9 @@ function SkyDome({sky,seed,seconds,low}:{
     uDensity:{value:sky.density/100},
     uLow:{value:low?1:0},
     uOutdoorFog:{value:sky.visibility?.fogEnabled===false?0:1},
+    uWorldHour:{value:world.timeOfDay},
+    uWorldSun:{value:world.sunStrength/100},
+    uWorldStorm:{value:world.weather==='storm'?world.weatherStrength/200:0},
   }),[sky,seed,seconds,low,glyphAtlas,palette.base,palette.accent,palette.highlight]);
   useFrame(()=>{
     mesh.current?.position.copy(camera.position);
