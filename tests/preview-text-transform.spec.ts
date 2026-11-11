@@ -54,7 +54,7 @@ test('single click selects text; corners resize; rotation handle drags; double c
  const nav=page.getByRole('navigation',{name:'設定カテゴリー'});
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const jsonPending=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ await page.getByRole('button',{name:'作品の設定を保存'}).click();
  const json=JSON.parse((await readFile((await (await jsonPending).path())!)).toString());
  expect(json.textOverlay.text).toBe('編集成功\n2行目');
  expect(json.textOverlay.fontSize).toBeGreaterThan(originalSize);
