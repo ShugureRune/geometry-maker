@@ -689,3 +689,48 @@
     width:min(320px,calc(100vw - 66px));
   }
 }
+
+/* Studio 2.3: one viewport-level info layer, independent of inspector widths.
+   The button remains inline, but its content is portalled outside the
+   categories' sticky stacking contexts. */
+.studio-info-popover{
+  position:fixed;
+  z-index:1001;
+  box-sizing:border-box;
+  width:min(360px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  max-height:min(45dvh,340px);
+  margin:0;
+  padding:13px 16px;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid #9c8ac9;
+  border-radius:13px;
+  background:#222b3e;
+  color:#e0e4f4;
+  box-shadow:0 20px 55px #000b,0 0 0 1px #ffffff10 inset;
+  animation:studio-info-reveal .13s ease-out;
+}
+.studio-info-popover .help{
+  display:block;
+  max-width:none;
+  margin:0;
+  padding:0;
+  color:#d5dbea;
+  font-size:12px;
+  font-weight:400;
+  line-height:1.7;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+[data-theme=light] .studio-info-popover{
+  background:#fbf9ff;
+  border-color:#b5a0df;
+  color:#35405c;
+  box-shadow:0 18px 46px #28345138;
+}
+[data-theme=light] .studio-info-popover .help{color:#3e4761}
+@media(prefers-reduced-motion:reduce){
+  .studio-info-popover{animation:none}
+}
