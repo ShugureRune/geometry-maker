@@ -6,6 +6,9 @@ on:
     paths:
       - 'src/three/FloorGrid.tsx'
       - 'src/three/circuit-shader.ts'
+      - 'src/three/CircuitWorld.tsx'
+      - 'src/three/circuit-world.ts'
+      - 'src/three/circuit-world.test.ts'
       - 'src/three/FloorGridControls.tsx'
       - 'src/three/floor-grid.ts'
       - 'src/three/floor-grid.test.ts'
@@ -15,6 +18,9 @@ on:
   pull_request:
     paths:
       - 'src/three/circuit-shader.ts'
+      - 'src/three/CircuitWorld.tsx'
+      - 'src/three/circuit-world.ts'
+      - 'src/three/circuit-world.test.ts'
       - 'src/three/floor-grid.test.ts'
       - 'src/three/FloorGrid.tsx'
       - 'src/three/FloorGridControls.tsx'
