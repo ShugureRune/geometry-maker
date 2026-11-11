@@ -55,8 +55,8 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
       </p>
     </>}
     <HelpInfo>
-      退場→登場では現在の図形が登場演出を逆再生してから次の図形が出現。
-      モーフでは似た図形同士が移動・変形・色変化し、余った図形は縮小消滅、
+      入れ替えでは今の図形が消えてから次の図形が登場します。
+      なめらか変化では似た図形同士が移動・変形・色変化し、余った図形は縮小して消え、
       増えた図形は縮小状態から登場します。既存の3D登場・回転設定は保持します。
     </HelpInfo>
   </section>;
