@@ -93,3 +93,26 @@ test('auto standby rotates seeds after configured idle interval and respects pau
   await page.waitForTimeout(5700);
   expect(await page.getByTestId('current-seed').textContent()).toBe(frozen);
 });
+
+test('zoomed-in camera remains in place during a complete 3D morph',async({page})=>{
+  await start(page);
+  await page.getByLabel('シード切り替え演出').selectOption('morph');
+  await page.getByLabel('切り替え演出の長さ').fill('2');
+  await page.getByRole('checkbox',{name:'操作中は自動切り替えを一時停止する'}).uncheck();
+  const preview=page.getByTestId('three-preview');
+  const canvas=preview.locator('canvas');
+  await canvas.hover();
+  await page.mouse.wheel(0,-1500);
+  await page.waitForTimeout(600);
+  const before=JSON.parse((await saveJson(page)).toString('utf8'));
+  expect(before.view?.position).toHaveLength(3);
+  expect(before.view?.target).toHaveLength(3);
+  await category(page,'アニメーション');
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await expect(preview).toHaveAttribute('data-standby-active','true');
+  await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:8000});
+  const after=JSON.parse((await saveJson(page)).toString('utf8'));
+  const moved=Math.hypot(...before.view.position.map((n:number,i:number)=>n-after.view.position[i]));
+  expect(moved).toBeLessThan(.05);
+  expect(after.standbyComplete).toBe(true);
+});

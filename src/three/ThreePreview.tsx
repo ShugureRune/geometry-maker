@@ -1,7 +1,7 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
 import {useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
-import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2} from 'three';
+import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2, Vector3} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
@@ -25,7 +25,7 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
-import {easeInOut,matchThreeObjects,morphPose,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {easeInOut,matchThreeObjects,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -84,25 +84,11 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   useFrame(() => {
     if (!mesh.current) return;
     if(standby){
-      const {transition,variant,from,to}=standby;
-      const oldPose=from?threePose(from,transition.fromTime+seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
-      const newPose=to?threePose(to,seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
-      let position:[number,number,number],rotation:[number,number,number],radius:number,alpha:number,colorMix:number;
-      if(transition.mode==='morph'){
-        const form=morphPose(from,to,seconds.current/transition.duration,variant,oldPose,newPose);
-        ({position,rotation,radius,opacity:alpha,colorMix}=form);
-      }else{
-        const time=splitExitEnter(seconds.current,transition.duration);
-        const source=variant==='old'?from!:to!;
-        const base=variant==='old'?oldPose!:newPose!;
-        const normalized=variant==='old'?1-time.exit:time.enter;
-        const arrival=threeEntrancePose(source,normalized*entrance.duration,{...entrance,enabled:true},variant==='old'?transition.fromSeed:seed);
-        position=base.position.map((n,i)=>n+arrival.offset[i]) as [number,number,number];
-        rotation=[...base.rotation] as [number,number,number];rotation[2]+=arrival.rotationZ;
-        radius=source.radius*arrival.scale;
-        alpha=arrival.opacity;
-        colorMix=variant==='old'?0:1;
-      }
+      const {transition,variant}=standby;
+      const {position,rotation,radius,opacity:alpha,colorMix}=standbyObjectPose(
+        standby.from,standby.to,seconds.current,transition,variant,
+        settings.floatAmount,settings.rotationAmount,entrance,seed
+      );
       const visibility=threeVisibility(object,variant==='old'?transition.fromTime+seconds.current:seconds.current,appearance);
       const totalAlpha=alpha*visibility;
       mesh.current.position.set(...position);mesh.current.rotation.set(...rotation);
@@ -168,6 +154,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
 function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
+  const cameraReset=useRef<{from:Vector3;focus:Vector3;elapsed:number;damping:boolean}|null>(null);
   const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
@@ -178,6 +165,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const aspect = composition.width / composition.height;
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
   function resetView() {
+    cameraReset.current=null;
     const orbit = controls.current;
     // Drain any pending damping/zoom before assigning the home pose. Otherwise
     // the previous gesture can keep moving the camera after Reset was pressed.
@@ -187,6 +175,15 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     orbit?.target.set(0, 0, -.4);
     orbit?.update();
     if (orbit) orbit.enableDamping = damping ?? true;
+    invalidate();
+  }
+
+  function smoothResetView(){
+    const orbit=controls.current;
+    // Never teleport a user who is exploring the world in free-flight mode.
+    if(!orbit||explore)return;
+    cameraReset.current={from:camera.position.clone(),focus:orbit.target.clone(),elapsed:0,
+      damping:orbit.enableDamping};
     invalidate();
   }
 
@@ -205,12 +202,15 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       invalidate();
     };
     orbit.addEventListener('change', change);
+    const interrupt=()=>{if(cameraReset.current){orbit.enableDamping=cameraReset.current.damping;cameraReset.current=null;}};
+    orbit.addEventListener('start',interrupt);
     const visibility = () => {skipDelta.current = true; if (!document.hidden) invalidate();};
     const lost = (event: Event) => {event.preventDefault(); onLost();};
     document.addEventListener('visibilitychange', visibility);
     gl.domElement.addEventListener('webglcontextlost', lost);
     return () => {
-      orbit.removeEventListener('change', change); orbit.dispose(); controls.current = null;
+      orbit.removeEventListener('change', change);orbit.removeEventListener('start',interrupt);
+      orbit.dispose(); controls.current = null;
       document.removeEventListener('visibilitychange', visibility);
       gl.domElement.removeEventListener('webglcontextlost', lost);
     };
@@ -253,7 +253,19 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   useFrame((_, delta) => {
     if (settings.animation && !document.hidden && !skipDelta.current) seconds.current += delta * settings.speed;
     skipDelta.current = false;
-    if(!explore)controls.current?.update();
+    if(!explore){
+      const journey=cameraReset.current,orbit=controls.current;
+      if(journey&&orbit){
+        journey.elapsed+=Math.min(.05,Math.max(0,delta));
+        const t=easeInOut(journey.elapsed/1.15);
+        orbit.enableDamping=false;
+        camera.position.lerpVectors(journey.from,new Vector3(0,.7,homeDistance),t);
+        orbit.target.lerpVectors(journey.focus,new Vector3(0,0,-.4),t);
+        orbit.update();
+        if(t>=1){orbit.enableDamping=journey.damping;cameraReset.current=null;}
+        invalidate();
+      }else orbit?.update();
+    }
     if (settings.animation && !document.hidden) invalidate();
     if(transition && seconds.current>=transition.duration&&finishedTransition.current!==transition.id){
       finishedTransition.current=transition.id;
@@ -328,7 +340,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   useFrame(() => {if (!gl.getContext().isContextLost()) {render();if(!ready.current){ready.current=true;onReady(true);}}}, 1);
   useEffect(() => () => onReady(false), [onReady]);
 
-  useImperativeHandle(api, () => ({resetView,getElapsedSeconds:()=>seconds.current, async savePNG(width, height) {
+  useImperativeHandle(api, () => ({resetView,smoothResetView,getElapsedSeconds:()=>seconds.current, async savePNG(width, height) {
     const error = threeResolutionError(width, height); if (error) throw new Error(error);
     const maxSize = Math.min(gl.capabilities.maxTextureSize, gl.getContext().getParameter(gl.getContext().MAX_RENDERBUFFER_SIZE));
     if (width > maxSize || height > maxSize || (low && width * height > 4_194_304)) throw new Error('この描画設定では解像度が大きすぎます。軽量設定では合計4,194,304画素以内にしてください。');
@@ -473,10 +485,10 @@ export default function ThreePreview(props: Props) {
         skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
         settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
-        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old'}}/>}
+        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}/>}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges}
         settings={props.settings} background={props.background} low={low} seconds={seconds}
-        seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
+        seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
