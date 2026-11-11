@@ -14,10 +14,10 @@ test('3D WebM exports a playable, animated frame-exact video and restores live p
     .getByRole('button',{name:'書き出し',exact:true}).click();
   await page.locator('.three-video-panel > summary').click();
   await page.getByLabel('動画の形式').selectOption('webm');
-  await page.getByLabel('動画の幅 (px)').fill('256');
-  await page.getByLabel('動画の高さ (px)').fill('256');
-  await page.getByLabel('動画のなめらかさ').selectOption('24');
-  await page.getByLabel('動画の長さ').fill('1');
+  await page.locator('#three-video-width').fill('256');
+  await page.locator('#three-video-height').fill('256');
+  await page.locator('#three-video-fps').selectOption('24');
+  await page.locator('#three-video-duration').fill('1');
   const start=page.getByRole('button',{name:'3D動画を保存',exact:true});
   await expect(start).toBeEnabled({timeout:30_000});
   await expect(page.locator('.three-video-stats')).toHaveText('24 フレームを順番に作成');
@@ -57,7 +57,7 @@ test('3D video UI rejects unsupported encoder, validates resolution, and stays u
   await page.locator('.three-video-panel > summary').click();
   await expect(page.getByText(/WebCodecsに対応していません/)).toBeVisible();
   await expect(page.getByRole('button',{name:'3D動画を保存',exact:true})).toBeDisabled();
-  await page.getByLabel('動画の幅 (px)').fill('257');
+  await page.locator('#three-video-width').fill('257');
   await expect(page.getByText(/偶数で指定してください/)).toBeVisible();
   await expect(page.getByRole('button',{name:'3D PNGを書き出す',exact:true})).toBeEnabled();
 });
