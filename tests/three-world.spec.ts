@@ -23,6 +23,7 @@ async function png(page:Page):Promise<Buffer>{
   await page.getByLabel('3D 幅 (px)').fill('420');
   await page.getByLabel('3D 高さ (px)').fill('420');
   const next=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D PNGを書き出す',exact:true}).click();
   return readFile((await (await next).path())!);
 }
 const digest=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
