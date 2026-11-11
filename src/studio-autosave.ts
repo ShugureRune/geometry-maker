@@ -38,10 +38,10 @@ export function validateStudioAutosave(value:unknown):StudioAutosave{
     focus:v.focus,collapsed:v.collapsed,twoD,threeD};
 }
 
-export function loadStudioAutosave(storage:Pick<Storage,'getItem'>|null=
-  typeof localStorage==='undefined'?null:localStorage):StudioAutosave|null{
+export function loadStudioAutosave(storage?:Pick<Storage,'getItem'>|null):StudioAutosave|null{
   try{
-    const text=storage?.getItem(STUDIO_AUTOSAVE_KEY);
+    const target=storage===undefined?(typeof window==='undefined'?null:window.localStorage):storage;
+    const text=target?.getItem(STUDIO_AUTOSAVE_KEY);
     if(!text||text.length>MAX_AUTOSAVE_LENGTH)return null;
     return validateStudioAutosave(JSON.parse(text));
   }catch{
@@ -52,13 +52,13 @@ export function loadStudioAutosave(storage:Pick<Storage,'getItem'>|null=
 }
 
 export function saveStudioAutosave(value:StudioAutosave,
-  storage:Pick<Storage,'setItem'>|null=
-    typeof localStorage==='undefined'?null:localStorage):boolean{
+  storage?:Pick<Storage,'setItem'>|null):boolean{
   try{
-    if(!storage)return false;
+    const target=storage===undefined?(typeof window==='undefined'?null:window.localStorage):storage;
+    if(!target)return false;
     const data=JSON.stringify(validateStudioAutosave(value));
     if(data.length>MAX_AUTOSAVE_LENGTH)return false;
-    storage.setItem(STUDIO_AUTOSAVE_KEY,data);
+    target.setItem(STUDIO_AUTOSAVE_KEY,data);
     return true;
   }catch{return false;}
 }
