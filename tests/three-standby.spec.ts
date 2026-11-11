@@ -134,6 +134,9 @@ test('repeated standby changes cannot skip morph or background in one frame',asy
     const initial=Number(await preview.getAttribute('data-standby-elapsed'));
     expect(Number.isFinite(initial)).toBe(true);
     expect(initial).toBeLessThan(1);
+    const firstBlend=Number(await preview.getAttribute('data-standby-background-blend'));
+    expect(Number.isFinite(firstBlend)).toBe(true);
+    expect(firstBlend).toBeLessThan(.4);
     // A background and all objects must still be transitioning after an
     // initial 350 ms, rather than snapping to the next seed.
     await page.waitForTimeout(350);
@@ -141,6 +144,9 @@ test('repeated standby changes cannot skip morph or background in one frame',asy
     const later=Number(await preview.getAttribute('data-standby-elapsed'));
     expect(later).toBeGreaterThanOrEqual(initial);
     expect(later).toBeLessThan(2.2);
+    const laterBlend=Number(await preview.getAttribute('data-standby-background-blend'));
+    expect(laterBlend).toBeGreaterThanOrEqual(firstBlend);
+    expect(laterBlend).toBeLessThan(.9);
     await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:12000});
     await expect(preview).toHaveAttribute('data-standby-entrance-complete','true');
   }
