@@ -164,13 +164,14 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
   const lastRestart=useRef(restartKey),ready=useRef(false);
+  const finishedTransition=useRef<number|null>(null);
   const aspect = composition.width / composition.height;
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
   function resetView() {
@@ -251,6 +252,10 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     skipDelta.current = false;
     if(!explore)controls.current?.update();
     if (settings.animation && !document.hidden) invalidate();
+    if(transition && seconds.current>=transition.duration&&finishedTransition.current!==transition.id){
+      finishedTransition.current=transition.id;
+      onTransitionComplete?.(transition.id);
+    }
   }, -1);
 
   useEffect(() => {
@@ -353,12 +358,20 @@ export default function ThreePreview(props: Props) {
   const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
   const sunlight=sunlightAtHour(world.timeOfDay);
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
+  const previousObjects=useMemo(()=>props.transition?
+    visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
+    [props.transition,props.density,props.settings.enabledKinds]);
+  const matches=useMemo<MorphMatch[]>(()=>props.transition?.mode==='morph'?
+    matchThreeObjects(previousObjects,objects):[],[props.transition,previousObjects,objects]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
   const edges=useMemo(()=>network.enabled?
     networkConnections(objects,network.distance*spacingFactor,network.maxConnections):[],
     [objects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
+  const previousEdges=useMemo(()=>props.transition&&network.enabled?
+    networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections):[],
+    [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -366,6 +379,9 @@ export default function ThreePreview(props: Props) {
     [props.sourceComposition,celestial,props.density]);
   const celestialObjects=useMemo(()=>spaceCelestialBodies(celestialBase,props.settings.spacingPercent??100),
     [celestialBase,props.settings.spacingPercent]);
+  const previousCelestial=useMemo(()=>props.transition?
+    spaceCelestialBodies(generateCelestialBodies(props.transition.fromSourceComposition,celestial,props.density),props.settings.spacingPercent??100):[],
+    [props.transition,celestial,props.density,props.settings.spacingPercent]);
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
@@ -375,6 +391,9 @@ export default function ThreePreview(props: Props) {
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
      data-entrance-enabled={(props.settings.entrance??entranceDefaults).enabled?'true':'false'}
      data-entrance-mode={(props.settings.entrance??entranceDefaults).mode}
+    data-standby-active={props.transition?'true':'false'}
+    data-standby-mode={props.transition?.mode??'off'}
+    data-standby-pairs={matches.length}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
