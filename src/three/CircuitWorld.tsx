@@ -4,7 +4,7 @@ import {
   BufferGeometry,Color,DoubleSide,Float32BufferAttribute,Group,InstancedMesh,
   MeshBasicMaterial,Object3D,
 } from 'three';
-import {circuitSignalAt,makeCircuitLayout,type CircuitChip,type CircuitLayout,type CircuitTrack} from './circuit-world';
+import {circuitSignalAt,makeCircuitLayout,type CircuitChip,type CircuitLayout,type CircuitTrack,type CircuitPart} from './circuit-world';
 import {floorGridPlacement,type FloorGridSettings} from './floor-grid';
 import type {ThreeView} from './settings';
 
@@ -29,51 +29,114 @@ function trackGeometry(tracks:readonly CircuitTrack[],width:number,height:number
   return geometry;
 }
 
+/** One plane with etched square frames (not sixteen separate meshes). */
+function squareFrameGeometry(radius:number,width:number,z:number):BufferGeometry{
+  const inner=Math.max(.01,radius-width);
+  const v:number[]=[];
+  const quad=(ax:number,ay:number,bx:number,by:number,cx:number,cy:number,dx:number,dy:number)=>{
+    v.push(ax,ay,z,bx,by,z,cx,cy,z,ax,ay,z,cx,cy,z,dx,dy,z);
+  };
+  quad(-radius,radius,radius,radius,inner,inner,-inner,inner);
+  quad(-radius,-radius,-inner,-inner,inner,-inner,radius,-radius);
+  quad(-radius,-radius,-inner,-inner,-inner,inner,-radius,radius);
+  quad(radius,radius,inner,inner,inner,-inner,radius,-radius);
+  const g=new BufferGeometry();
+  g.setAttribute('position',new Float32BufferAttribute(v,3));
+  return g;
+}
+
+/** The processor is now a clear focal landmark, even when the camera is directly
+ * overhead: visible pin banks, stacked silicon, nested neon frames and a 3x3 die.
+ */
 function Processor({half,seconds,grid}:{
   half:number;seconds:RefObject<number>;grid:FloorGridSettings;
 }){
   const neon=useRef<MeshBasicMaterial>(null);
   const face=useRef<MeshBasicMaterial>(null);
+  const pins=useRef<InstancedMesh>(null);
+  const leds=useRef<InstancedMesh>(null);
+  const dummy=useMemo(()=>new Object3D(),[]);
   const base=useMemo(()=>new Color(grid.color),[grid.color]);
   const accent=useMemo(()=>new Color(grid.circuitAccentColor),[grid.circuitAccentColor]);
+  const outer=useMemo(()=>squareFrameGeometry(half*1.14,half*.029,.356),[half]);
+  const inner=useMemo(()=>squareFrameGeometry(half*.59,half*.027,.442),[half]);
+  const socket=useMemo(()=>squareFrameGeometry(half*1.29,half*.018,.235),[half]);
+  useEffect(()=>()=>{outer.dispose();inner.dispose();socket.dispose();},[outer,inner,socket]);
+  useLayoutEffect(()=>{
+    let index=0;
+    for(let side=0;side<4;side++)for(let i=0;i<14;i++){
+      const along=((i-6.5)/14)*half*2.3;
+      const edge=half*1.28;
+      dummy.position.set(
+        side===0?-edge:side===1?edge:along,
+        side===2?-edge:side===3?edge:along,.116);
+      dummy.rotation.set(0,0,0);
+      dummy.scale.set(side<2?half*.08:half*.045,
+        side<2?half*.045:half*.08,.034);
+      dummy.updateMatrix();
+      pins.current?.setMatrixAt(index++,dummy.matrix);
+    }
+    for(let i=0;i<9;i++){
+      dummy.position.set((i%3-1)*half*.29,(Math.floor(i/3)-1)*half*.29,.451);
+      dummy.scale.set(half*.16,half*.16,.014);
+      dummy.updateMatrix();
+      leds.current?.setMatrixAt(i,dummy.matrix);
+    }
+    if(pins.current)pins.current.instanceMatrix.needsUpdate=true;
+    if(leds.current)leds.current.instanceMatrix.needsUpdate=true;
+  },[half,dummy]);
   useFrame(()=>{
-    const t=seconds.current*Math.max(0,grid.circuitSpeed);
-    const pulse=grid.circuitSpeed>0?(Math.sin(t*2.6)*.5+.5):0;
-    neon.current?.color.copy(base).multiplyScalar(1+.65*pulse+grid.glow*.004);
-    face.current?.color.copy(accent).multiplyScalar(.36+.48*pulse);
+    const time=seconds.current*Math.max(0,grid.circuitSpeed);
+    const pulse=grid.circuitSpeed>0?(Math.sin(time*2.6)*.5+.5):.3;
+    neon.current?.color.copy(base).multiplyScalar(1.15+1.05*pulse+grid.glow*.004);
+    face.current?.color.copy(accent).multiplyScalar(.32+.95*pulse);
   });
-  const glowOpacity=Math.min(1,grid.opacity);
+  const opacity=Math.min(1,grid.opacity);
   return <group name="motherboard-main-processor">
-    <mesh position={[0,0,.16]} castShadow receiveShadow>
-      <boxGeometry args={[half*2.25,half*2.25,.25]}/>
-      <meshStandardMaterial color="#111822" roughness={.39} metalness={.56}
-        transparent opacity={glowOpacity}/>
+    <mesh position={[0,0,.14]} castShadow receiveShadow name="processor-main-socket">
+      <boxGeometry args={[half*2.56,half*2.56,.20]}/>
+      <meshStandardMaterial color="#192536" metalness={.62} roughness={.38}
+        transparent opacity={opacity}/>
     </mesh>
-    <mesh position={[0,0,.295]} castShadow>
-      <boxGeometry args={[half*1.79,half*1.79,.065]}/>
-      <meshStandardMaterial color="#202f45" roughness={.35} metalness={.64}
-        transparent opacity={glowOpacity}/>
+    <mesh geometry={socket}>
+      <meshBasicMaterial color={grid.circuitAccentColor} transparent opacity={opacity*.74}
+        toneMapped={false} depthWrite={false} side={DoubleSide}/>
     </mesh>
-    <mesh position={[0,0,.333]}>
-      <boxGeometry args={[half*.96,half*.96,.014]}/>
-      <meshBasicMaterial ref={face} color={accent} toneMapped={false}
-        transparent opacity={Math.min(.8,grid.opacity*.72)} depthWrite={false}/>
+    <mesh position={[0,0,.277]} castShadow name="processor-silicon-package">
+      <boxGeometry args={[half*2.26,half*2.26,.15]}/>
+      <meshStandardMaterial color="#111d2b" metalness={.43} roughness={.39}
+        transparent opacity={opacity}/>
     </mesh>
-    {Array.from({length:4},(_,i)=>{
-      const x=i%2===0?0:(i===1?half*.96:-half*.96);
-      const y=i%2===1?0:(i===0?half*.96:-half*.96);
-      const horizontal=i%2===0;
-      return <mesh key={i} position={[x,y,.342]} name="processor-neon-ring">
-        <boxGeometry args={[horizontal?half*1.94:.048,horizontal?.048:half*1.94,.014]}/>
-        <meshBasicMaterial ref={i===0?neon:undefined} color={base} toneMapped={false}
-          transparent opacity={glowOpacity} depthWrite={false}/>
-      </mesh>;
-    })}
-    {Array.from({length:4},(_,i)=><mesh key={i}
-      position={[(i%2===0?-1:1)*half*.64,(i<2?-1:1)*half*.64,.35]}>
-      <boxGeometry args={[half*.13,half*.13,.020]}/>
+    <mesh geometry={outer} name="processor-neon-square">
+      <meshBasicMaterial ref={neon} color={base} toneMapped={false}
+        transparent opacity={opacity} depthWrite={false} side={DoubleSide}/>
+    </mesh>
+    <mesh position={[0,0,.376]} name="processor-silicon-die">
+      <boxGeometry args={[half*1.32,half*1.32,.044]}/>
+      <meshStandardMaterial color="#214359" metalness={.55} roughness={.28}
+        transparent opacity={opacity}/>
+    </mesh>
+    <mesh geometry={inner} name="processor-inner-neon-frame">
+      <meshBasicMaterial color={grid.color} transparent opacity={Math.min(.95,opacity*.8)}
+        toneMapped={false} depthWrite={false} side={DoubleSide}/>
+    </mesh>
+    <instancedMesh ref={pins} args={[undefined,undefined,56]}
+      name="processor-56-metal-contacts" frustumCulled={false}>
+      <boxGeometry args={[1,1,1]}/>
       <meshBasicMaterial color={grid.circuitAccentColor} toneMapped={false}
-        transparent opacity={glowOpacity}/>
+        transparent opacity={opacity}/>
+    </instancedMesh>
+    <instancedMesh ref={leds} args={[undefined,undefined,9]}
+      name="processor-active-die-array" frustumCulled={false}>
+      <boxGeometry args={[1,1,1]}/>
+      <meshBasicMaterial ref={face} color={accent} toneMapped={false}
+        transparent opacity={opacity*.9} depthWrite={false}/>
+    </instancedMesh>
+    {Array.from({length:4},(_,i)=><mesh key={i}
+      position={[(i%2===0?-1:1)*half*.92,(i<2?-1:1)*half*.92,.36]}>
+      <boxGeometry args={[half*.13,half*.13,.021]}/>
+      <meshBasicMaterial color={grid.circuitAccentColor} toneMapped={false}
+        transparent opacity={opacity}/>
     </mesh>)}
   </group>;
 }
