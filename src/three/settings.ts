@@ -40,7 +40,14 @@ export function validateThreeSettings(value: unknown): ThreeSettings {
     sky:validateSky(d.sky??skyDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
 }
 export type ThreeView = {position: Vector3Tuple; target: Vector3Tuple};
-export type ThreePreviewHandle = {savePNG: (width: number, height: number) => Promise<Blob>; resetView: () => void; smoothResetView?:()=>void; getElapsedSeconds?:()=>number};
+export type ThreePreviewHandle = {
+  savePNG:(width:number,height:number)=>Promise<Blob>;
+  resetView:()=>void;smoothResetView?:()=>void;getElapsedSeconds?:()=>number;
+  /** Export frame times are in animation seconds; canvas is reused by the encoder. */
+  beginVideoExport:()=>void;
+  captureVideoFrame:(seconds:number,width:number,height:number,canvas:HTMLCanvasElement,signal:AbortSignal)=>Promise<void>;
+  endVideoExport:()=>void;
+};
 export const THREE_MAX_PIXELS = 16_777_216;
 export function threeResolutionError(width: number, height: number) {
   return [width, height].every(n => Number.isInteger(n) && n >= 256 && n <= 4096) && width * height <= THREE_MAX_PIXELS
