@@ -157,8 +157,62 @@ export default function App() {
     return version===MAGIC_ALGORITHM_VERSION?visible:themeScene(visible,visualTheme,seed);
   },[baseScene,candidates,density,visualTheme,seed,version]);
 
-  const [animation,setAnimation]=useState<AnimationSettings>(()=>({...defaults,animationEnabled:true,...lastProject?.animationEnabled===undefined?{}:{animationEnabled:lastProject.animationEnabled},...lastProject?.animationDuration===undefined?{}:{animationDuration:lastProject.animationDuration},...lastProject?.playbackSpeed===undefined?{}:{playbackSpeed:lastProject.playbackSpeed},...lastProject?.easingType===undefined?{}:{easingType:lastProject.easingType}}));
+  const [animation,setAnimation]=useState<AnimationSettings>(()=>({
+    animationEnabled:lastProject?.animationEnabled??true,
+    animationDuration:lastProject?.animationDuration??defaults.animationDuration,
+    playbackSpeed:lastProject?.playbackSpeed??defaults.playbackSpeed,
+    easingType:lastProject?.easingType??defaults.easingType,
+  }));
   const playback=usePlayback(animation);
+  useEffect(()=>{
+    const store=()=>{
+      // Save both editor modes using the same, existing import/export schemas.
+      // Resolution controls are separate outputs, not part of this live draft.
+      const twoD:ProjectSettings={
+        schemaVersion:1,algorithmVersion:version,seed,aspectRatio:ratio,
+        density,visualTheme,enabledShapeKinds,
+        backgroundMode:background.mode,solidColor:background.solid,
+        gradientColors:background.colors,gradientAngle:background.angle,
+        glowIntensity:background.glowIntensity??100,lineWidth:background.lineWidth??125,
+        ...(background.grid?{gridBackground:background.grid}:{}),
+        colorSettings:activeColors,textOverlay,magicCircle:magicSettings,
+        ambient,...animation,exportWidth:1920,exportHeight:1080,
+      };
+      const elapsed=Math.max(0,Math.min(1e9,threeApi.current?.getElapsedSeconds?.()??
+        threeRestore.time));
+      const threeD:ThreeProject={
+        kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,
+        seed,aspectRatio:ratio,density,visualTheme,background,
+        colorSettings:activeColors,settings:threeSettings,
+        ...(threeView.current?{view:threeView.current}:{}),
+        elapsedSeconds:elapsed,exportWidth:1920,exportHeight:1080,
+        ...(standbyFinishedSeed===seed?{standbyComplete:true}:{}),
+      };
+      const draft:StudioAutosave={
+        schemaVersion:1,mode:renderMode,category,threeCategory,
+        focus:studioFocus,collapsed:sidebarCollapsed,twoD,threeD,
+      };
+      const success=saveStudioAutosave(draft);
+      setAutosaveStatus(success?'saved':'unavailable');
+    };
+    // Debounce sliders/text changes, but flush immediately when the tab hides
+    // or Safari refreshes. Poll the 3D camera/clock refs while navigating.
+    const delayed=window.setTimeout(store,450);
+    const cameraTimer=renderMode==='3d'?window.setInterval(store,2500):null;
+    const flush=()=>store();
+    const hide=()=>{if(document.hidden)store();};
+    window.addEventListener('pagehide',flush);
+    document.addEventListener('visibilitychange',hide);
+    return()=>{
+      window.clearTimeout(delayed);
+      if(cameraTimer!==null)window.clearInterval(cameraTimer);
+      window.removeEventListener('pagehide',flush);
+      document.removeEventListener('visibilitychange',hide);
+    };
+  },[renderMode,category,threeCategory,studioFocus,sidebarCollapsed,
+    version,seed,ratio,density,visualTheme,enabledShapeKinds,background,
+    activeColors,textOverlay,magicSettings,ambient,animation,threeSettings,
+    threeRestore.time,standbyFinishedSeed]);
   useEffect(()=>{if(ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION)playback.setPlaying(false);},[ambient.enabled,version]);
   useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
@@ -353,7 +407,12 @@ export default function App() {
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/> 
         </section>
         <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setStandbyFinishedSeed(null);setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
-        <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
+        <p className="local-note" data-testid="autosave-status" role="status">
+          <span aria-hidden="true">◉</span>
+          {autosaveStatus==='saved'?'この端末に作業を自動保存中':
+            autosaveStatus==='unavailable'?'自動保存を利用できません。設定ファイルで保存してください。':
+              '自動保存を準備中…'}
+        </p>
         </div>
         <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={activeCategory!=='background'}>
           <h2 className="category-title">背景</h2>
