@@ -1,15 +1,13 @@
 import {polar} from './geometry';
 import {RATIOS,type Point,type Ratio,type Scene,type Shape} from './scene';
-import {magicRng,type MagicBlueprint,type MagicRingKind,type MagicMotifFamily} from './magic-blueprint';
+import type {MagicBlueprint,MagicRingKind,MagicMotifFamily} from './magic-blueprint';
 import type {MagicCircleSettings} from './magic-circle';
 
 const p=(r:number,a:number):Point=>polar(r,a);
 const closed=(points:Point[])=>[...points,points[0]];
 const polygon=(radius:number,sides:number,offset=0):Point[]=>closed(Array.from({length:sides},(_,i)=>p(radius,offset+i*360/sides)));
-const arcPoints=(radius:number,start:number,sweep:number,steps=18):Point[]=>
-  Array.from({length:steps+1},(_,i)=>p(radius,start+sweep*i/steps));
 /** Render only bounded, symmetric vector shapes; output never depends on screen resolution. */
-export function renderMagicBlueprint(seed:string,ratio:Ratio,settings:MagicCircleSettings,b:MagicBlueprint):Scene{
+export function renderMagicBlueprint(ratio:Ratio,settings:MagicCircleSettings,b:MagicBlueprint):Scene{
   const [width,height]=RATIOS[ratio],unit=Math.min(width,height),cx=width/2,cy=height/2;
   const shapes:Shape[]=[];
   const baseWidth=unit*.00155*settings.strokeScale/100;
