@@ -369,7 +369,12 @@ export default function App() {
               {ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:version===MAGIC_ALGORITHM_VERSION?<MagicCirclePreview scene={scene} background={twoDBackground} settings={magicSettings} animation={animation} growth={growth}/>:<Preview scene={scene} background={twoDBackground} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>}
             </div>
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
-            <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
+            <ThreeBoundary onReturn={()=>switchRenderMode('2d')} onRetryLowQuality={()=>{
+              setThreeReady(false);
+              setThreeSettings(current=>({...current,quality:'low',
+                floorGrid:{...(current.floorGrid??floorGridDefaults),circuitWorldEnabled:false}}));
+              setThreeRestore(current=>({...current,serial:current.serial+1}));
+            }}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
                 {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
                    skipEntrance={standbyFinishedSeed===seed}
