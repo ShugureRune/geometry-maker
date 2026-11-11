@@ -119,7 +119,7 @@ export default function App() {
   function replayOnRegenerate(){if(renderMode==='2d'&&animation.animationEnabled)playback.restart(true);}
   function switchRenderMode(next:'2d'|'3d'){
     if(next===renderMode)return;
-    if(next==='2d')setStandbyTransition(null);
+    if(next==='2d'){setStandbyTransition(null);setStandbyFinishedSeed(null);}
     if(next==='3d'){
       resume2D.current={growth:playback.playing,ambient:ambientClock.playing};
       playback.setPlaying(false);ambientClock.pause();setThreeReady(false);
@@ -351,7 +351,7 @@ export default function App() {
           project={()=>({kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed,aspectRatio:ratio,density,visualTheme,background,
             colorSettings:activeColors,settings:threeSettings,...(threeView.current?{view:threeView.current}:{})})}
           onRestore={(project:ThreeProject)=>{
-            setStandbyTransition(null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
+            setStandbyTransition(null);setStandbyFinishedSeed(null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
             setVisualTheme(project.visualTheme);setColorSettings(project.colorSettings);setBackground(project.colorSettings?coloredBackground(project.background,project.colorSettings):project.background);
             setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds}));
           }}/>}
