@@ -260,7 +260,10 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     lastRestart.current=restartKey;
     lastTransitionId.current=transition?.id??null;
     skipDelta.current=true;
-    if(transition&&progressHost?.current)progressHost.current.dataset.standbyElapsed='0.000';
+    if(transition&&progressHost?.current){
+      progressHost.current.dataset.standbyElapsed='0.000';
+      progressHost.current.dataset.standbyBackgroundBlend='0.000';
+    }
     invalidate();
   },[restartKey,transition?.id,seconds,invalidate]);
   useEffect(() => {skipDelta.current = true; invalidate();}, [settings.animation, invalidate]);
@@ -317,6 +320,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const current=backdrop.current;
     if(!current||scene.background!==current.texture)return;
     const blend=easeInOut(seconds.current/transition.duration);
+    if(progressHost?.current)progressHost.current.dataset.standbyBackgroundBlend=blend.toFixed(3);
     if(blend<1&&Math.abs(blend-lastBackdropBlend.current)<.04)return;
     const {context,width,height,texture}=current;
     context.clearRect(0,0,width,height);
