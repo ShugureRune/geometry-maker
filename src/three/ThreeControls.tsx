@@ -25,12 +25,12 @@ export function ThreeRange({id, label, value, min, max, step = .05, unit = '', o
 export function ThreeShapeControls({settings, onChange}: Props) {
   const celestial = settings.celestial ?? celestialDefaults;
   return <section className="control-section three-controls">
-    <h3>3D構図 · 3d-v1</h3>
+    <h3>3D図形</h3>
     <HelpInfo>13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</HelpInfo>
-    <ThreeRange id="three-spacing" label="図形同士の距離" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
+    <ThreeRange id="three-spacing" label="図形の間隔" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
       min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
     <HelpInfo>100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</HelpInfo>
-    <fieldset className="three-kind-fieldset"><legend>生成する3D図形（${(settings.enabledKinds??THREE_KINDS).length}/13種類）</legend>
+    <fieldset className="three-kind-fieldset"><legend>図形の種類（${(settings.enabledKinds??THREE_KINDS).length}/13）</legend>
       <div className="three-kind-presets">
         <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_KINDS]})}>全種類</button>
         <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_CLASSIC_KINDS]})}>従来の7種類</button>
@@ -50,7 +50,7 @@ export function ThreeShapeControls({settings, onChange}: Props) {
       {(settings.enabledKinds??THREE_KINDS).length===0&&<p className="help" role="status">すべてOFFです。1種類以上選ぶと図形が表示されます。</p>}
     </fieldset>
     <fieldset className="three-kind-fieldset">
-      <legend>天体（6種類）</legend>
+      <legend>星や惑星（6種類）</legend>
       <label className="three-checkbox"><input type="checkbox" aria-label="3D天体を表示" checked={celestial.enabled}
         onChange={event => onChange({...settings, celestial: {...celestial, enabled: event.target.checked}})}/>
         3D空間に天体を追加
@@ -81,7 +81,7 @@ export function ThreeShapeControls({settings, onChange}: Props) {
 }
 export function ThreeMaterialControls({settings, onChange}: Props) {
   return <section className="control-section three-controls">
-    <h3>3Dマテリアル・ライティング</h3>
+    <h3>質感と光</h3>
     <label htmlFor="three-material">マテリアル</label>
     <select id="three-material" value={settings.material} onChange={event => onChange({...settings, material: event.target.value as ThreeSettings['material']})}>
       <option value="theme">テーマに合わせる</option><option value="matte">マット</option><option value="metal">メタル</option><option value="glass">ガラス</option><option value="wireframe">ワイヤーフレーム</option>
@@ -95,18 +95,18 @@ export function ThreeMaterialControls({settings, onChange}: Props) {
 export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Props&{seed:string;onReplay:()=>void}) {
   const entrance=settings.entrance??entranceDefaults;
   return <section className="control-section three-controls">
-    <h3>3D 回転・浮遊</h3>
-    <label className="three-checkbox"><input type="checkbox" checked={settings.animation} onChange={event => onChange({...settings, animation: event.target.checked})}/> 3Dアニメーションを有効化</label>
+    <h3>図形の動き</h3>
+    <label className="three-checkbox"><input type="checkbox" aria-label="3Dアニメーションを有効化" checked={settings.animation} onChange={event => onChange({...settings, animation: event.target.checked})}/> 図形を動かす</label>
     <div className="play-buttons"><button type="button" onClick={() => onChange({...settings, animation: !settings.animation})}>{settings.animation ? '3Dを一時停止' : '3Dを再生'}</button></div>
-    <ThreeRange id="three-speed" label="3D再生速度" value={settings.speed} min={.25} max={4} step={.25} unit="倍" onChange={speed => onChange({...settings, speed})}/>
-    <ThreeRange id="three-float" label="3D浮遊量" value={settings.floatAmount} min={0} max={2} step={.1} onChange={floatAmount => onChange({...settings, floatAmount})}/>
-    <ThreeRange id="three-rotation" label="3D回転量" value={settings.rotationAmount} min={0} max={2} step={.1} onChange={rotationAmount => onChange({...settings, rotationAmount})}/>
-    <fieldset className="three-kind-fieldset" data-testid="three-entrance-controls"><legend>2D風・3D図形の登場演出</legend>
+    <ThreeRange id="three-speed" label="動く速さ" value={settings.speed} min={.25} max={4} step={.25} unit="倍" onChange={speed => onChange({...settings, speed})}/>
+    <ThreeRange id="three-float" label="浮かぶ大きさ" value={settings.floatAmount} min={0} max={2} step={.1} onChange={floatAmount => onChange({...settings, floatAmount})}/>
+    <ThreeRange id="three-rotation" label="回転の大きさ" value={settings.rotationAmount} min={0} max={2} step={.1} onChange={rotationAmount => onChange({...settings, rotationAmount})}/>
+    <fieldset className="three-kind-fieldset" data-testid="three-entrance-controls"><legend>最初の登場</legend>
       <label className="three-checkbox"><input type="checkbox" aria-label="3D図形を順番に登場させる" checked={entrance.enabled}
         onChange={event=>onChange({...settings,entrance:{...entrance,enabled:event.target.checked}})}/>
-        ランダムシード・再生成時に図形を順番に登場させる</label>
+        図形を順番に登場させる</label>
       {entrance.enabled&&<>
-        <label htmlFor="three-entrance-mode">3D登場演出の種類</label>
+        <label htmlFor="three-entrance-mode">登場の仕方</label>
         <select id="three-entrance-mode" value={entrance.mode}
           onChange={e=>onChange({...settings,entrance:{...entrance,mode:e.target.value as ThreeEntranceSettings['mode']}})}>
           <option value="seeded">シードで自動選択</option>
@@ -118,7 +118,7 @@ export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Pro
         <p className="help" data-testid="three-entrance-style">今回のシードの演出：{({
           'fade-scale':'フェード＋拡大',rise:'下から浮上',spiral:'旋回して集合',scatter:'散らばった図形が集合'
         } as const)[threeEntranceStyle(seed,entrance.mode)]}</p>
-        <ThreeRange id="three-entrance-duration" label="登場アニメーションの時間" value={entrance.duration}
+        <ThreeRange id="three-entrance-duration" label="登場にかかる時間" value={entrance.duration}
           min={2} max={15} step={1} unit="秒" onChange={duration=>onChange({...settings,entrance:{...entrance,duration}})}/>
         <label className="three-checkbox"><input type="checkbox" aria-label="主役から順番に登場" checked={entrance.stagger}
           onChange={e=>onChange({...settings,entrance:{...entrance,stagger:e.target.checked}})}/>
@@ -127,18 +127,18 @@ export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Pro
       </>}
       <HelpInfo>2Dと同様に最初の1回だけ登場し、完成後は消えません。ランダムシードを押すと再生し直します。3Dアニメーション停止時は現在の場面で静止します。既存の周期的な出現・消失とは別機能です。</HelpInfo>
     </fieldset>
-    <fieldset className="three-kind-fieldset"><legend>3D出現・消失アニメーション</legend>
-      <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).enabled}
-        onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),enabled:event.target.checked}})}/> 出現・消失アニメーションを有効化</label>
+    <fieldset className="three-kind-fieldset"><legend>くり返し登場・消える</legend>
+      <label className="three-checkbox"><input type="checkbox" aria-label="出現・消失アニメーションを有効化" checked={(settings.visibilityAnimation??visibilityDefaults).enabled}
+        onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),enabled:event.target.checked}})}/> くり返し登場させる</label>
       {(settings.visibilityAnimation??visibilityDefaults).enabled&&<>
-        <label htmlFor="three-visibility-mode">登場・消失の演出</label>
+        <label htmlFor="three-visibility-mode">動きの種類</label>
         <select id="three-visibility-mode" value={(settings.visibilityAnimation??visibilityDefaults).mode}
           onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),mode:event.target.value as ThreeVisibilitySettings['mode']}})}>
           <option value="fade">フェード</option><option value="scale">拡大・縮小</option><option value="fade-scale">フェード＋拡大・縮小</option>
         </select>
-        <ThreeRange id="three-visibility-duration" label="出現・消失の周期" value={(settings.visibilityAnimation??visibilityDefaults).duration}
+        <ThreeRange id="three-visibility-duration" label="くり返す間隔" value={(settings.visibilityAnimation??visibilityDefaults).duration}
           min={4} max={30} step={1} unit="秒" onChange={duration=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),duration}})}/>
-        <ThreeRange id="three-visibility-ratio" label="表示している割合" value={(settings.visibilityAnimation??visibilityDefaults).visibleRatio*100}
+        <ThreeRange id="three-visibility-ratio" label="表示する時間の割合" value={(settings.visibilityAnimation??visibilityDefaults).visibleRatio*100}
           min={10} max={90} step={5} unit="%" onChange={visibleRatio=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),visibleRatio:visibleRatio/100}})}/>
         <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).stagger}
           onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),stagger:event.target.checked}})}/> 図形ごとにタイミングをずらす</label>
