@@ -95,7 +95,7 @@ function petals(count:number,inner:number,outer:number){
 export function generateMagicCircleScene(seed:string,ratio:Ratio,options:MagicCircleSettings=magicDefaults):Scene{
   const settings=validateMagicSettings(options);
   if(settings.generationMode==='infinite')
-    return renderMagicBlueprint(seed,ratio,settings,buildMagicBlueprint(seed,settings));
+    return renderMagicBlueprint(ratio,settings,buildMagicBlueprint(seed,settings));
   const [width,height]=RATIOS[ratio],unit=Math.min(width,height);
   const cx=width/2,cy=height/2;
   const rOuter=unit*.424,rInner=unit*.175;
