@@ -28,7 +28,7 @@ test('iPhone-size WebKit Studio v2 dock, command search and focus navigation',as
   expect(bubble!.width).toBeLessThanOrEqual(370);
   expect(bubble!.x).toBeGreaterThanOrEqual(8);
   expect(bubble!.x+bubble!.width).toBeLessThanOrEqual(390);
-  await page.locator('select#algorithm-version').tap();
+  await page.touchscreen.tap(8,8);
   await expect(popup).toHaveCount(0);
   await seedHint.tap();
   await expect(popup).toBeVisible();
