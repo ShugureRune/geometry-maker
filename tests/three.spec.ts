@@ -363,3 +363,64 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('3D floor circuit renders connected traces, animates signals and restores its PCB settings', async ({page}) => {
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{
+    if(message.type()==='error'&&/WebGLProgram|Shader Error|VALIDATE_STATUS|GLSL/.test(message.text()))
+      errors.push(message.text());
+  });
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  const preview=page.getByTestId('three-preview');
+  await expect(preview).toHaveAttribute('data-floor-style','grid');
+  await page.locator('#floor-grid-spacing').fill('3.5');
+  await page.locator('#floor-grid-thickness').fill('4');
+  await page.locator('#floor-grid-opacity').fill('1');
+  const regular=digest(await png(page));
+  await category(page,'背景');
+  await page.getByLabel('床のデザイン').selectOption('circuit');
+  await expect(preview).toHaveAttribute('data-floor-style','circuit');
+  await expect(page.locator('#floor-circuit-density')).toBeVisible();
+  await page.locator('#floor-circuit-density').fill('90');
+  await page.locator('#floor-circuit-speed').fill('2');
+  const circuit=digest(await png(page));
+  expect(circuit).not.toBe(regular);
+  expect(digest(await png(page))).toBe(circuit); // Paused time must not jitter.
+  await category(page,'背景');
+  await page.locator('#floor-circuit-density').fill('0');
+  const noWires=digest(await png(page));
+  expect(noWires).not.toBe(circuit);
+  await category(page,'背景');
+  await page.locator('#floor-circuit-density').fill('90');
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').check();
+  await page.waitForTimeout(550);
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  expect(digest(await png(page))).not.toBe(circuit);
+  const savedFrame=digest(await png(page));
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  const projectBytes=await readFile((await (await pending).path())!);
+  expect(JSON.parse(projectBytes.toString()).settings.floorGrid).toMatchObject({
+    enabled:true,style:'circuit',circuitDensity:90,circuitSpeed:2,thickness:4,spacing:3.5,
+  });
+  await category(page,'背景');
+  await page.getByLabel('床のデザイン').selectOption('grid');
+  expect(digest(await png(page))).not.toBe(savedFrame);
+  await category(page,'書き出し');
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+    name:'pcb-floor.json',mimeType:'application/json',buffer:projectBytes,
+  });
+  await expect(preview).toHaveAttribute('data-floor-style','circuit');
+  await category(page,'背景');
+  await expect(page.locator('#floor-circuit-speed')).toHaveValue('2');
+  await expect(page.locator('#floor-circuit-density')).toHaveValue('90');
+  expect(digest(await png(page))).toBe(savedFrame);
+  expect(errors).toEqual([]);
+});
