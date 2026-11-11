@@ -61,6 +61,12 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
           <p className="help">コア→太い幹線→分岐→ICの順に信号が走り、到達したICが発光します。軽量画質では立体チップ数を自動で抑えます。</p>
         </fieldset>
         <div className="three-kind-presets" role="group" aria-label="回路の配色プリセット">
+          <button type="button" onClick={()=>update({
+            circuitWorldEnabled:true,circuitCoreScale:1.6,circuitChipCount:24,
+            circuitDetail:95,circuitDensity:90,circuitBoardOpacity:.42,
+            thickness:1.25,glow:155,circuitSpeed:2,
+            color:'#43cfff',circuitAccentColor:'#f5c778'
+          })}>巨大演算都市（高密度）</button>
           <button type="button" onClick={()=>update({color:'#43cfff',circuitAccentColor:'#f0b56b',circuitBoardOpacity:.30})}>青いサイバー基板</button>
           <button type="button" onClick={()=>update({color:'#27db96',circuitAccentColor:'#f4c876',circuitBoardOpacity:.48})}>緑の電子基板</button>
           <button type="button" onClick={()=>update({color:'#bd82ff',circuitAccentColor:'#eea9df',circuitBoardOpacity:.25})}>紫の未来回路</button>
