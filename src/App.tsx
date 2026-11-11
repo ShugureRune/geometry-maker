@@ -267,7 +267,7 @@ export default function App() {
         {version!==MAGIC_ALGORITHM_VERSION&&<AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>}
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
         </div>
-        {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>setRegenerations(n=>n+1)}/>}
+        {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>{setThreeSettings(current=>({...current,animation:true}));setRegenerations(n=>n+1);}}/>}
         </div>
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={activeCategory!=='export'}>
           <h2 className="category-title">書き出し</h2>
