@@ -25,8 +25,9 @@ export function ThreeRange({id, label, value, min, max, step = .05, unit = '', o
 export function ThreeShapeControls({settings, onChange}: Props) {
   const celestial = settings.celestial ?? celestialDefaults;
   return <section className="control-section three-controls">
-    <h3>3D図形</h3>
-    <HelpInfo>13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</HelpInfo>
+    <div className="studio-setting-label studio-setting-heading"><h3>3D図形</h3>
+      <HelpInfo>13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</HelpInfo>
+    </div>
     <ThreeRange id="three-spacing" label="図形の間隔" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
       min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
     <HelpInfo>100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</HelpInfo>
@@ -81,7 +82,9 @@ export function ThreeShapeControls({settings, onChange}: Props) {
 }
 export function ThreeMaterialControls({settings, onChange}: Props) {
   return <section className="control-section three-controls">
-    <h3>質感と光</h3>
+    <div className="studio-setting-label studio-setting-heading"><h3>質感と光</h3>
+      <HelpInfo>上の発光強度を共用します。高品質では主役を中心にブルームを適用し、軽量ではマテリアルの自己発光で表現します。</HelpInfo>
+    </div>
     <label htmlFor="three-material">マテリアル</label>
     <select id="three-material" value={settings.material} onChange={event => onChange({...settings, material: event.target.value as ThreeSettings['material']})}>
       <option value="theme">テーマに合わせる</option><option value="matte">マット</option><option value="metal">メタル</option><option value="glass">ガラス</option><option value="wireframe">ワイヤーフレーム</option>
@@ -89,13 +92,14 @@ export function ThreeMaterialControls({settings, onChange}: Props) {
     <ThreeRange id="three-roughness" label="表面の粗さ" value={settings.roughness} min={0} max={1} onChange={roughness => onChange({...settings, roughness})}/>
     <ThreeRange id="three-metalness" label="金属感" value={settings.metalness} min={0} max={1} onChange={metalness => onChange({...settings, metalness})}/>
     <ThreeRange id="three-light" label="ライトの強さ" value={settings.lightIntensity} min={.1} max={3} step={.1} unit="倍" onChange={lightIntensity => onChange({...settings, lightIntensity})}/>
-    <HelpInfo>上の発光強度を共用します。高品質では主役を中心にブルームを適用し、軽量ではマテリアルの自己発光で表現します。</HelpInfo>
   </section>;
 }
 export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Props&{seed:string;onReplay:()=>void}) {
   const entrance=settings.entrance??entranceDefaults;
   return <section className="control-section three-controls">
-    <h3>図形の動き</h3>
+    <div className="studio-setting-label studio-setting-heading"><h3>図形の動き</h3>
+      <HelpInfo>再生成すると同じ構図の初期姿勢へ戻ります。色・密度・マテリアルの変更では再生時刻をリセットしません。非表示タブでは休止します。</HelpInfo>
+    </div>
     <label className="three-checkbox"><input type="checkbox" aria-label="3Dアニメーションを有効化" checked={settings.animation} onChange={event => onChange({...settings, animation: event.target.checked})}/> 図形を動かす</label>
     <div className="play-buttons"><button type="button" onClick={() => onChange({...settings, animation: !settings.animation})}>{settings.animation ? '3Dを一時停止' : '3Dを再生'}</button></div>
     <ThreeRange id="three-speed" label="動く速さ" value={settings.speed} min={.25} max={4} step={.25} unit="倍" onChange={speed => onChange({...settings, speed})}/>
@@ -147,6 +151,5 @@ export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Pro
         <HelpInfo>回転・浮遊と同じ再生時計でループします。ネオン輪郭と接続線も図形に合わせて消えます。再生停止中は現在の状態で静止します。</HelpInfo>
       </>}
     </fieldset>
-    <HelpInfo>再生成すると同じ構図の初期姿勢へ戻ります。色・密度・マテリアルの変更では再生時刻をリセットしません。非表示タブでは休止します。</HelpInfo>
   </section>;
 }
