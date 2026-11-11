@@ -37,16 +37,22 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
     const arrival=entranceFade?threeEntranceProgress(object,seconds.current,entrance):1;
     return visibility*arrival;
   };
-  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,
-    transparent:fading||entranceFade||!!morphOpacity,toneMapped:true,opacity:currentOpacity()}),
-    [fading,entranceFade,morphOpacity]);
+  const weight=object.role==='primary'?1:object.role==='support'?.8:.65;
+  const material=useMemo(()=>{
+    const initialColor=new Color(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
+    initialColor.multiplyScalar(radiance(initialColor,neon.glow,low));
+    return new LineMaterial({worldUnits:!low,depthTest:true,depthWrite:false,
+      transparent:fading||entranceFade||!!morphOpacity,toneMapped:true,
+      linewidth:.022*neon.width*weight,color:initialColor,opacity:currentOpacity()});
+  },[fading,entranceFade,morphOpacity]);
   // Reconcile immediately on React commits, not only on the next animation tick.
   useLayoutEffect(()=>{material.opacity=currentOpacity();},
     [material,morphOpacity,object,seconds,fading,entranceFade,entrance,settings.visibilityAnimation]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;value.scale.setScalar(1.002);return value;},[geometry,material]);
   useEffect(()=>()=>material.dispose(),[material]);
-  useEffect(()=>{
-    const weight=object.role==='primary'?1:object.role==='support'?.8:.65;
+  // Apply color and width during the commit. A passive effect can arrive a
+  // frame late, making the default 1-world-unit line flash intensely.
+  useLayoutEffect(()=>{
     material.worldUnits=!low;
     material.linewidth=.022*neon.width*weight;
     // Screen-space extrusion avoids world-ray precision loss on mobile GPUs.
@@ -98,7 +104,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     return color.multiplyScalar(radiance(color,network.glow,low));
   })),[topology,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);useEffect(()=>()=>material.dispose(),[material]);
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     material.worldUnits=!low;material.linewidth=.018*network.width;
     line.onBeforeRender=function(renderer){
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
