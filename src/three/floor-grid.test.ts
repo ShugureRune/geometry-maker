@@ -46,6 +46,25 @@ describe('perspective 3D floor grid',()=>{
     expect(floorGridOffset(NaN,grid)).toBe(0);
     expect(floorGridOffset(10,{...grid,scrollSpeed:0})).toBe(0);
   });
+  it('supports PCB circuits, moving signals, strict bounds and legacy grid JSON',()=>{
+    const circuit={...floorGridDefaults,enabled:true,style:'circuit' as const,circuitDensity:85,circuitSpeed:2.25};
+    expect(validateFloorGrid(circuit)).toEqual(circuit);
+    expect(floorGridOffset(1.5,{...circuit,scrollSpeed:2})).toBeCloseTo(.5);
+    const project:ThreeProject={kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:'3d-v1',
+      seed:'pcb-seed',aspectRatio:'16:9',density:50,visualTheme:'standard',
+      background:{mode:'solid',solid:'#111526',colors:['#111526','#201133','#142030'],angle:0},
+      settings:{...threeDefaults,floorGrid:circuit},elapsedSeconds:8.5,exportWidth:512,exportHeight:512};
+    expect(parseThreeProject(threeProjectText(project)).settings.floorGrid).toEqual(circuit);
+    const {style:_,circuitDensity:__,circuitSpeed:___,...oldGrid}=circuit;
+    expect(validateFloorGrid(oldGrid)).toEqual({...oldGrid,style:'grid',
+      circuitDensity:floorGridDefaults.circuitDensity,circuitSpeed:floorGridDefaults.circuitSpeed});
+    expect(parseThreeProject(JSON.stringify({...project,
+      settings:{...project.settings,floorGrid:oldGrid}})).settings.floorGrid).toMatchObject({style:'grid'});
+    for(const bad of [{style:'unknown'},{style:null},{circuitDensity:-1},{circuitDensity:101},
+      {circuitDensity:NaN},{circuitDensity:null},{circuitSpeed:-.1},{circuitSpeed:6.1},
+      {circuitSpeed:Infinity},{circuitSpeed:'fast'}])
+      expect(()=>validateFloorGrid({...circuit,...bad})).toThrow();
+  });
   it('saves, validates and restores the floor grid, including old 3D JSON',()=>{
     const floorGrid={...floorGridDefaults,enabled:true,color:'#aabbcc',spacing:3.25,scrollSpeed:1.5};
     const project:ThreeProject={kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:'3d-v1',
