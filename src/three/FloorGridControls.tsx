@@ -20,7 +20,7 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
         <option value="circuit">平面電子回路（PCB）</option>
       </select>
       <div className="three-custom-color">
-        <label htmlFor="floor-grid-picker">床グリッドの色
+        <label htmlFor="floor-grid-picker">床の配線色
           <input id="floor-grid-picker" type="color" value={grid.color}
             onChange={event=>{setHex(event.target.value);update({color:event.target.value});}}/>
         </label>
@@ -31,19 +31,33 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
         </label>
       </div>
       {!valid&&<p className="export-error">色は #RRGGBB で入力してください。</p>}
-      <ThreeRange id="floor-grid-opacity" label="床グリッドの不透明度" value={grid.opacity}
+      <ThreeRange id="floor-grid-opacity" label="床の不透明度" value={grid.opacity}
         min={0} max={1} step={.05} onChange={opacity=>update({opacity})}/>
-      <ThreeRange id="floor-grid-spacing" label="床グリッドの間隔" value={grid.spacing}
+      <ThreeRange id="floor-grid-spacing" label="床パターンの間隔" value={grid.spacing}
         min={.5} max={8} step={.25} unit="単位" onChange={spacing=>update({spacing})}/>
-      <ThreeRange id="floor-grid-thickness" label="床グリッドの線の太さ（手前基準）" value={grid.thickness}
+      <ThreeRange id="floor-grid-thickness" label="床の線の太さ（手前基準）" value={grid.thickness}
         min={.5} max={5} step={.25} onChange={thickness=>update({thickness})}/>
-      <ThreeRange id="floor-grid-glow" label="床グリッドの発光強度" value={grid.glow}
+      <ThreeRange id="floor-grid-glow" label="床の発光強度" value={grid.glow}
         min={0} max={200} step={5} unit="%" onChange={glow=>update({glow})}/>
-      <ThreeRange id="floor-grid-extent" label="床グリッドの直径" value={grid.extent*FLOOR_GRID_DIAMETER_MULTIPLIER}
+      <ThreeRange id="floor-grid-extent" label="床パターンの直径" value={grid.extent*FLOOR_GRID_DIAMETER_MULTIPLIER}
         min={240} max={1200} step={20} unit="単位" onChange={diameter=>update({extent:diameter/FLOOR_GRID_DIAMETER_MULTIPLIER})}/>
       {grid.style==='circuit'&&<>
+        <p className="help">細い配線・ビア（貫通穴）・ICチップ・小型電子部品・基板の印刷を描画します。光は配線の方向に流れます。</p>
+        <div className="three-kind-presets" role="group" aria-label="回路の配色プリセット">
+          <button type="button" onClick={()=>update({color:'#43cfff',circuitAccentColor:'#f0b56b',circuitBoardOpacity:.30})}>青いサイバー基板</button>
+          <button type="button" onClick={()=>update({color:'#27db96',circuitAccentColor:'#f4c876',circuitBoardOpacity:.48})}>緑の電子基板</button>
+          <button type="button" onClick={()=>update({color:'#bd82ff',circuitAccentColor:'#eea9df',circuitBoardOpacity:.25})}>紫の未来回路</button>
+        </div>
         <ThreeRange id="floor-circuit-density" label="回路配線の密度" value={grid.circuitDensity}
           min={0} max={100} step={5} unit="%" onChange={circuitDensity=>update({circuitDensity})}/>
+        <ThreeRange id="floor-circuit-detail" label="IC・電子部品の量" value={grid.circuitDetail}
+          min={0} max={100} step={5} unit="%" onChange={circuitDetail=>update({circuitDetail})}/>
+        <ThreeRange id="floor-circuit-board-opacity" label="暗い基板面の濃さ" value={grid.circuitBoardOpacity}
+          min={0} max={.85} step={.05} onChange={circuitBoardOpacity=>update({circuitBoardOpacity})}/>
+        <label className="three-checkbox" htmlFor="floor-circuit-accent">金属端子・チップの色
+          <input id="floor-circuit-accent" type="color" value={grid.circuitAccentColor}
+            onChange={event=>update({circuitAccentColor:event.target.value})}/>
+        </label>
         <ThreeRange id="floor-circuit-speed" label="回路を走る光の速度" value={grid.circuitSpeed}
           min={0} max={6} step={.25} unit="倍" onChange={circuitSpeed=>update({circuitSpeed})}/>
       </>}
