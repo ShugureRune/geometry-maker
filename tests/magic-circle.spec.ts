@@ -6,8 +6,8 @@ async function category(page:Page,label:string){
   const button=page.getByRole('navigation',{name:'設定カテゴリー'}).getByRole('button',{name:label,exact:true});
   if(await button.getAttribute('aria-expanded')!=='true')await button.click();
 }
-async function magic(page:Page){
-  await page.emulateMedia({reducedMotion:'reduce'});
+async function magic(page:Page,reducedMotion:'reduce'|'no-preference'='reduce'){
+  await page.emulateMedia({reducedMotion});
   await page.goto('./');
   await page.getByLabel('生成アルゴリズム').selectOption('2d-magic-v1');
   await expect(page.getByTestId('magic-controls')).toBeVisible();
@@ -63,6 +63,46 @@ test('transparent PNG preserves zero-alpha padding and visible spell strokes',as
   expect(svg).not.toMatch(/<rect\b[^>]*width="600"[^>]*fill=/);
   expect(svg).toContain('data-shape-id="ward-outer"');
 });
+test('magic colors are independent of ordinary 2D; reroll, preset and custom work',async({page})=>{
+  await magic(page);
+  await category(page,'カラー');
+  await expect(page.getByTestId('magic-colors')).toBeVisible();
+  const first=await page.getByTestId('magic-auto-palette').textContent();
+  const strokeBefore=await page.getByTestId('preview').locator('[data-shape-id="ward-outer"]').getAttribute('stroke');
+  await page.getByRole('button',{name:'魔法の色を再抽選'}).click();
+  expect(await page.getByTestId('magic-auto-palette').textContent()).not.toBe(first);
+  expect(await page.getByTestId('preview').locator('[data-shape-id="ward-outer"]').getAttribute('stroke')).not.toBe(strokeBefore);
+  await page.getByLabel('魔法陣の配色モード').selectOption('preset');
+  await page.getByLabel('魔法陣パレット').selectOption('golden-sigil');
+  await expect(page.getByTestId('preview').locator('[data-shape-id="ward-outer"]')).toHaveAttribute('stroke','#fff4cf');
+  await page.getByLabel('魔法陣の配色モード').selectOption('custom');
+  await page.getByLabel('魔法陣主線').fill('#ff00ff');
+  await expect(page.getByTestId('preview').locator('[data-shape-id="ward-outer"]')).toHaveAttribute('stroke','#ff00ff');
+  await category(page,'図形');
+  await page.getByLabel('生成アルゴリズム').selectOption('2d-v5');
+  await category(page,'カラー');
+  await expect(page.getByLabel('主役色 HEX')).not.toHaveValue('#ff00ff');
+  await expect(page.getByTestId('magic-colors')).toHaveCount(0);
+});
+
+test('magic rings keep turning after growth finishes, independent of summon playback',async({page})=>{
+  await magic(page,'no-preference');
+  const ring=page.getByTestId('preview').locator('[data-shape-id="tick-0"]');
+  const first=await ring.getAttribute('transform');
+  await expect.poll(()=>ring.getAttribute('transform'),{timeout:4000}).not.toBe(first);
+  await page.waitForTimeout(6400);
+  await expect(page.getByTestId('playback-position')).toContainText('100%');
+  const afterFinish=await ring.getAttribute('transform');
+  await expect.poll(()=>ring.getAttribute('transform'),{timeout:4000}).not.toBe(afterFinish);
+  await category(page,'アニメーション');
+  await page.getByLabel('アニメーションを有効化').uncheck();
+  const disabledGrowth=await ring.getAttribute('transform');
+  await expect.poll(()=>ring.getAttribute('transform'),{timeout:4000}).not.toBe(disabledGrowth);
+  await category(page,'図形');
+  await page.getByLabel('円環の回転速度').fill('0');
+  await expect(ring).toHaveAttribute('transform',/translate/);
+});
+
 test('background-on PNG, safe JSON roundtrip and v4/v5 selection',async({page})=>{
   await magic(page);
   await page.getByLabel('魔法陣のスタイル').selectOption('crest');
