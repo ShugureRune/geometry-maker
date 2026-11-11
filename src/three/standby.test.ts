@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
 
 describe('3D standby transition grammar',()=>{
@@ -54,6 +54,26 @@ describe('3D standby transition grammar',()=>{
     expect(morphPose(undefined,b,0,'new').opacity).toBe(0);
     expect(morphPose(undefined,b,1,'new').radius).toBe(b.radius);
     expect(morphPose(undefined,b,.5,'new').radius).toBeGreaterThan(0);
+  });
+  it('avoids crossing a close-up camera while preserving exact starting and ending positions',()=>{
+    const from:[number,number,number]=[-3,0,0];
+    const to:[number,number,number]=[3,0,0];
+    const camera:[number,number,number]=[0,0,0];
+    const points=Array.from({length:101},(_,i)=>cameraSafeMorphPosition(from,to,i/100,camera,1.4));
+    expect(points[0]).toEqual(from);
+    expect(points[100]).toEqual(to);
+    // The original linear path would intersect the camera at exactly 50%.
+    for(const point of points){
+      expect(point.every(Number.isFinite)).toBe(true);
+      expect(Math.hypot(...point)).toBeGreaterThanOrEqual(2.99);
+    }
+    for(let i=1;i<points.length;i++){
+      // No frame should leap multiple world units at once.
+      expect(Math.hypot(...points[i].map((n,j)=>n-points[i-1][j]))).toBeLessThan(.2);
+    }
+    // Distant morphs preserve the familiar straight-line motion.
+    expect(cameraSafeMorphPosition([5,5,5],[7,5,5],.5,camera,1)).toEqual([6,5,5]);
+    expect(cameraSafeMorphPosition(from,to,.5)).toEqual([0,0,0]);
   });
   it('exit-enter waits for exit completion and never leaves both sides invisible at end',()=>{
     expect(splitExitEnter(0,4)).toEqual({exit:0,enter:0});
