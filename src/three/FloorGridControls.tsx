@@ -1,3 +1,4 @@
+import {HelpInfo} from '../HelpInfo';
 import {useEffect,useState} from 'react';
 import {ThreeRange} from './ThreeControls';
 import {FLOOR_GRID_DIAMETER_MULTIPLIER,floorGridDefaults,type FloorGridSettings} from './floor-grid';
@@ -42,7 +43,7 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
       <ThreeRange id="floor-grid-extent" label="床パターンの直径" value={grid.extent*FLOOR_GRID_DIAMETER_MULTIPLIER}
         min={240} max={1200} step={20} unit="単位" onChange={diameter=>update({extent:diameter/FLOOR_GRID_DIAMETER_MULTIPLIER})}/>
       {grid.style==='circuit'&&<>
-        <p className="help">遠景はシェーダーで細密配線、近景は本物の立体コア・IC・金属ピン・経路を伝わる信号で描きます。</p>
+        <HelpInfo>遠景はシェーダーで細密配線、近景は本物の立体コア・IC・金属ピン・経路を伝わる信号で描きます。</HelpInfo>
         <fieldset className="three-kind-fieldset">
           <legend>近景3Dマザーボード</legend>
           <label className="three-checkbox"><input type="checkbox"
@@ -58,7 +59,7 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
               value={grid.circuitCoreScale} min={.5} max={2} step={.1} unit="倍"
               onChange={circuitCoreScale=>update({circuitCoreScale})}/>
           </>}
-          <p className="help">コア→太い幹線→分岐→ICの順に信号が走り、到達したICが発光します。軽量画質では立体チップ数を自動で抑えます。</p>
+          <HelpInfo>コア→太い幹線→分岐→ICの順に信号が走り、到達したICが発光します。軽量画質では立体チップ数を自動で抑えます。</HelpInfo>
         </fieldset>
         <div className="three-kind-presets" role="group" aria-label="回路の配色プリセット">
           <button type="button" onClick={()=>update({
@@ -87,6 +88,6 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
       <ThreeRange id="floor-grid-scroll" label="床パターン全体のスクロール速度" value={grid.scrollSpeed}
         min={0} max={8} step={.25} unit="単位/秒" onChange={scrollSpeed=>update({scrollSpeed})}/>
     </>}
-    <p className="help">3D図形の下に遠近感のある床を表示します。平面回路を選ぶと中央コア、立体IC、幹線と枝線、信号伝播を重ねられます。3D再生・一時停止、PNG、設定JSONに対応し、図形のシードや配置は変えません。</p>
+    <HelpInfo>3D図形の下に遠近感のある床を表示します。平面回路を選ぶと中央コア、立体IC、幹線と枝線、信号伝播を重ねられます。3D再生・一時停止、PNG、設定JSONに対応し、図形のシードや配置は変えません。</HelpInfo>
   </section>;
 }
