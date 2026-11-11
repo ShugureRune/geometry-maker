@@ -24,6 +24,7 @@ import {generateCelestialBodies,spaceCelestialBodies,celestialDefaults} from './
 import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
+import {entranceDefaults,threeEntrancePose} from './entrance';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -44,8 +45,8 @@ function drawBackground(context: CanvasRenderingContext2D, width: number, height
   context.fillRect(0, 0, width, height);
 }
 
-function Solid({object, settings, background, visualTheme, low, seconds, outlines}: {
-  object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries;
+function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed}: {
+  object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries; seed:string;
 }) {
   const mesh = useRef<Mesh>(null);
   const surfaceRef=useRef<MeshStandardMaterial|MeshPhysicalMaterial>(null);
@@ -60,18 +61,27 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const translucent=neon.enabled&&neon.display==='transparent';
   const appearance=settings.visibilityAnimation??visibilityDefaults;
   const fades=visibilityUsesFade(appearance),scales=visibilityUsesScale(appearance);
+  const entrance=settings.entrance??entranceDefaults;
+  // Paused static scenes initially show the complete figure; pausing during a reveal freezes the current frame.
+  const entranceFade=entrance.enabled&&(settings.animation||seconds.current>0);
   const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
   useFrame(() => {
     if (!mesh.current) return;
     const pose = threePose(object, seconds.current, settings.floatAmount, settings.rotationAmount);
-    mesh.current.position.set(...pose.position);
+    const arrival=entrance.enabled&&(settings.animation||seconds.current>0)
+      ?threeEntrancePose(object,seconds.current,entrance,seed):null;
+    const opacity=arrival?.opacity??1;
+    mesh.current.position.set(pose.position[0]+(arrival?.offset[0]??0),
+      pose.position[1]+(arrival?.offset[1]??0),pose.position[2]+(arrival?.offset[2]??0));
     mesh.current.rotation.set(...pose.rotation);
+    mesh.current.rotation.z+=arrival?.rotationZ??0;
     const visibility=threeVisibility(object,seconds.current,appearance);
-    mesh.current.visible=visibility>.001;
-    mesh.current.scale.setScalar(object.radius*(scales?Math.max(.001,visibility):1));
-    if(surfaceRef.current&&fades)surfaceRef.current.opacity=baseOpacity*visibility;
+    mesh.current.visible=visibility*opacity>.001;
+    mesh.current.scale.setScalar(object.radius*(scales?Math.max(.001,visibility):1)*(arrival?.scale??1));
+    mesh.current.castShadow=!low&&surfaceVisible&&!translucent&&!fades&&opacity>=.999;
+    if(surfaceRef.current&&(fades||entranceFade))surfaceRef.current.opacity=baseOpacity*visibility*opacity;
   });
-  return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent&&!fades} receiveShadow={!low}>
+  return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent&&!fades&&!entranceFade} receiveShadow={!low}>
     {kind === 'sphere' && <sphereGeometry args={[1, segments, segments / 2]}/>}
     {kind === 'cube' && <boxGeometry args={[2 / Math.sqrt(3), 2 / Math.sqrt(3), 2 / Math.sqrt(3)]}/>}
     {kind === 'torus' && <torusGeometry args={[.72, .23, low ? 8 : 16, low ? 32 : 64]}/>}
@@ -87,15 +97,15 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
     {kind === 'torus-knot' && <torusKnotGeometry args={[.50, .15, low ? 48 : 112, low ? 6 : 12, 2, 3]}/>} 
     {/* Transparency changes the compiled OPAQUE shader variant; replace the
         material on this boundary so alpha sliders never use a stale program. */}
-    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
+    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
       transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={baseOpacity}
       depthWrite={!translucent&&!fades} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
       : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
-        transparent={translucent||fades} opacity={baseOpacity} depthWrite={!translucent&&!fades}
+        transparent={translucent||fades||entranceFade} opacity={baseOpacity} depthWrite={!translucent&&!fades&&!entranceFade}
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
-    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} seed={seed}/>}
   </mesh>;
 }
 
@@ -308,6 +318,8 @@ export default function ThreePreview(props: Props) {
     data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
+     data-entrance-enabled={(props.settings.entrance??entranceDefaults).enabled?'true':'false'}
+     data-entrance-mode={(props.settings.entrance??entranceDefaults).mode}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
@@ -324,8 +336,8 @@ export default function ThreePreview(props: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
-      {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines}/>)}
-      {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds}/>)}
+      {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}/>)}
+      {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}/>)}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
