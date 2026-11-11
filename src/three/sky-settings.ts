@@ -95,6 +95,17 @@ export function cyberTunnelFrameCount(density:number):number{
   return Math.max(0,Math.round(34*density/100));
 }
 
+/** Mobile/desktop scene budgets: both use one instanced grass draw call. */
+export function outdoorGrassCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?260:1150)*density/100));
+}
+export function outdoorSnowCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?140:440)*density/100));
+}
+export function outdoorFogDistance(kind:SkyKind):number{
+  return kind==='whiteout-snow'?38:kind==='foggy-grassland'?62:115;
+}
+
 export function skyIsAnimated(sky:SkySettings):boolean{
   return sky.kind!=='classic'&&sky.motion>0&&sky.intensity>0;
 }
