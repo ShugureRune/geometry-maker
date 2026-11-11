@@ -68,7 +68,7 @@ export function validateFloorGrid(value:unknown):FloorGridSettings{
      typeof circuitDetail!=='number'||!Number.isFinite(circuitDetail)||circuitDetail<0||circuitDetail>100||
      typeof circuitBoardOpacity!=='number'||!Number.isFinite(circuitBoardOpacity)||circuitBoardOpacity<0||circuitBoardOpacity>.85||
      typeof circuitAccentColor!=='string'||!/^#[0-9a-f]{6}$/i.test(circuitAccentColor)||
-     typeof circuitWorldEnabled!=='boolean'||!Number.isInteger(circuitChipCount)||circuitChipCount<0||circuitChipCount>24||
+     typeof circuitWorldEnabled!=='boolean'||typeof circuitChipCount!=='number'||!Number.isInteger(circuitChipCount)||circuitChipCount<0||circuitChipCount>24||
      typeof circuitCoreScale!=='number'||!Number.isFinite(circuitCoreScale)||
      circuitCoreScale<.5||circuitCoreScale>2)
     throw new Error('3D床回路の密度・信号速度が範囲外です。');
