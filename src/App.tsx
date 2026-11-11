@@ -376,7 +376,7 @@ export default function App() {
                    onTransitionComplete={id=>{
                      setStandbyFinishedSeed(seed);
                      setStandbyTransition(current=>current?.id===id?null:current);
-                     if(!standby.preserveCamera)threeApi.current?.resetView();
+                     if(!standby.preserveCamera)threeApi.current?.smoothResetView?.();
                    }}/>}
               </Suspense>
             </ThreeBoundary>
