@@ -483,7 +483,7 @@ export default function ThreePreview(props: Props) {
         castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
-      <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
+      <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view} low={low}/>
       {props.transition ? props.transition.mode==='morph'?
         matches.map(match=><group key={match.id}>
           {match.from&&match.to&&match.from.kind===match.to.kind?
