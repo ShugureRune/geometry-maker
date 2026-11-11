@@ -143,7 +143,8 @@ export default function App() {
     if(!threeSettings.animation)setThreeSettings(current=>({...current,animation:true}));
     setStandbyTransition({id:++standbySerial.current,mode:standby.mode,duration:standby.transitionSeconds,
       fromSeed:seed,fromComposition:threeComposition,fromSourceComposition:threeBaseComposition,
-      fromBackground:threeBackground,fromTheme:visualTheme,fromTime:threeApi.current?.getElapsedSeconds?.()??0});
+      fromBackground:threeBackground,fromTheme:visualTheme,fromTime:threeApi.current?.getElapsedSeconds?.()??0,
+      cameraPosition:threeView.current?.position?[...threeView.current.position]:undefined});
     committedSeed.current=next;
     setSeed(next);
     if(colorSettings)applyColors(reseedColors(colorSettings,next));
