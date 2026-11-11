@@ -78,12 +78,12 @@ void main(){
   }else if(uMode==13){
     // Salt flats: diffuse mirror-bright puddles with faint dry polygon edges.
     vec2 p=vWorld.xz;
-    float patch=noise2(p*.08+vec2(uTime*.003));
+    float saltPatch=noise2(p*.08+vec2(uTime*.003));
     vec2 cell=abs(fract(p*(.22+.09*density))-.5);
     float saltEdge=1.0-smoothstep(.43,.5,max(cell.x,cell.y));
-    float water=smoothstep(.40,.70,patch);
+    float water=smoothstep(.40,.70,saltPatch);
     float glint=.5+.5*sin(p.x*1.4+uTime*.21+sin(p.y*.7));
-    color=mix(uGroundBase,uGroundAccent,.48+.30*patch);
+    color=mix(uGroundBase,uGroundAccent,.48+.30*saltPatch);
     color=mix(color,uGroundHighlight,.24*saltEdge*intensity+.20*glint*water);
   }else if(uMode==14){
     // Moonlit flower field: dark violet soil with patches of low foliage.
