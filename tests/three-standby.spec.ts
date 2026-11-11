@@ -116,3 +116,38 @@ test('zoomed-in camera remains in place during a complete 3D morph',async({page}
   expect(moved).toBeLessThan(.05);
   expect(after.standbyComplete).toBe(true);
 });
+
+test('repeated standby changes cannot skip morph or background in one frame',async({page})=>{
+  await start(page);
+  const preview=page.getByTestId('three-preview');
+  await page.getByLabel('シード切り替え演出').selectOption('morph');
+  await page.getByLabel('切り替え演出の長さ').fill('3');
+  await page.getByRole('checkbox',{name:'操作中は自動切り替えを一時停止する'}).uncheck();
+  // Prime the old 3D frame clock. Its elapsed time is deliberately much
+  // larger than the first frame of the next transition.
+  await page.waitForTimeout(1600);
+  for(let cycle=0;cycle<3;cycle++){
+    const before=await page.getByTestId('current-seed').textContent();
+    await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+    await expect(preview).toHaveAttribute('data-standby-active','true');
+    expect(await page.getByTestId('current-seed').textContent()).not.toBe(before);
+    const initial=Number(await preview.getAttribute('data-standby-elapsed'));
+    expect(Number.isFinite(initial)).toBe(true);
+    expect(initial).toBeLessThan(1);
+    const firstBlend=Number(await preview.getAttribute('data-standby-background-blend'));
+    expect(Number.isFinite(firstBlend)).toBe(true);
+    expect(firstBlend).toBeLessThan(.4);
+    // A background and all objects must still be transitioning after an
+    // initial 350 ms, rather than snapping to the next seed.
+    await page.waitForTimeout(350);
+    await expect(preview).toHaveAttribute('data-standby-active','true');
+    const later=Number(await preview.getAttribute('data-standby-elapsed'));
+    expect(later).toBeGreaterThanOrEqual(initial);
+    expect(later).toBeLessThan(2.2);
+    const laterBlend=Number(await preview.getAttribute('data-standby-background-blend'));
+    expect(laterBlend).toBeGreaterThanOrEqual(firstBlend);
+    expect(laterBlend).toBeLessThan(.9);
+    await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:12000});
+    await expect(preview).toHaveAttribute('data-standby-entrance-complete','true');
+  }
+});

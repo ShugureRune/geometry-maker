@@ -1,6 +1,6 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
-import {useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
+import {useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
 import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2, Vector3} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
@@ -26,6 +26,7 @@ import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {easeInOut,matchThreeObjects,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {advanceStandbyClock} from './standby-clock';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -35,6 +36,8 @@ type Props = {
   transition?:ThreeStandbyTransition|null;
   onTransitionComplete?:(id:number)=>void;
   skipEntrance?:boolean;
+  /** Read-only transition progress for UI and regression tests. */
+  progressHost?:RefObject<HTMLDivElement|null>;
 };
 type Clock = RefObject<number>;
 type StandbySolid={transition:ThreeStandbyTransition;variant:'shared'|'old'|'new';from?:ThreeObject;to?:ThreeObject};
@@ -151,7 +154,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const cameraReset=useRef<{from:Vector3;focus:Vector3;elapsed:number;damping:boolean}|null>(null);
@@ -159,6 +162,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
   const lastRestart=useRef(restartKey),ready=useRef(false);
+  const lastTransitionId=useRef<number|null>(transition?.id??null);
   const finishedTransition=useRef<number|null>(null);
   const backdrop=useRef<{context:CanvasRenderingContext2D;texture:CanvasTexture;width:number;height:number}|null>(null);
   const lastBackdropBlend=useRef(-1);
@@ -245,13 +249,35 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     orbit.update();
     invalidate();
   },[spacingPercent,camera,invalidate]);
-  useEffect(() => {if(lastRestart.current!==restartKey)seconds.current=0;lastRestart.current=restartKey;skipDelta.current = true; invalidate();}, [restartKey, seconds, invalidate]);
+  // Passive effects can run AFTER the first WebGL frame of a newly seeded scene.
+  // That old frame clock could exceed the transition duration, instantly
+  // completing both shapes and background. Reset synchronously before paint.
+  // Removing a completed transition is NOT a new clock, so never rewind then.
+  useLayoutEffect(()=>{
+    const restarted=lastRestart.current!==restartKey;
+    const newTransition=transition!=null&&lastTransitionId.current!==transition.id;
+    if(restarted||newTransition)seconds.current=0;
+    lastRestart.current=restartKey;
+    lastTransitionId.current=transition?.id??null;
+    skipDelta.current=true;
+    if(transition&&progressHost?.current){
+      progressHost.current.dataset.standbyElapsed='0.000';
+      progressHost.current.dataset.standbyBackgroundBlend='0.000';
+    }
+    invalidate();
+  },[restartKey,transition?.id,seconds,invalidate]);
   useEffect(() => {skipDelta.current = true; invalidate();}, [settings.animation, invalidate]);
   // A style may update only shader buffers (no changed JSX host properties).
   // Demand rendering must still refresh colors/pulses/poses while paused.
   useEffect(() => {invalidate();}, [settings, background, invalidate]);
   useFrame((_, delta) => {
-    if (settings.animation && !document.hidden && !skipDelta.current) seconds.current += delta * settings.speed;
+    if (settings.animation && !document.hidden && !skipDelta.current){
+      seconds.current=transition?
+        advanceStandbyClock(seconds.current,delta,settings.speed,transition.duration):
+        seconds.current+delta*settings.speed;
+    }
+    if(transition&&progressHost?.current)
+      progressHost.current.dataset.standbyElapsed=seconds.current.toFixed(3);
     skipDelta.current = false;
     if(!explore){
       const journey=cameraReset.current,orbit=controls.current;
@@ -273,7 +299,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     }
   }, -1);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(512 * aspect); canvas.height = 512;
     const context = canvas.getContext('2d');
@@ -294,6 +320,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const current=backdrop.current;
     if(!current||scene.background!==current.texture)return;
     const blend=easeInOut(seconds.current/transition.duration);
+    if(progressHost?.current)progressHost.current.dataset.standbyBackgroundBlend=blend.toFixed(3);
     if(blend<1&&Math.abs(blend-lastBackdropBlend.current)<.04)return;
     const {context,width,height,texture}=current;
     context.clearRect(0,0,width,height);
@@ -388,6 +415,7 @@ export default function ThreePreview(props: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
+  const progressHost=useRef<HTMLDivElement>(null);
   const touchActions=useRef(new Set<string>());
   const world=props.settings.sky?.world??worldDefaults;
   const exploring=!!world.explore;
@@ -421,7 +449,7 @@ export default function ThreePreview(props: Props) {
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
-  return <div className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
+  return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
     data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
@@ -490,7 +518,7 @@ export default function ThreePreview(props: Props) {
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
-      <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
     </Canvas>
