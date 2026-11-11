@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import { SettingsCategories, categories, type Category } from './SettingsCategories';
 import {StudioCommandPalette, type StudioCommand} from './StudioCommandPalette';
 import {ShapeKindControls} from './ShapeKindControls';
@@ -297,12 +298,12 @@ export default function App() {
           <div className="section-heading"><h3 id="seed-heading"><span>01</span> シード</h3><span className="tiny-label">SEED</span></div>
           <label htmlFor="seed">シード値</label>
           <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} onBlur={commitSeed} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing&&e.keyCode!==229)commitSeed();}} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={randomizeSeed} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
-          <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</p>
+          <HelpInfo>文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</HelpInfo>
           <div hidden={renderMode==='3d'}><label className="algorithm-label" htmlFor="algorithm-version">生成アルゴリズム</label>
           <select id="algorithm-version" value={version} onChange={e=>{const next=e.target.value as AlgorithmVersion;setVersion(next);if(next===MAGIC_ALGORITHM_VERSION){playback.setPosition(1);playback.setPlaying(false);}}}>
             <option value={ALGORITHM_VERSION}>v5 — 拡張モード</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — クラシックモード</option><option value={MAGIC_ALGORITHM_VERSION}>魔法陣 — Magic Circle</option>
           </select>
-          {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</p>}</div>
+          {version===LEGACY_ALGORITHM_VERSION&&<HelpInfo>旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</HelpInfo>}</div>
         </section>
         {renderMode==='2d'&&version===ALGORITHM_VERSION&&<ShapeKindControls enabled={enabledShapeKinds} onChange={setEnabledShapeKinds}/>}
         {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<MagicCircleControls value={magicSettings} onChange={setMagicSettings} seed={seed}/>}
@@ -314,13 +315,13 @@ export default function App() {
           <select id="ratio" value={ratio} onChange={e => setRatio(e.target.value as Ratio)}>
             {Object.keys(RATIOS).map(value => <option key={value} value={value}>{value}{value === '16:9' ? ' — ワイド' : value === '9:16' ? ' — 縦長' : value === '1:1' ? ' — スクエア' : ''}</option>)}
           </select>
-          <p className="help">図形の形を保ったまま、構図を調整します。</p>
+          <HelpInfo>図形の形を保ったまま、構図を調整します。</HelpInfo>
         </section>
 
         <section className="control-section">
           <label className="range-label" htmlFor="density">図形密度 <output htmlFor="density">{density}%</output></label>
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
-          <p className="help">{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':version===MAGIC_ALGORITHM_VERSION?'0%は背景のみ。主線は保持し、装飾は密度を上げるほど増えます。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</p>
+          <HelpInfo>{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':version===MAGIC_ALGORITHM_VERSION?'0%は背景のみ。主線は保持し、装飾は密度を上げるほど増えます。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</HelpInfo>
         </section>
         <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setStandbyFinishedSeed(null);setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
@@ -337,9 +338,9 @@ export default function App() {
             <label className="range-label" htmlFor="angle">方向 <output htmlFor="angle">{background.angle}°</output></label>
             <input id="angle" type="range" min="0" max="360" value={background.angle} onChange={e=>setBackground({...background,angle:Number(e.target.value)})}/>
           </>}
-          <p className="help">背景の各色は「カラー」で編集できます。</p>
+          <HelpInfo>背景の各色は「カラー」で編集できます。</HelpInfo>
         </section>}
-        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<p className="help">魔法陣の背景・自動配色は「カラー」から変更できます。背景なしでの表示や透過保存は「図形」の魔法陣設定で切り替えられます。</p>}
+        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<HelpInfo>魔法陣の背景・自動配色は「カラー」から変更できます。背景なしでの表示や透過保存は「図形」の魔法陣設定で切り替えられます。</HelpInfo>}
         {renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
         {renderMode==='3d'&&<><SkyControls value={threeSettings.sky} onChange={sky=>setThreeSettings(settings=>({...settings,sky}))}/><FloorGridControls value={threeSettings.floorGrid??floorGridDefaults} onChange={floorGrid=>setThreeSettings(settings=>({...settings,floorGrid}))}/></>}
 
@@ -355,12 +356,12 @@ export default function App() {
           <select id="visual-theme" value={visualTheme} onChange={e=>chooseVisualTheme(e.target.value as VisualTheme)}>
             {VISUAL_THEMES.map(theme=><option key={theme.id} value={theme.id}>{theme.label}</option>)}
           </select>
-          <p className="help">{VISUAL_THEMES.find(theme=>theme.id===visualTheme)?.description}。テーマを変えてもシード値は維持します。</p>
+          <HelpInfo>{VISUAL_THEMES.find(theme=>theme.id===visualTheme)?.description}。テーマを変えてもシード値は維持します。</HelpInfo>
           {visualTheme!=='standard'&&<div className="theme-swatches" aria-label="テーマのカラー">
             {[THEME_PRESETS[visualTheme].primary,THEME_PRESETS[visualTheme].support,THEME_PRESETS[visualTheme].accent,
               ...THEME_PRESETS[visualTheme].colors].map((color,i)=><span key={i} style={{backgroundColor:color}} title={color} aria-label={color}/>)}
           </div>}
-          <p className="help">テーマに応じて図形の強弱・線・発光・背景色を変更します。下のカラー・装飾設定からさらに調整できます。</p>
+          <HelpInfo>テーマに応じて図形の強弱・線・発光・背景色を変更します。下のカラー・装飾設定からさらに調整できます。</HelpInfo>
         </section>
         <ImagePaletteControls onApply={(palette,scope)=>applyColors(applyImagePalette(activeColors,palette,scope))}/>
         <section className="control-section">
@@ -368,7 +369,7 @@ export default function App() {
           {editor('solid','背景色')}
           {editor('gradient0','グラデーション色1')}{editor('gradient1','グラデーション色2')}{editor('gradient2','グラデーション色3')}
           <div className="play-buttons" aria-label="従来の暗色配色"><button onClick={()=>{setVisualTheme('standard');applyColors(darkTheme(activeColors,seed,'night'));}}>ミッドナイト（配色のみ）</button><button onClick={()=>{setVisualTheme('standard');applyColors(darkTheme(activeColors,seed,'neon'));}}>ネオンナイト（配色のみ）</button></div>
-          <p className="help">暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</p>
+          <HelpInfo>暗色テーマは固定していない色に適用します。単色・グラデーションの両方に対応します。</HelpInfo>
           <label htmlFor="color-mode">カラー変更モード</label>
           <select id="color-mode" value={activeColors.mode} onChange={e=>applyColors(reseedColors({...activeColors,edited:activeColors.mode==='seed'?['primary','support','accent']:activeColors.edited,mode:e.target.value as 'manual'|'seed'},seed))}>
             <option value="manual">手動色を維持</option><option value="seed">シードに連動</option>
@@ -378,7 +379,7 @@ export default function App() {
             <option value="seed">シードで決定</option><option value="light">明るい背景向け</option><option value="dark">暗い背景向け</option>
           </select>
           {editor('primary','主役色')}{editor('support','補助色')}{editor('accent','アクセント色')}
-          <p className="help">シード連動が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
+          <HelpInfo>シード連動が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</HelpInfo>
         </section>
         </>}
         </div>
@@ -394,7 +395,7 @@ export default function App() {
           <input id="line-width" type="range" min="50" max="300" step="5" value={background.lineWidth ?? 125} onChange={e=>setBackground({...background,lineWidth:+e.target.value})}/></div>
           <label className="range-label" htmlFor="glow-intensity">発光強度 <output>{background.glowIntensity??0}%</output></label>
           <input id="glow-intensity" type="range" min="0" max="200" step="5" value={background.glowIntensity??0} onChange={e=>setBackground({...background,glowIntensity:+e.target.value})}/>
-          <p className="help">0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</p>
+          <HelpInfo>0%は発光なし。主役を強め、補助・装飾は控えめに光らせます。</HelpInfo>
         </section>
         {renderMode==='3d'&&<><ThreeStyleControls settings={threeSettings} onChange={setThreeSettings}/><ThreeMaterialControls settings={threeSettings} onChange={setThreeSettings}/></>}
         </div>
