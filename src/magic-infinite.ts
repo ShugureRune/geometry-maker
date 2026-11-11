@@ -14,7 +14,6 @@ export function renderMagicBlueprint(seed:string,ratio:Ratio,settings:MagicCircl
   const shapes:Shape[]=[];
   const baseWidth=unit*.00155*settings.strokeScale/100;
   const core=unit*b.coreRadiusRatio,outer=unit*.421;
-  const rand=magicRng(seed+':variation-'+settings.variation,'details');
   const add=(id:string,kind:Shape['kind'],role:Shape['role'],group:string,x:number,y:number,size:number,
     options:Partial<Shape>={})=>{
     const s:Shape={id,kind,role,group,x,y,size,rotation:0,
@@ -22,7 +21,7 @@ export function renderMagicBlueprint(seed:string,ratio:Ratio,settings:MagicCircl
       tone:role==='hero'?'violet':role==='accent'?'mint':'ice',
       opacity:role==='hero'?.95:role==='accent'?.9:.7,
       strokeWidth:baseWidth*(role==='hero'?1.35:role==='accent'?1.05:.8),
-      filled:false,fillOpacity:0,glow:role==='hero'||role==='accent',bleed:false,
+      filled:false,fillOpacity:0,glow:role==='hero',bleed:false,
       importance:role==='hero'?100:role==='accent'?78:60,
       startDensity:role==='hero'?1:role==='accent'?20:30,...options};
     shapes.push(s);
@@ -59,7 +58,6 @@ export function renderMagicBlueprint(seed:string,ratio:Ratio,settings:MagicCircl
   if(b.outerFrame==='triple')ring('infinite-outer-third',outer-unit*.023,'support','ring-0',{opacity:.4,startDensity:38});
   ring('infinite-core-boundary',core*1.14,'hero','core');
   const angle0=b.corePhase;
-  const coreRole:'hero'='hero';
   // A core family is selected by the seed. Every branch changes actual geometry.
   switch(b.coreKind){
     case 'star':case 'double-star':{
@@ -245,7 +243,7 @@ export function renderMagicBlueprint(seed:string,ratio:Ratio,settings:MagicCircl
   // A per-seed fine accent is deterministic, not unbounded random geometry.
   if(settings.complexity>=85&&density>=.7){
     for(let i=0;i<b.symmetry;i++){
-      const a=i*sector+b.accentAngle+rand()*0; // fixed symmetry for all sectors
+      const a=i*sector+b.accentAngle; // fixed symmetry for all sectors
       line('infinite-outer-mark-'+i,[p(outer-unit*.027,a),p(outer-unit*.02,a+sector*.16)],
         'support','ring-0',{opacity:.45,startDensity:65});
     }
