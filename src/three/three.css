@@ -100,3 +100,25 @@
 .magic-infinite-options>.glow-toggle input{min-width:18px;min-height:18px}
 [data-theme=light] .magic-infinite-options{background:#f0ebff;border-color:#c3abe6}
 [data-theme=light] .magic-infinite-options>button{background:#675191}
+
+/* 3D standby: restrained visual distinction and touch-friendly controls. */
+.three-standby-controls{
+  padding:16px;
+  border:1px solid rgba(138,167,221,.4);
+  border-radius:12px;
+  background:linear-gradient(150deg,rgba(76,96,151,.13),rgba(107,66,148,.08));
+}
+.three-standby-controls>h3{letter-spacing:.02em}
+.three-standby-controls>select{width:100%;min-height:42px}
+.three-standby-controls>.three-checkbox{display:flex;gap:10px;align-items:center;min-height:44px}
+.three-standby-controls>.three-checkbox input{min-width:19px;min-height:19px}
+.three-standby-next{
+  display:block;width:100%;min-height:46px;margin:12px 0 5px;
+  border:1px solid #ab98e2;border-radius:9px;
+  background:#342a56;color:#f4eaff;font-weight:650;cursor:pointer;
+}
+.three-standby-next:hover:not(:disabled){background:#46376b}
+.three-standby-next:focus-visible{outline:3px solid #8ccaff;outline-offset:2px}
+.three-standby-next:disabled{opacity:.55;cursor:default}
+[data-theme=light] .three-standby-controls{background:linear-gradient(150deg,#f0f2fd,#f7f0fd);border-color:#abb1d1}
+[data-theme=light] .three-standby-next{background:#e8dffb;color:#382550;border-color:#ad94d0}

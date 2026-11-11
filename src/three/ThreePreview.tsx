@@ -1,7 +1,7 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
 import {useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
-import {ACESFilmicToneMapping, CanvasTexture, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2} from 'three';
+import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
@@ -25,14 +25,19 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
+import {easeInOut,matchThreeObjects,morphPose,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
+  transition?:ThreeStandbyTransition|null;
+  onTransitionComplete?:(id:number)=>void;
+  skipEntrance?:boolean;
 };
 type Clock = RefObject<number>;
+type StandbySolid={transition:ThreeStandbyTransition;variant:'shared'|'old'|'new';from?:ThreeObject;to?:ThreeObject};
 
 function drawBackground(context: CanvasRenderingContext2D, width: number, height: number, background: Background) {
   if (background.mode === 'solid') context.fillStyle = background.solid;
@@ -45,10 +50,20 @@ function drawBackground(context: CanvasRenderingContext2D, width: number, height
   context.fillRect(0, 0, width, height);
 }
 
-function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed}: {
+function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed, standby, skipEntrance=false}: {
   object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries; seed:string;
+  standby?:StandbySolid;skipEntrance?:boolean;
 }) {
   const mesh = useRef<Mesh>(null);
+  const morphLineAlpha=useRef(1);
+  const fromColor=useMemo(()=>{
+    const role=standby?.from?.role??object.role;
+    return new Color(standby?.transition.fromBackground.figureColors?.[role]??{primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'}[role]);
+  },[standby?.transition.fromBackground,standby?.from?.role,object.role]);
+  const toColor=useMemo(()=>{
+    const role=standby?.to?.role??object.role;
+    return new Color(background.figureColors?.[role]??{primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'}[role]);
+  },[background,standby?.to?.role,object.role]);
   const surfaceRef=useRef<MeshStandardMaterial|MeshPhysicalMaterial>(null);
   const segments = low ? 16 : 40;
   const kind = object.kind;
@@ -63,12 +78,48 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const fades=visibilityUsesFade(appearance),scales=visibilityUsesScale(appearance);
   const entrance=settings.entrance??entranceDefaults;
   // Paused static scenes initially show the complete figure; pausing during a reveal freezes the current frame.
-  const entranceFade=entrance.enabled&&(settings.animation||seconds.current>0);
+  const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
+  const standbyFade=!!standby;
   const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
   useFrame(() => {
     if (!mesh.current) return;
+    if(standby){
+      const {transition,variant,from,to}=standby;
+      const oldPose=from?threePose(from,transition.fromTime+seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
+      const newPose=to?threePose(to,seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
+      let position:[number,number,number],rotation:[number,number,number],radius:number,alpha:number,colorMix:number;
+      if(transition.mode==='morph'){
+        const form=morphPose(from,to,seconds.current/transition.duration,variant,oldPose,newPose);
+        ({position,rotation,radius,opacity:alpha,colorMix}=form);
+      }else{
+        const time=splitExitEnter(seconds.current,transition.duration);
+        const source=variant==='old'?from!:to!;
+        const base=variant==='old'?oldPose!:newPose!;
+        const normalized=variant==='old'?1-time.exit:time.enter;
+        const arrival=threeEntrancePose(source,normalized*entrance.duration,{...entrance,enabled:true},variant==='old'?transition.fromSeed:seed);
+        position=base.position.map((n,i)=>n+arrival.offset[i]) as [number,number,number];
+        rotation=[...base.rotation] as [number,number,number];rotation[2]+=arrival.rotationZ;
+        radius=source.radius*arrival.scale;
+        alpha=arrival.opacity;
+        colorMix=variant==='old'?0:1;
+      }
+      const visibility=threeVisibility(object,variant==='old'?transition.fromTime+seconds.current:seconds.current,appearance);
+      const totalAlpha=alpha*visibility;
+      mesh.current.position.set(...position);mesh.current.rotation.set(...rotation);
+      mesh.current.scale.setScalar(Math.max(.0001,radius)*(scales?Math.max(.001,visibility):1));
+      mesh.current.visible=totalAlpha>.001;
+      mesh.current.castShadow=!low&&surfaceVisible&&!translucent&&!fades&&totalAlpha>=.999;
+      morphLineAlpha.current=totalAlpha;
+      if(surfaceRef.current){
+        surfaceRef.current.opacity=baseOpacity*totalAlpha;
+        surfaceRef.current.depthWrite=!translucent&&!fades&&totalAlpha>=.999;
+        surfaceRef.current.color.copy(fromColor).lerp(toColor,colorMix);
+        surfaceRef.current.emissive.copy(surfaceRef.current.color);
+      }
+      return;
+    }
     const pose = threePose(object, seconds.current, settings.floatAmount, settings.rotationAmount);
-    const arrival=entrance.enabled&&(settings.animation||seconds.current>0)
+    const arrival=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0)
       ?threeEntrancePose(object,seconds.current,entrance,seed):null;
     const opacity=arrival?.opacity??1;
     mesh.current.position.set(pose.position[0]+(arrival?.offset[0]??0),
@@ -102,25 +153,28 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
     {kind === 'torus-knot' && <torusKnotGeometry args={[.50, .15, low ? 48 : 112, low ? 6 : 12, 2, 3]}/>} 
     {/* Transparency changes the compiled OPAQUE shader variant; replace the
         material on this boundary so alpha sliders never use a stale program. */}
-    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
+    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade||standbyFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
       transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={baseOpacity}
-      depthWrite={!translucent&&!fades&&!entranceFade} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
-      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
-        transparent={translucent||fades||entranceFade} opacity={baseOpacity} depthWrite={!translucent&&!fades&&!entranceFade}
+      depthWrite={!translucent&&!fades&&!entranceFade&&!standbyFade} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
+      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade||standbyFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
+        transparent={translucent||fades||entranceFade||standbyFade} opacity={baseOpacity} depthWrite={!translucent&&!fades&&!entranceFade&&!standbyFade}
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
-    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} morphOpacity={standby?morphLineAlpha:undefined} skipEntrance={skipEntrance}/>}
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
   const lastRestart=useRef(restartKey),ready=useRef(false);
+  const finishedTransition=useRef<number|null>(null);
+  const backdrop=useRef<{context:CanvasRenderingContext2D;texture:CanvasTexture;width:number;height:number}|null>(null);
+  const lastBackdropBlend=useRef(-1);
   const aspect = composition.width / composition.height;
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
   function resetView() {
@@ -201,6 +255,10 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     skipDelta.current = false;
     if(!explore)controls.current?.update();
     if (settings.animation && !document.hidden) invalidate();
+    if(transition && seconds.current>=transition.duration&&finishedTransition.current!==transition.id){
+      finishedTransition.current=transition.id;
+      onTransitionComplete?.(transition.id);
+    }
   }, -1);
 
   useEffect(() => {
@@ -208,11 +266,32 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     canvas.width = Math.round(512 * aspect); canvas.height = 512;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('背景の描画に失敗しました。');
-    drawBackground(context, canvas.width, canvas.height, background);
+    drawBackground(context, canvas.width, canvas.height, transition?.fromBackground??background);
     const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace;
+    backdrop.current={context,texture,width:canvas.width,height:canvas.height};
+    lastBackdropBlend.current=-1;
     scene.background = texture; invalidate();
-    return () => {if (scene.background === texture) scene.background = null; texture.dispose(); canvas.width = 0; canvas.height = 0;};
-  }, [scene, background.mode, background.solid, background.colors, background.angle, aspect, invalidate]);
+    return () => {if (scene.background === texture) scene.background = null;
+      if(backdrop.current?.texture===texture)backdrop.current=null;
+      texture.dispose(); canvas.width = 0; canvas.height = 0;};
+  }, [scene, background.mode, background.solid, background.colors, background.angle, aspect, invalidate,transition]);
+  // Blend the two seed backgrounds in ~24 smooth color steps, without a full-frame
+  // Canvas2D redraw on every WebGL frame. Static scenes retain the old path.
+  useFrame(()=>{
+    if(!transition)return;
+    const current=backdrop.current;
+    if(!current||scene.background!==current.texture)return;
+    const blend=easeInOut(seconds.current/transition.duration);
+    if(blend<1&&Math.abs(blend-lastBackdropBlend.current)<.04)return;
+    const {context,width,height,texture}=current;
+    context.clearRect(0,0,width,height);
+    drawBackground(context,width,height,transition.fromBackground);
+    context.globalAlpha=blend;
+    drawBackground(context,width,height,background);
+    context.globalAlpha=1;
+    texture.needsUpdate=true;
+    lastBackdropBlend.current=blend;
+  },-.5);
 
   useEffect(() => {
     if (low) return;
@@ -303,12 +382,20 @@ export default function ThreePreview(props: Props) {
   const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
   const sunlight=sunlightAtHour(world.timeOfDay);
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
+  const previousObjects=useMemo(()=>props.transition?
+    visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
+    [props.transition,props.density,props.settings.enabledKinds]);
+  const matches=useMemo<MorphMatch[]>(()=>props.transition?.mode==='morph'?
+    matchThreeObjects(previousObjects,objects):[],[props.transition,previousObjects,objects]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
   const edges=useMemo(()=>network.enabled?
     networkConnections(objects,network.distance*spacingFactor,network.maxConnections):[],
     [objects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
+  const previousEdges=useMemo(()=>props.transition&&network.enabled?
+    networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections):[],
+    [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -316,6 +403,9 @@ export default function ThreePreview(props: Props) {
     [props.sourceComposition,celestial,props.density]);
   const celestialObjects=useMemo(()=>spaceCelestialBodies(celestialBase,props.settings.spacingPercent??100),
     [celestialBase,props.settings.spacingPercent]);
+  const previousCelestial=useMemo(()=>props.transition?
+    spaceCelestialBodies(generateCelestialBodies(props.transition.fromSourceComposition,celestial,props.density),props.settings.spacingPercent??100):[],
+    [props.transition,celestial,props.density,props.settings.spacingPercent]);
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
@@ -325,6 +415,10 @@ export default function ThreePreview(props: Props) {
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
      data-entrance-enabled={(props.settings.entrance??entranceDefaults).enabled?'true':'false'}
      data-entrance-mode={(props.settings.entrance??entranceDefaults).mode}
+    data-standby-active={props.transition?'true':'false'}
+    data-standby-mode={props.transition?.mode??'off'}
+    data-standby-pairs={matches.length}
+    data-standby-entrance-complete={props.skipEntrance?'true':'false'}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
@@ -341,9 +435,49 @@ export default function ThreePreview(props: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
-      {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}/>)}
-      {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}/>)}
-      {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds} seed={props.skySeed}/>}
+      {props.transition ? props.transition.mode==='morph'?
+        matches.map(match=><group key={match.id}>
+          {match.from&&match.to&&match.from.kind===match.to.kind?
+            <Solid object={match.to} settings={props.settings} background={props.background}
+              visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
+              standby={{transition:props.transition!,variant:'shared',from:match.from,to:match.to}}/> :
+            <>
+              {match.from&&<Solid object={match.from} settings={props.settings} background={props.transition!.fromBackground}
+                visualTheme={props.transition!.fromTheme} low={low} seconds={seconds} outlines={outlines}
+                seed={props.transition!.fromSeed}
+                standby={{transition:props.transition!,variant:'old',from:match.from,to:match.to}}/>}
+              {match.to&&<Solid object={match.to} settings={props.settings} background={props.background}
+                visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
+                standby={{transition:props.transition!,variant:'new',from:match.from,to:match.to}}/>}
+            </>}
+        </group>):
+        <>
+          {previousObjects.map(object=><Solid key={'exit-'+object.id} object={object} settings={props.settings}
+            background={props.transition!.fromBackground} visualTheme={props.transition!.fromTheme}
+            low={low} seconds={seconds} outlines={outlines} seed={props.transition!.fromSeed}
+            standby={{transition:props.transition!,variant:'old',from:object}}/>)}
+          {objects.map(object=><Solid key={'enter-'+object.id} object={object} settings={props.settings}
+            background={props.background} visualTheme={props.visualTheme}
+            low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
+            standby={{transition:props.transition!,variant:'new',to:object}}/>)}
+        </>:
+        objects.map(object=><Solid key={object.id} object={object} settings={props.settings}
+          background={props.background} visualTheme={props.visualTheme} low={low}
+          seconds={seconds} outlines={outlines} seed={props.skySeed} skipEntrance={props.skipEntrance}/>)}
+      {props.transition&&previousCelestial.map(body=><CelestialObjectMesh key={'old-'+body.id}
+        body={body} settings={props.settings} low={low} seconds={seconds} seed={props.transition!.fromSeed}
+        standby={{transition:props.transition!,layer:'old'}}/>)}
+      {celestialObjects.map(body=><CelestialObjectMesh key={body.id} body={body}
+        settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}
+        standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
+        skipEntrance={props.skipEntrance}/>)}
+      {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
+        settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
+        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old'}}/>}
+      {edges.length>0&&<NetworkLines objects={objects} edges={edges}
+        settings={props.settings} background={props.background} low={low} seconds={seconds}
+        seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
+        skipEntrance={props.skipEntrance}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>

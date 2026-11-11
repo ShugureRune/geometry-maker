@@ -28,6 +28,8 @@ import {generateThreeComposition, spaceThreeComposition, THREE_ALGORITHM_VERSION
 import {generateCelestialBodies, celestialDefaults} from './three/celestial';
 import {threeDefaults, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './three/settings';
 import {ThreeShapeControls, ThreeMaterialControls, ThreeAnimationControls} from './three/ThreeControls';
+import {ThreeStandbyControls} from './three/ThreeStandbyControls';
+import {standbyDefaults,type ThreeStandbyTransition} from './three/standby';
 import {ThreeExportPanel} from './three/ThreeExportPanel';
 import {ThreeBoundary} from './three/ThreeBoundary';
 import {ThreeStyleControls} from './three/ThreeStyleControls';
@@ -59,6 +61,11 @@ export default function App() {
   const threeView=useRef<ThreeView|undefined>(undefined);
   const [threeReady,setThreeReady]=useState(false);
   const [threeRestore,setThreeRestore]=useState({serial:0,time:0});
+  const [standbyTransition,setStandbyTransition]=useState<ThreeStandbyTransition|null>(null);
+  const [standbyFinishedSeed,setStandbyFinishedSeed]=useState<string|null>(null);
+  const [threeExportBusy,setThreeExportBusy]=useState(false);
+  const standbyInteractionUntil=useRef(0);
+  const standbySerial=useRef(0);
   const resume2D=useRef({growth:false,ambient:false});
   const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
   const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>({...textOverlayDefaults});
@@ -90,7 +97,7 @@ export default function App() {
   const twoDBackground=useMemo(()=>version===MAGIC_ALGORITHM_VERSION
     ?backgroundForMagic(background,magicColors):background,[version,background,magicColors]);
   function applyColors(c:ColorSettings) { setColorSettings(c);setBackground(bg=>coloredBackground(bg,c)); }
-  function changeSeed(value:string) {setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
+  function changeSeed(value:string) {setStandbyTransition(null);setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
   function editor(id:Slot,label:string) { const slot=activeColors.slots[id];return <ColorEditor label={label} value={slot.color} locked={slot.locked}
    onColor={color=>applyColors({...activeColors,edited:[...new Set([...(activeColors.edited??[]),id])],slots:{...activeColors.slots,[id]:{...slot,color}}})}
    onRoll={()=>applyColors(rerollColor(activeColors,seed,id))}
@@ -112,6 +119,7 @@ export default function App() {
   function replayOnRegenerate(){if(renderMode==='2d'&&animation.animationEnabled)playback.restart(true);}
   function switchRenderMode(next:'2d'|'3d'){
     if(next===renderMode)return;
+    if(next==='2d'){setStandbyTransition(null);setStandbyFinishedSeed(null);}
     if(next==='3d'){
       resume2D.current={growth:playback.playing,ambient:ambientClock.playing};
       playback.setPlaying(false);ambientClock.pause();setThreeReady(false);
@@ -127,6 +135,50 @@ export default function App() {
   const threeComposition=useMemo(()=>threeBaseComposition?
     spaceThreeComposition(threeBaseComposition,threeSettings.spacingPercent??100):null,
     [threeBaseComposition,threeSettings.spacingPercent]);
+  const standby=threeSettings.standby??standbyDefaults;
+  function beginStandbyTransition(){
+    if(renderMode!=='3d'||!threeComposition||!threeBaseComposition||standbyTransition||threeExportBusy||!threeReady)return;
+    let next=createRandomSeed();
+    if(next===seed)next=createRandomSeed();
+    if(!threeSettings.animation)setThreeSettings(current=>({...current,animation:true}));
+    setStandbyTransition({id:++standbySerial.current,mode:standby.mode,duration:standby.transitionSeconds,
+      fromSeed:seed,fromComposition:threeComposition,fromSourceComposition:threeBaseComposition,
+      fromBackground:threeBackground,fromTheme:visualTheme,fromTime:threeApi.current?.getElapsedSeconds?.()??0});
+    committedSeed.current=next;
+    setSeed(next);
+    if(colorSettings)applyColors(reseedColors(colorSettings,next));
+  }
+  useEffect(()=>{
+    if(renderMode!=='3d'||!standby.enabled)return;
+    const mark=()=>{standbyInteractionUntil.current=performance.now()+5000;};
+    for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
+      document.addEventListener(event,mark,{passive:true});
+    const dragging=(event:PointerEvent)=>{if(event.buttons!==0||document.pointerLockElement)mark();};
+    document.addEventListener('pointermove',dragging,{passive:true});
+    return()=>{
+      for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
+        document.removeEventListener(event,mark);
+      document.removeEventListener('pointermove',dragging);
+    };
+  },[renderMode,standby.enabled]);
+  useEffect(()=>{
+    if(renderMode!=='3d'||!standby.enabled||!threeReady||!threeSettings.animation||standbyTransition)return;
+    let elapsed=0,last=performance.now();
+    const timer=window.setInterval(()=>{
+      const now=performance.now(),delta=Math.max(0,Math.min(.5,(now-last)/1000));last=now;
+      const focus=document.activeElement;
+      const typing=focus instanceof HTMLTextAreaElement||
+        (focus instanceof HTMLInputElement&&['text','number','search'].includes(focus.type))||
+        (focus instanceof HTMLElement&&focus.isContentEditable);
+      if(document.hidden||threeExportBusy||
+        (standby.pauseOnInteraction&&(now<standbyInteractionUntil.current||typing)))return;
+      elapsed+=delta;
+      if(elapsed>=standby.intervalSeconds){elapsed=0;beginStandbyTransition();}
+    },200);
+    return()=>window.clearInterval(timer);
+  },[renderMode,standby.enabled,standby.intervalSeconds,standby.transitionSeconds,standby.pauseOnInteraction,
+    standby.mode,threeReady,threeSettings.animation,standbyTransition,threeExportBusy,seed,
+    threeComposition,threeBaseComposition,threeBackground,visualTheme,colorSettings]);
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
   function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
   function chooseVisualTheme(theme:VisualTheme){
@@ -190,7 +242,7 @@ export default function App() {
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
           <p className="help">{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':version===MAGIC_ALGORITHM_VERSION?'0%は背景のみ。主線は保持し、装飾は密度を上げるほど増えます。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</p>
         </section>
-        <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
+        <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setStandbyFinishedSeed(null);setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
         </div>
         <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={activeCategory!=='background'}>
@@ -272,7 +324,9 @@ export default function App() {
         {version!==MAGIC_ALGORITHM_VERSION&&<AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>}
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
         </div>
-        {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>{setThreeSettings(current=>({...current,animation:true}));setRegenerations(n=>n+1);}}/>}
+        {renderMode==='3d'&&<><ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>{setStandbyFinishedSeed(null);setThreeSettings(current=>({...current,animation:true}));setRegenerations(n=>n+1);}}/>
+          <ThreeStandbyControls settings={threeSettings} onChange={setThreeSettings} onNext={beginStandbyTransition}
+            transitioning={!!standbyTransition} exporting={threeExportBusy}/></>}
         </div>
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={activeCategory!=='export'}>
           <h2 className="category-title">書き出し</h2>
@@ -293,10 +347,13 @@ export default function App() {
           }} />
       </div>
         {renderMode==='3d'&&<ThreeExportPanel api={threeApi} seed={seed} ready={threeReady}
+           onBusyChange={setThreeExportBusy}
           project={()=>({kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed,aspectRatio:ratio,density,visualTheme,background,
-            colorSettings:activeColors,settings:threeSettings,...(threeView.current?{view:threeView.current}:{})})}
+            colorSettings:activeColors,settings:threeSettings,
+             ...(standbyFinishedSeed===seed?{standbyComplete:true}:{}),
+             ...(threeView.current?{view:threeView.current}:{})})}
           onRestore={(project:ThreeProject)=>{
-            setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
+            setStandbyTransition(null);setStandbyFinishedSeed(project.standbyComplete?project.seed:null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
             setVisualTheme(project.visualTheme);setColorSettings(project.colorSettings);setBackground(project.colorSettings?coloredBackground(project.background,project.colorSettings):project.background);
             setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds}));
           }}/>}
@@ -313,7 +370,13 @@ export default function App() {
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
-                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady}/>}
+                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
+                   skipEntrance={standbyFinishedSeed===seed}
+                   onTransitionComplete={id=>{
+                     setStandbyFinishedSeed(seed);
+                     setStandbyTransition(current=>current?.id===id?null:current);
+                     if(!standby.preserveCamera)threeApi.current?.resetView();
+                   }}/>}
               </Suspense>
             </ThreeBoundary>
           </div>}

@@ -10,6 +10,8 @@ export type ThreeProject={
   kind:'geometry-maker-3d';schemaVersion:1;algorithmVersion:typeof THREE_ALGORITHM_VERSION;
   seed:string;aspectRatio:Ratio;density:number;visualTheme:VisualTheme;background:Background;
   colorSettings?:ColorSettings;settings:ThreeSettings;view?:ThreeView;elapsedSeconds:number;exportWidth:number;exportHeight:number;
+  /** Persist whether a standby morph has completed, to restore its exact static pose. */
+  standbyComplete?:boolean;
 };
 export function validateThreeProject(value:unknown):ThreeProject {
   const d=record(value);
@@ -38,10 +40,13 @@ export function validateThreeProject(value:unknown):ThreeProject {
   }
   const exportWidth=numberField(d.exportWidth,256,4096,'3D出力幅',true),exportHeight=numberField(d.exportHeight,256,4096,'3D出力高さ',true);
   if(threeResolutionError(exportWidth,exportHeight))throw new Error(threeResolutionError(exportWidth,exportHeight)!);
+  if(d.standbyComplete!==undefined&&typeof d.standbyComplete!=='boolean')
+    throw new Error('3D待機画面の復元状態が不正です。');
   return {kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed:d.seed,aspectRatio,
     density:numberField(d.density,0,100,'密度',true),visualTheme:d.visualTheme,background,
     ...(d.colorSettings===undefined?{}:{colorSettings:validateColors(d.colorSettings)}),settings:validateThreeSettings(d.settings),
-    ...(view?{view}:{}),elapsedSeconds:numberField(d.elapsedSeconds??0,0,1e9,'経過時間'),exportWidth,exportHeight};
+    ...(view?{view}:{}),elapsedSeconds:numberField(d.elapsedSeconds??0,0,1e9,'経過時間'),exportWidth,exportHeight,
+    ...(d.standbyComplete===undefined?{}:{standbyComplete:d.standbyComplete as boolean})};
 }
 export function parseThreeProject(text:string):ThreeProject {
   if(new TextEncoder().encode(text).length>MAX_THREE_PROJECT_BYTES)throw new Error('3D設定JSONは64KB以下にしてください。');
