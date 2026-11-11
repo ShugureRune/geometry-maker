@@ -6,6 +6,9 @@ on:
     paths:
       - 'src/App.tsx'
       - 'src/three/CircuitWorld.tsx'
+      - 'src/three/circuit-world.ts'
+      - 'src/three/circuit-shader.ts'
+      - 'src/three/FloorGridControls.tsx'
       - 'src/three/FloorGrid.tsx'
       - 'src/three/ThreeBoundary.tsx'
       - 'src/three/ThreePreview.tsx'
