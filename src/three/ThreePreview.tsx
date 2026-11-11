@@ -99,8 +99,8 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
         material on this boundary so alpha sliders never use a stale program. */}
     {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
       transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={baseOpacity}
-      depthWrite={!translucent&&!fades} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
-      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
+      depthWrite={!translucent&&!fades&&!entranceFade} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
+      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
         transparent={translucent||fades||entranceFade} opacity={baseOpacity} depthWrite={!translucent&&!fades&&!entranceFade}
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
