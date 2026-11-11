@@ -659,7 +659,7 @@
 .studio-app .studio-controls .studio-setting-label .studio-info-content{
   position:absolute;z-index:9;left:0;top:calc(100% + 6px);
   width:min(330px,calc(100vw - 58px));max-width:100%;
-  margin:0;padding:12px 14px;
+  margin:0;padding:12px 14px;max-height:min(40dvh,310px);overflow-y:auto;
   border:1px solid #8b79b9;border-radius:11px;
   background:#20283a;box-shadow:0 16px 36px #0008;
 }
