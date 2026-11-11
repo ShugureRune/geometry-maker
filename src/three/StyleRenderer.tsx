@@ -13,6 +13,7 @@ import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
 import {visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade} from './visibility';
+import {entranceDefaults,threeEntrancePose,threeEntranceProgress} from './entrance';
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
   const geometries=useMemo(()=>enabled?new Map(THREE_KINDS.map(kind=>[kind,new LineSegmentsGeometry().setPositions(outlineSegments(kind,low))])):null,[enabled,low]);
@@ -23,7 +24,9 @@ export function useOutlineGeometry(enabled:boolean,low:boolean){
 export function NeonOutline({geometry,object,settings,background,low,seconds}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>}){
   const neon=settings.neon??neonDefaults, {invalidate,size}=useThree();
   const fading=visibilityUsesFade(settings.visibilityAnimation??visibilityDefaults);
-  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,transparent:fading,toneMapped:true}),[fading]);
+  const entrance=settings.entrance??entranceDefaults;
+  const entranceFade=entrance.enabled&&(settings.animation||seconds.current>0);
+  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,transparent:fading||entranceFade,toneMapped:true}),[fading,entranceFade]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;value.scale.setScalar(1.002);return value;},[geometry,material]);
   useEffect(()=>()=>material.dispose(),[material]);
   useEffect(()=>{
@@ -41,12 +44,17 @@ export function NeonOutline({geometry,object,settings,background,low,seconds}:{g
     material.color.multiplyScalar(radiance(material.color,neon.glow,low));material.uniformsNeedUpdate=true;invalidate();
   },[line,material,neon,object.role,background,low,size.height,invalidate]);
   useFrame(()=>{
-    if(fading)material.opacity=threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults);
+    if(fading||entranceFade){
+      const visibility=fading?threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults):1;
+      const arrival=entrance.enabled&&(settings.animation||seconds.current>0)
+        ?threeEntranceProgress(object,seconds.current,entrance):1;
+      material.opacity=visibility*arrival;
+    }
   });
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
@@ -79,7 +87,22 @@ export function NetworkLines({objects,edges,settings,background,low,seconds}:{ob
       // Do not keep a zero-brightness opaque line in the draw list: that is
       // the black ghost left behind after the original figure disappears.
       if(!segment)continue;
-      start.setXYZ(active,...segment.start);end.setXYZ(active,...segment.end);
+      const entrance=settings.entrance??entranceDefaults;
+      const appearing=entrance.enabled&&(settings.animation||seconds.current>0);
+      const ap=appearing?threeEntrancePose(a,seconds.current,entrance,seed):null;
+      const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
+      const reveal=appearing?Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
+      if(reveal<=.001)continue;
+      if(!appearing||reveal>=1){
+        // Identical to the legacy line renderer once the one-shot entrance is complete.
+        start.setXYZ(active,...segment.start);end.setXYZ(active,...segment.end);
+      }else{
+        const sx=segment.start[0]+(ap?.offset[0]??0),sy=segment.start[1]+(ap?.offset[1]??0),sz=segment.start[2]+(ap?.offset[2]??0);
+        const ex=segment.end[0]+(bp?.offset[0]??0),ey=segment.end[1]+(bp?.offset[1]??0),ez=segment.end[2]+(bp?.offset[2]??0);
+        const mx=(sx+ex)/2,my=(sy+ey)/2,mz=(sz+ez)/2;
+        start.setXYZ(active,mx+(sx-mx)*reveal,my+(sy-my)*reveal,mz+(sz-mz)*reveal);
+        end.setXYZ(active,mx+(ex-mx)*reveal,my+(ey-my)*reveal,mz+(ez-mz)*reveal);
+      }
       const pulse=network.animation==='pulse'?networkPulse(seconds.current,a.phase+b.phase):1;
       const [ca,cb]=colors[i];
       colorStart.setXYZ(active,ca.r*pulse,ca.g*pulse,ca.b*pulse);

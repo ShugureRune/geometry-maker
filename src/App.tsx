@@ -49,7 +49,12 @@ export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
   const [threeCategory,setThreeCategory]=useState<Category|null>('shapes');
   const activeCategory=renderMode==='2d'?category:threeCategory;
-  const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>({...threeDefaults,animation:!matchMedia('(prefers-reduced-motion: reduce)').matches}));
+  const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>{
+    const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return {...threeDefaults,animation:!reducedMotion,
+      // Keep the new reveal opt-in on devices explicitly requesting fewer animations.
+      entrance:{...threeDefaults.entrance!,enabled:!reducedMotion}};
+  });
   const threeApi=useRef<ThreePreviewHandle|null>(null);
   const threeView=useRef<ThreeView|undefined>(undefined);
   const [threeReady,setThreeReady]=useState(false);
@@ -267,7 +272,7 @@ export default function App() {
         {version!==MAGIC_ALGORITHM_VERSION&&<AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>}
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
         </div>
-        {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings}/>}
+        {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>{setThreeSettings(current=>({...current,animation:true}));setRegenerations(n=>n+1);}}/>}
         </div>
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={activeCategory!=='export'}>
           <h2 className="category-title">書き出し</h2>

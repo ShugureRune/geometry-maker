@@ -173,5 +173,6 @@ test('infinite mode JSON restores seed variations and alpha SVG export',async({p
   await category(page,'図形');
   await expect(page.getByLabel('魔法陣の生成方式')).toHaveValue('infinite');
   await expect(page.getByTestId('magic-variation')).toContainText('派生番号：2');
-  expect(await page.getByTestId('shapes').innerHTML()).toBe(blueprint);
+  // Scene state and the playback clock settle on separate React renders after importing JSON.
+  await expect.poll(()=>page.getByTestId('shapes').innerHTML(),{timeout:7000}).toBe(blueprint);
 });

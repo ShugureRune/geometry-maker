@@ -1,5 +1,6 @@
 import type {ThreeSettings} from './settings';
 import {visibilityDefaults,type ThreeVisibilitySettings} from './visibility';
+import {entranceDefaults,threeEntranceStyle,type ThreeEntranceSettings} from './entrance';
 import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,THREE_SPACING_DEFAULT,type ThreeKind} from './model';
 import {CELESTIAL_KINDS, CELESTIAL_LABELS, celestialDefaults} from './celestial';
 
@@ -90,7 +91,8 @@ export function ThreeMaterialControls({settings, onChange}: Props) {
     <p className="help">上の発光強度を共用します。高品質では主役を中心にブルームを適用し、軽量ではマテリアルの自己発光で表現します。</p>
   </section>;
 }
-export function ThreeAnimationControls({settings, onChange}: Props) {
+export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Props&{seed:string;onReplay:()=>void}) {
+  const entrance=settings.entrance??entranceDefaults;
   return <section className="control-section three-controls">
     <h3>3D 回転・浮遊</h3>
     <label className="three-checkbox"><input type="checkbox" checked={settings.animation} onChange={event => onChange({...settings, animation: event.target.checked})}/> 3Dアニメーションを有効化</label>
@@ -98,6 +100,32 @@ export function ThreeAnimationControls({settings, onChange}: Props) {
     <ThreeRange id="three-speed" label="3D再生速度" value={settings.speed} min={.25} max={4} step={.25} unit="倍" onChange={speed => onChange({...settings, speed})}/>
     <ThreeRange id="three-float" label="3D浮遊量" value={settings.floatAmount} min={0} max={2} step={.1} onChange={floatAmount => onChange({...settings, floatAmount})}/>
     <ThreeRange id="three-rotation" label="3D回転量" value={settings.rotationAmount} min={0} max={2} step={.1} onChange={rotationAmount => onChange({...settings, rotationAmount})}/>
+    <fieldset className="three-kind-fieldset" data-testid="three-entrance-controls"><legend>2D風・3D図形の登場演出</legend>
+      <label className="three-checkbox"><input type="checkbox" aria-label="3D図形を順番に登場させる" checked={entrance.enabled}
+        onChange={event=>onChange({...settings,entrance:{...entrance,enabled:event.target.checked}})}/>
+        ランダムシード・再生成時に図形を順番に登場させる</label>
+      {entrance.enabled&&<>
+        <label htmlFor="three-entrance-mode">3D登場演出の種類</label>
+        <select id="three-entrance-mode" value={entrance.mode}
+          onChange={e=>onChange({...settings,entrance:{...entrance,mode:e.target.value as ThreeEntranceSettings['mode']}})}>
+          <option value="seeded">シードで自動選択</option>
+          <option value="fade-scale">フェード＋拡大</option>
+          <option value="rise">下から浮上</option>
+          <option value="spiral">旋回して集合</option>
+          <option value="scatter">散らばった図形が集合</option>
+        </select>
+        <p className="help" data-testid="three-entrance-style">今回のシードの演出：{({
+          'fade-scale':'フェード＋拡大',rise:'下から浮上',spiral:'旋回して集合',scatter:'散らばった図形が集合'
+        } as const)[threeEntranceStyle(seed,entrance.mode)]}</p>
+        <ThreeRange id="three-entrance-duration" label="登場アニメーションの時間" value={entrance.duration}
+          min={2} max={15} step={1} unit="秒" onChange={duration=>onChange({...settings,entrance:{...entrance,duration}})}/>
+        <label className="three-checkbox"><input type="checkbox" aria-label="主役から順番に登場" checked={entrance.stagger}
+          onChange={e=>onChange({...settings,entrance:{...entrance,stagger:e.target.checked}})}/>
+          主役 → 補助 → 装飾の順に登場</label>
+        <button type="button" onClick={onReplay}>3D登場演出を最初から再生</button>
+      </>}
+      <p className="help">2Dと同様に最初の1回だけ登場し、完成後は消えません。ランダムシードを押すと再生し直します。3Dアニメーション停止時は現在の場面で静止します。既存の周期的な出現・消失とは別機能です。</p>
+    </fieldset>
     <fieldset className="three-kind-fieldset"><legend>3D出現・消失アニメーション</legend>
       <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).enabled}
         onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),enabled:event.target.checked}})}/> 出現・消失アニメーションを有効化</label>
