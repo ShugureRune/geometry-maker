@@ -65,14 +65,14 @@ test('spacing percent persists via JSON and preserves existing neon connection c
   await expect(preview).toHaveAttribute('data-network-count',count!);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await pending).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.spacingPercent).toBe(175);
   await category(page,'図形');
   await page.getByLabel('図形同士の距離',{exact:true}).fill('50');
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'spacing.json',mimeType:'application/json',buffer:bytes,
   });
   await category(page,'図形');
