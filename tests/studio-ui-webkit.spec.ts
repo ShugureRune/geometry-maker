@@ -11,6 +11,17 @@ test('iPhone-size WebKit Studio v2 dock, command search and focus navigation',as
   const dock=page.getByRole('navigation',{name:'モバイルクイック操作'});
   await expect(dock).toBeVisible();
   await expect(page.getByLabel('クイック比率')).toBeVisible();
+  const seedHint=page.locator('#panel-shapes .studio-setting-label').filter({
+    has:page.getByText('模様の合言葉',{exact:true}),
+  }).locator('.studio-info-disclosure > summary');
+  await expect(seedHint).toBeVisible();
+  const box=await seedHint.boundingBox(),label=await page.locator('label[for="seed"]').boundingBox();
+  expect(box).not.toBeNull();expect(label).not.toBeNull();
+  expect(box!.width).toBeLessThanOrEqual(34);
+  expect(box!.x).toBeGreaterThan(label!.x+label!.width-2);
+  await seedHint.tap();
+  await expect(page.locator('#panel-shapes .studio-info-content').first()).toContainText('同じ模様');
+  await seedHint.tap();
   await dock.getByRole('button',{name:'探す'}).tap();
   await expect(page.getByRole('dialog',{name:'クイックコマンド'})).toBeVisible();
   await page.getByRole('searchbox',{name:'コマンドを検索'}).fill('背景');
