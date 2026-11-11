@@ -449,3 +449,151 @@
 .studio-app:has(.ambient-hidden) .studio-mobile-dock,
 .studio-app:has(.ambient-hidden) .studio-quickbar{display:none!important}
 .studio-app:has(.ambient-hidden){padding-bottom:0}
+
+/* Studio UI 2.1 — unified checkbox and compact information disclosures */
+.studio-app .studio-controls input[type="checkbox"]{
+  -webkit-appearance:none;appearance:none;
+  display:inline-block;flex:none;vertical-align:middle;
+  width:21px;height:21px;min-width:21px;min-height:21px;
+  margin:0 1px 0 0;padding:0;border:1.5px solid #7d87a4;
+  border-radius:6px;background-color:#0d1624;background-position:center;
+  background-repeat:no-repeat;background-size:18px 18px;
+  box-shadow:inset 0 1px 3px #0005;
+  cursor:pointer;transition:background .16s,border-color .16s,box-shadow .16s;
+}
+.studio-app .studio-controls input[type="checkbox"]:checked{
+  background-color:#bea9ff;border-color:#d1c3ff;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M4 10l4 4 8-9' fill='none' stroke='%231b1730' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  box-shadow:0 0 0 2px #b69aff1b,0 0 14px #a68bff4d;
+}
+.studio-app .studio-controls input[type="checkbox"]:focus-visible{
+  outline:3px solid #d5c5ff;outline-offset:4px;
+}
+.studio-app .studio-controls input[type="checkbox"]:disabled{
+  opacity:.45;cursor:not-allowed;
+}
+.studio-app .studio-controls input[type="checkbox"]:disabled + span{opacity:.6}
+.studio-app .studio-controls label:has(> input[type="checkbox"]){
+  display:flex;align-items:center;gap:11px;
+  min-height:47px;font-size:12px;line-height:1.55;
+  color:#e3e6f6;cursor:pointer;
+}
+.studio-app .studio-controls :is(.three-checkbox,.glow-toggle,.text-checkbox){
+  min-height:48px;margin:9px 0;padding:9px 11px;
+  background:#212a3b;border:1px solid #434c62;
+  border-radius:11px;transition:border-color .14s,background .14s;
+}
+.studio-app .studio-controls :is(.three-checkbox,.glow-toggle,.text-checkbox):has(input:checked){
+  border-color:#806cba;background:#302b47;
+}
+.studio-app .studio-controls :is(.three-checkbox,.glow-toggle,.text-checkbox):focus-within{
+  border-color:#bca6fd;
+}
+.studio-app .studio-controls :is(.three-kind-check,.shape-kind-option){
+  align-items:center;gap:9px;min-height:45px;
+  padding:7px 9px;border-radius:9px;
+}
+.studio-app .studio-controls .three-kind-grid input[type="checkbox"],
+.studio-app .studio-controls .shape-kind-grid input[type="checkbox"]{
+  width:18px;height:18px;min-width:18px;min-height:18px;
+  border-radius:5px;background-size:15px 15px;
+}
+.studio-app .studio-controls fieldset{
+  min-width:0;max-width:100%;
+}
+/* Native details let the small circled i toggle extra instructions with tap,
+   keyboard (Enter/Space), and screen-reader announcement. */
+.studio-app .studio-controls .studio-info-disclosure{
+  display:block;min-width:0;margin:9px 0 14px;
+  padding:0;border:0;max-width:100%;
+}
+.studio-app .studio-controls .studio-info-disclosure>summary{
+  display:inline-flex;align-items:center;gap:7px;
+  list-style:none;min-height:36px;padding:4px 10px 4px 5px;
+  border:1px solid #525877;border-radius:999px;
+  background:#232a3b;color:#b9c2d4;
+  font-size:11px;font-weight:600;line-height:1;cursor:pointer;
+  user-select:none;-webkit-user-select:none;
+}
+.studio-app .studio-controls .studio-info-disclosure>summary::-webkit-details-marker{display:none}
+.studio-app .studio-controls .studio-info-disclosure>summary::marker{content:""}
+.studio-app .studio-controls .studio-info-disclosure>summary:hover{
+  color:#f4eeff;border-color:#a38de5;background:#302e49;
+}
+.studio-app .studio-controls .studio-info-disclosure>summary:focus-visible{
+  outline:2px solid #c6b3ff;outline-offset:3px;
+}
+.studio-app .studio-controls .studio-info-icon{
+  display:inline-grid;place-items:center;
+  width:21px;height:21px;flex:none;border-radius:50%;
+  border:1.5px solid #bcaaff;color:#d6caff;
+  font-family:Georgia,serif;font-size:13px;font-style:italic;font-weight:700;
+  line-height:1;background:#5b4c831f;
+}
+.studio-app .studio-controls .studio-info-chevron{
+  margin-left:2px;font-size:14px;transition:transform .14s;
+}
+.studio-app .studio-controls .studio-info-disclosure[open] .studio-info-chevron{
+  transform:rotate(180deg);
+}
+.studio-app .studio-controls .studio-info-disclosure[open]>summary{
+  border-color:#9d84eb;background:#302746;color:#f0eaff;
+}
+.studio-app .studio-controls .studio-info-content{
+  margin:8px 0 2px;padding:11px 13px 12px;
+  border-left:2px solid #a78cea;border-radius:0 10px 10px 0;
+  background:#1b2435;color:#c8cfe1;
+  animation:studio-info-reveal .13s ease-out;
+}
+.studio-app .studio-controls .studio-info-content .help{
+  font-size:11px;line-height:1.75;margin:0;color:#c4ccdf;
+  overflow-wrap:anywhere;
+}
+@keyframes studio-info-reveal{
+  from{opacity:.5;transform:translateY(-3px)}
+  to{opacity:1;transform:translateY(0)}
+}
+/* The live status of animation/exports is intentionally always visible. */
+.studio-app .studio-controls .help[role="status"],
+.studio-app .studio-controls [role="status"].help,
+.studio-app .studio-controls .export-message{
+  padding:8px 10px;border-radius:8px;background:#183f394d;
+}
+[data-theme=light] .studio-app .studio-controls input[type="checkbox"]{
+  background-color:#fff;border-color:#918da9;box-shadow:inset 0 1px 3px #24243f13;
+}
+[data-theme=light] .studio-app .studio-controls input[type="checkbox"]:checked{
+  background-color:#9d7fe9;border-color:#7956c3;
+  box-shadow:0 0 0 2px #916ad726;
+}
+[data-theme=light] .studio-app .studio-controls label:has(> input[type="checkbox"]){
+  color:#374158;
+}
+[data-theme=light] .studio-app .studio-controls :is(.three-checkbox,.glow-toggle,.text-checkbox){
+  background:#f3f1fa;border-color:#c1b8d7;
+}
+[data-theme=light] .studio-app .studio-controls :is(.three-checkbox,.glow-toggle,.text-checkbox):has(input:checked){
+  background:#ece4fc;border-color:#9676d3;
+}
+[data-theme=light] .studio-app .studio-controls .studio-info-disclosure>summary{
+  color:#594879;background:#f3eefc;border-color:#c8badf;
+}
+[data-theme=light] .studio-app .studio-controls .studio-info-icon{
+  color:#63419c;border-color:#8f74b7;
+}
+[data-theme=light] .studio-app .studio-controls .studio-info-content{
+  color:#374359;background:#f3f0fa;border-color:#9471ca;
+}
+[data-theme=light] .studio-app .studio-controls .studio-info-content .help{
+  color:#48546c;
+}
+@media(max-width:720px){
+  .studio-app .studio-controls :is(.three-checkbox,.glow-toggle,.text-checkbox){
+    min-height:52px;padding:11px 13px;
+  }
+  .studio-app .studio-controls label:has(> input[type="checkbox"]){font-size:13px}
+  .studio-app .studio-controls .studio-info-disclosure>summary{min-height:40px}
+}
+@media(prefers-reduced-motion:reduce){
+  .studio-app .studio-controls .studio-info-content{animation:none}
+}
