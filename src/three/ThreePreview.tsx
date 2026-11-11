@@ -25,7 +25,7 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
-import {easeInOut,matchThreeObjects,morphPose,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {easeInOut,matchThreeObjects,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -84,25 +84,11 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   useFrame(() => {
     if (!mesh.current) return;
     if(standby){
-      const {transition,variant,from,to}=standby;
-      const oldPose=from?threePose(from,transition.fromTime+seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
-      const newPose=to?threePose(to,seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
-      let position:[number,number,number],rotation:[number,number,number],radius:number,alpha:number,colorMix:number;
-      if(transition.mode==='morph'){
-        const form=morphPose(from,to,seconds.current/transition.duration,variant,oldPose,newPose,transition.cameraPosition);
-        ({position,rotation,radius,opacity:alpha,colorMix}=form);
-      }else{
-        const time=splitExitEnter(seconds.current,transition.duration);
-        const source=variant==='old'?from!:to!;
-        const base=variant==='old'?oldPose!:newPose!;
-        const normalized=variant==='old'?1-time.exit:time.enter;
-        const arrival=threeEntrancePose(source,normalized*entrance.duration,{...entrance,enabled:true},variant==='old'?transition.fromSeed:seed);
-        position=base.position.map((n,i)=>n+arrival.offset[i]) as [number,number,number];
-        rotation=[...base.rotation] as [number,number,number];rotation[2]+=arrival.rotationZ;
-        radius=source.radius*arrival.scale;
-        alpha=arrival.opacity;
-        colorMix=variant==='old'?0:1;
-      }
+      const {transition,variant}=standby;
+      const {position,rotation,radius,opacity:alpha,colorMix}=standbyObjectPose(
+        standby.from,standby.to,seconds.current,transition,variant,
+        settings.floatAmount,settings.rotationAmount,entrance,seed
+      );
       const visibility=threeVisibility(object,variant==='old'?transition.fromTime+seconds.current:seconds.current,appearance);
       const totalAlpha=alpha*visibility;
       mesh.current.position.set(...position);mesh.current.rotation.set(...rotation);
