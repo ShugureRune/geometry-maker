@@ -3,6 +3,7 @@ import {useMemo,useRef,type RefObject} from 'react';
 import {Color,DoubleSide,Mesh,ShaderMaterial} from 'three';
 import {floorGridDiameter,floorGridOffset,floorGridPlacement,floorGridStrokeWidth,type FloorGridSettings} from './floor-grid';
 import type {ThreeView} from './settings';
+import {circuitFragmentShader} from './circuit-shader';
 
 /** One anti-aliased floor plane: two triangles regardless of how many lines appear.
  * Real 3D depth, orbit-camera parallax and distance fog, with no mesh intersections.
@@ -63,18 +64,25 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
     uGlow:{value:grid.glow},
     uExtent:{value:diameter},
     uOffset:{value:floorGridOffset(seconds.current,grid)},
+    uCircuitDensity:{value:grid.circuitDensity/100},
+    uCircuitSpeed:{value:grid.circuitSpeed},
+    uTime:{value:seconds.current},
   }),[grid,seconds,physicalWidth]);
   useFrame(()=>{
-    if(material.current)material.current.uniforms.uOffset.value=floorGridOffset(seconds.current,grid);
+    if(material.current){
+      material.current.uniforms.uOffset.value=floorGridOffset(seconds.current,grid);
+      material.current.uniforms.uTime.value=seconds.current;
+    }
     // OrbitControls updates view.current when its target changes (including JSON restore).
     // Match its X/Z target without moving the floor upward into the shapes.
     if(mesh.current)mesh.current.position.set(...floorGridPlacement(sceneHeight,view.current?.target));
   });
   if(!grid.enabled)return null;
-  return <mesh ref={mesh} name="perspective-floor-grid" rotation={[-Math.PI/2,0,0]}
+  return <mesh ref={mesh} name={grid.style==='circuit'?'perspective-floor-circuit':'perspective-floor-grid'} rotation={[-Math.PI/2,0,0]}
     position={floorGridPlacement(sceneHeight,view.current?.target)} frustumCulled={false} renderOrder={-1}>
     <planeGeometry args={[diameter,diameter]}/>
-    <shaderMaterial ref={material} vertexShader={vertexShader} fragmentShader={fragmentShader}
+    <shaderMaterial key={grid.style} ref={material} vertexShader={vertexShader}
+      fragmentShader={grid.style==='circuit'?circuitFragmentShader:fragmentShader}
       uniforms={uniforms} transparent depthWrite={false} depthTest={true}
       side={DoubleSide} toneMapped={false}/>
   </mesh>;
