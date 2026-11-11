@@ -5,6 +5,7 @@ import {
   Object3D,PlaneGeometry,Points,ShaderMaterial,Vector2,
 } from 'three';
 import {seededRandom} from '../scene';
+import {worldDefaults} from './world-settings';
 import {NaturalDetails} from './NaturalDetails';
 import {hasTerrainRelief,OUTDOOR_SURFACE_HALF_EXTENT,terrainDefaults,terrainHeightAt,terrainSegments,terrainStretchCoordinate} from './terrain';
 import {floorGridPlacement} from './floor-grid';
@@ -27,6 +28,7 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   const terrain=sky.terrain??terrainDefaults;
   const visibility=sky.visibility??outdoorVisibilityDefaults;
+  const world=sky.world??worldDefaults;
   const geometry=useMemo(()=>{
     const raised=hasTerrainRelief(sky.kind)&&terrain.relief>0;
     const resolution=raised?terrainSegments(low):1;
@@ -49,6 +51,12 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   const uniforms=useMemo(()=>({
     uMode:{value:SKY_KINDS.indexOf(sky.kind)},
+    uWorldHour:{value:world.timeOfDay},
+    uSunStrength:{value:world.sunStrength/100},
+    uStorm:{value:world.weather==='storm'?world.weatherStrength/200:0},
+    uWaterReflection:{value:world.waterReflection/100},
+    uWaterWaves:{value:world.waterWaves/100},
+    uCameraWorld:{value:camera.position.clone()},
     uTime:{value:0},uSeed:{value:skySeedNumber(seed,sky.kind)},
     uDensity:{value:sky.density/100},
     uIntensity:{value:sky.intensity/100},
@@ -63,6 +71,7 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
     if(material.current){
       material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
       material.current.uniforms.uCameraXZ.value.set(camera.position.x,camera.position.z);
+      material.current.uniforms.uCameraWorld.value.copy(camera.position);
     }
     if(mesh.current){
       const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
@@ -185,6 +194,7 @@ export function OutdoorRenderer(props:Props){
     'shallow-water','whiteout-snow','foggy-grassland',
     'endless-desert','salt-flat','moonlit-flowers','forest-edge',
     'twilight-plain','cloud-sea','dark-mirror',
+    'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
   ].includes(kind))return null;
   return <>
     <OutdoorSurface {...props}/>
