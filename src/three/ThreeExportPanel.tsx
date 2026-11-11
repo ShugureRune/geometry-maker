@@ -1,4 +1,5 @@
 import {HelpInfo} from '../HelpInfo';
+import {ThreeVideoPanel} from './ThreeVideoPanel';
 import {useEffect,useRef,useState, type RefObject} from 'react';
 import {downloadBlob} from '../export';
 import {EXPORT_PRESETS, fileStem} from '../settings';
@@ -11,7 +12,8 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
   onBusyChange?:(busy:boolean)=>void}) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
-  useEffect(()=>{onBusyChange?.(busy);},[busy,onBusyChange]);
+  const [videoBusy,setVideoBusy]=useState(false);
+  useEffect(()=>{onBusyChange?.(busy||videoBusy);},[busy,videoBusy,onBusyChange]);
   useEffect(()=>()=>{onBusyChange?.(false);},[onBusyChange]);
   const w = Number(width), h = Number(height), invalid = threeResolutionError(w, h);
   const file=useRef<HTMLInputElement>(null);
@@ -44,7 +46,7 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
     finally {setBusy(false);}
   }
   return <section className="control-section three-controls three-export" aria-labelledby="three-export-heading">
-    <h3 id="three-export-heading">3DプレビューのPNG保存</h3>
+    <h3 id="three-export-heading">3D画像・動画の保存</h3>
     <HelpInfo>現在の視点・姿勢・背景・発光を保存します。比率が異なる場合は構図を保って余白を追加します。高解像度はPC推奨です。</HelpInfo>
     <label htmlFor="three-export-preset">3D書き出し解像度</label>
     <select id="three-export-preset" disabled={busy} value={EXPORT_PRESETS.some(p => p.width === w && p.height === h) ? `${w}x${h}` : 'custom'} onChange={event => {
@@ -58,8 +60,10 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
       <label htmlFor="three-export-height">3D 高さ (px)<input id="three-export-height" type="number" min={256} max={4096} step={1} disabled={busy} value={height} aria-invalid={!!invalid} onChange={event => setHeight(event.target.value)}/></label>
     </div>
     {invalid && <p className="export-error" role="alert">{invalid}</p>}
-    <button className="generate-button" type="button" disabled={!ready || busy || !!invalid} onClick={save}>{busy ? '3D PNGを作成中…' : '3D PNGを書き出す'}</button>
-    <div className="export-actions"><button type="button" disabled={busy||!!invalid} onClick={saveSettings}>3Dの設定を保存</button><button type="button" disabled={busy} onClick={()=>file.current?.click()}>保存した3D設定を読み込む</button></div>
+    <button className="generate-button" type="button" disabled={!ready || busy || videoBusy || !!invalid} onClick={save}>{busy ? '3D PNGを作成中…' : '3D PNGを書き出す'}</button>
+    <ThreeVideoPanel api={api} seed={seed} ready={ready} disabled={busy}
+      onBusyChange={setVideoBusy}/>
+    <div className="export-actions"><button type="button" disabled={busy||videoBusy||!!invalid} onClick={saveSettings}>3Dの設定を保存</button><button type="button" disabled={busy||videoBusy} onClick={()=>file.current?.click()}>保存した3D設定を読み込む</button></div>
     <input ref={file} type="file" accept=".json,application/json" aria-label="保存した3D設定ファイル" hidden onChange={event=>restore(event.target.files?.[0])}/>
     {error && <p className="export-error" role="alert">{error}</p>}
     <p className="export-message" role="status">{message}</p>
