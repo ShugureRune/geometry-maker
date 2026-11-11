@@ -450,3 +450,64 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   expect(digest(await png(page))).toBe(savedFrame);
   expect(errors).toEqual([]);
 });
+
+test('3D motherboard central core, IC count and signals change PNG and survive JSON',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{
+    if(message.type()==='error'&&/WebGLProgram|Shader Error|VALIDATE_STATUS|GLSL/.test(message.text()))
+      errors.push(message.text());
+  });
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  await page.getByLabel('床のデザイン').selectOption('circuit');
+  await page.locator('#floor-circuit-density').fill('90');
+  await page.locator('#floor-grid-opacity').fill('1');
+  await page.locator('#floor-circuit-chip-count').fill('8');
+  await page.locator('#floor-circuit-core-scale').fill('1.4');
+  const preview=page.getByTestId('three-preview');
+  await expect(page.getByLabel('中央演算コア・立体ICチップを表示')).toBeChecked();
+  const full=digest(await png(page));
+  await category(page,'背景');
+  await page.getByLabel('中央演算コア・立体ICチップを表示').uncheck();
+  const flat=digest(await png(page));
+  expect(full).not.toBe(flat); // 3D hardware must actually be visible in the camera.
+  await category(page,'背景');
+  await page.getByLabel('中央演算コア・立体ICチップを表示').check();
+  expect(digest(await png(page))).toBe(full); // No frame-time random layout.
+  await category(page,'背景');
+  await page.locator('#floor-circuit-chip-count').fill('0');
+  const processorOnly=digest(await png(page));
+  expect(processorOnly).not.toBe(full);
+  await category(page,'背景');
+  await page.locator('#floor-circuit-chip-count').fill('8');
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').check();
+  await page.waitForTimeout(750);
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  const paused=digest(await png(page));
+  expect(paused).not.toBe(full);
+  expect(digest(await png(page))).toBe(paused);
+  await category(page,'書き出し');
+  const pending=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  const saved=await readFile((await (await pending).path())!);
+  expect(JSON.parse(saved.toString()).settings.floorGrid).toMatchObject({
+    circuitWorldEnabled:true,circuitChipCount:8,circuitCoreScale:1.4,
+  });
+  await category(page,'背景');
+  await page.getByLabel('中央演算コア・立体ICチップを表示').uncheck();
+  await category(page,'書き出し');
+  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+    name:'living-motherboard.json',mimeType:'application/json',buffer:saved,
+  });
+  await expect(preview).toHaveAttribute('data-floor-style','circuit');
+  await category(page,'背景');
+  await expect(page.locator('#floor-circuit-chip-count')).toHaveValue('8');
+  await expect(page.locator('#floor-circuit-core-scale')).toHaveValue('1.4');
+  expect(digest(await png(page))).toBe(paused);
+  expect(errors).toEqual([]);
+});
