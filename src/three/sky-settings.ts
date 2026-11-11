@@ -75,6 +75,26 @@ export function validateSkyPaletteOverrides(value:unknown):SkyPaletteOverrides{
   }
   return out;
 }
+/** Outdoor rendering range and atmospheric fog, optional for legacy JSON. */
+export type OutdoorVisibilitySettings={distance:number;fogEnabled:boolean};
+export const outdoorVisibilityDefaults:OutdoorVisibilitySettings={distance:400,fogEnabled:true};
+export const OUTDOOR_SKY_KINDS=[
+  'shallow-water','whiteout-snow','foggy-grassland','endless-desert',
+  'salt-flat','moonlit-flowers','forest-edge','twilight-plain','cloud-sea','dark-mirror',
+] as const;
+export function hasOutdoorVisibility(kind:SkyKind):boolean{
+  return OUTDOOR_SKY_KINDS.some(v=>v===kind);
+}
+export function validateOutdoorVisibility(value:unknown):OutdoorVisibilitySettings{
+  if(!value||typeof value!=='object'||Array.isArray(value))
+    throw new Error('屋外背景の描画距離設定が不正です。');
+  const v=value as Record<string,unknown>;
+  if(typeof v.distance!=='number'||!Number.isFinite(v.distance)||v.distance<100||v.distance>1000)
+    throw new Error('屋外背景の描画距離は100～1000%で指定してください。');
+  if(typeof v.fogEnabled!=='boolean')
+    throw new Error('屋外背景の霧ON/OFF設定が不正です。');
+  return {distance:v.distance,fogEnabled:v.fogEnabled};
+}
 export type SkySettings = {
   kind:SkyKind;
   intensity:number;
@@ -82,6 +102,7 @@ export type SkySettings = {
   motion:number;
   colors?:SkyPaletteOverrides;
   terrain?:TerrainSettings;
+  visibility?:OutdoorVisibilitySettings;
 };
 export const skyDefaults:SkySettings={
   kind:'classic',intensity:100,density:100,motion:100,
@@ -98,7 +119,8 @@ export function validateSky(value:unknown):SkySettings{
   }
   return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,motion:v.motion as number,
     ...(v.colors===undefined?{}:{colors:validateSkyPaletteOverrides(v.colors)}),
-    ...(v.terrain===undefined?{}:{terrain:validateTerrain(v.terrain)})};
+    ...(v.terrain===undefined?{}:{terrain:validateTerrain(v.terrain)}),
+    ...(v.visibility===undefined?{}:{visibility:validateOutdoorVisibility(v.visibility)})};
 }
 /** No frame-time random numbers. Repeated seed + kind produces the same universe. */
 export function skySeedNumber(seed:string,kind:SkyKind):number{
@@ -121,6 +143,15 @@ export function outdoorGrassCount(density:number,low:boolean):number{
 }
 export function outdoorSnowCount(density:number,low:boolean):number{
   return Math.max(0,Math.round((low?140:440)*density/100));
+}
+/** Actual ground-visible world units. With fog disabled the slider still limits
+ * terrain draw range but removes atmospheric fading over the near/middle view.
+ * The 950u cap keeps the far edge inside the 1200u 3D camera far plane. */
+export function outdoorVisibleDistance(kind:SkyKind,visibility:OutdoorVisibilitySettings=outdoorVisibilityDefaults):number{
+  const distance=visibility.fogEnabled
+    ? outdoorFogDistance(kind)*visibility.distance/100
+    : visibility.distance*1.5;
+  return Math.max(30,Math.min(950,distance));
 }
 export function outdoorFogDistance(kind:SkyKind):number{
   if(kind==='whiteout-snow')return 38;

@@ -41,6 +41,7 @@ function SkyDome({sky,seed,seconds,low}:{
     uIntensity:{value:sky.intensity/100},
     uDensity:{value:sky.density/100},
     uLow:{value:low?1:0},
+    uOutdoorFog:{value:sky.visibility?.fogEnabled===false?0:1},
   }),[sky,seed,seconds,low,glyphAtlas,palette.base,palette.accent,palette.highlight]);
   useFrame(()=>{
     mesh.current?.position.copy(camera.position);

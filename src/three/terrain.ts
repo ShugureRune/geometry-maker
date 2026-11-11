@@ -25,6 +25,17 @@ export const TERRAIN_KINDS=['endless-desert','foggy-grassland','forest-edge'] as
 export function hasTerrainRelief(kind:SkyKind):boolean{
   return TERRAIN_KINDS.some(candidate=>candidate===kind);
 }
+/** Preserve close-up 3D detail while extending outer terrain from 350u to 1050u.
+ * Uniformly tripling the existing plane would make nearby dunes faceted;
+ * this smooth stretch maintains the old central vertex spacing and pushes
+ * most extra world coverage into the distant ring. */
+export const OUTDOOR_SURFACE_HALF_EXTENT=1050;
+export function terrainStretchCoordinate(x:number):number{
+  const abs=Math.abs(x);
+  if(abs<=80)return x;
+  const t=Math.min(1,(abs-80)/270);
+  return Math.sign(x)*(abs+700*t*t);
+}
 /** 700u extent, one 3D draw call; low stays below 8k vertices. */
 export function terrainSegments(low:boolean):number{return low?88:188;}
 export function terrainCenterMask(radius:number,flatCenter:boolean):number{
