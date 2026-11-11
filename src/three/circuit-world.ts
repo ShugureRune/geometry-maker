@@ -126,7 +126,9 @@ export function circuitPointAt(points:readonly CircuitPoint[],travel:number):Cir
   for(let i=1;i<points.length;i++){
     const start=points[i-1],end=points[i],len=distance(start,end);
     if(len<=0)continue;
-    if(remaining<=len){
+    if(remaining<=len+1e-8){
+      // Clamp endpoints exactly: avoid a 1e-15 seam or pulse jump at vias.
+      if(remaining>=len-1e-8)return end;
       const t=remaining/len;
       return [start[0]+(end[0]-start[0])*t,start[1]+(end[1]-start[1])*t];
     }
