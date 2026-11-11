@@ -338,7 +338,7 @@ export default function ThreePreview(props: Props) {
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
       {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}/>)}
       {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}/>)}
-      {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds}/>}
+      {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds} seed={props.skySeed}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
