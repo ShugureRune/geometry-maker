@@ -6,10 +6,13 @@ export const outdoorVertexShader = `
 varying vec2 vSurface;
 varying vec3 vWorld;
 varying float vTerrainLight;
+uniform float uWorldHour;
 void main(){
   // Vertex normals are recomputed from the actual CPU-raised terrain mesh.
   vec3 worldNormal=normalize(mat3(modelMatrix)*normal);
-  vTerrainLight=clamp(dot(worldNormal,normalize(vec3(-.55,.84,.33))),0.0,1.0);
+  float h=uWorldHour*6.2831853/24.0;
+  vec3 light=normalize(vec3(cos(h)*.68,max(.04,sin((uWorldHour-6.0)*3.14159265/12.0)),sin(h)*.68));
+  vTerrainLight=clamp(dot(worldNormal,light),0.0,1.0);
   vSurface=position.xy;
   vec4 world=modelMatrix*vec4(position,1.0);
   vWorld=world.xyz;
@@ -24,6 +27,12 @@ uniform float uDensity;
 uniform float uIntensity;
 uniform float uViewDistance;
 uniform float uFogEnabled;
+uniform float uWorldHour;
+uniform float uSunStrength;
+uniform float uStorm;
+uniform float uWaterReflection;
+uniform float uWaterWaves;
+uniform vec3 uCameraWorld;
 uniform vec2 uCameraXZ;
 uniform vec3 uGroundBase;
 uniform vec3 uGroundAccent;
@@ -56,14 +65,17 @@ void main(){
   if(uMode==9){
     // Infinite shallow sea: calm light-blue reflected sky + animated ripples.
     vec2 p=vWorld.xz;
-    float wave=sin(p.x*(1.2+density*.3)+uTime*.6
-      +sin(p.y*.75-uTime*.16)*.45);
+    float wave=sin(p.x*(1.2+density*.3)+uTime*.6*uWaterWaves
+      +sin(p.y*.75-uTime*.16*uWaterWaves)*.45*uWaterWaves);
     float ripples=sin(p.y*2.3-uTime*.58+wave*.8);
     float fine=noise2(p*(1.8+density*.8)+vec2(uTime*.08,-uTime*.06));
     float glint=pow(max(0.0,.5+.5*wave*ripples),8.0);
     float sheen=clamp(.50+.12*wave+.09*ripples+.10*(fine-.5),0.0,1.0);
-    color=mix(uGroundBase,uGroundAccent,sheen);
-    color=mix(color,uGroundHighlight,glint*.48*intensity);
+    float viewAngle=clamp((uCameraWorld.y-vWorld.y)/max(1.0,length(uCameraWorld.xz-vWorld.xz)),0.0,1.0);
+    float fresnel=pow(1.0-viewAngle,3.0);
+    float reflection=clamp(uWaterReflection,0.0,2.0);
+    color=mix(uGroundBase,uGroundAccent,sheen*(.4+.6*reflection));
+    color=mix(color,uGroundHighlight,clamp((glint*.48+fresnel*.22)*intensity*reflection,0.0,.9));
   }else if(uMode==10){
     // Near-featureless snow: extremely low-contrast powder and soft highlights.
     float n=noise2(vWorld.xz*(.35+density*.7));
@@ -94,7 +106,8 @@ void main(){
     float water=smoothstep(.40,.70,saltPatch);
     float glint=.5+.5*sin(p.x*1.4+uTime*.21+sin(p.y*.7));
     color=mix(uGroundBase,uGroundAccent,.48+.30*saltPatch);
-    color=mix(color,uGroundHighlight,.24*saltEdge*intensity+.20*glint*water);
+    float reflect=clamp(uWaterReflection,0.0,2.0);
+    color=mix(color,uGroundHighlight,.24*saltEdge*intensity+(.20*glint+.15*water)*water*reflect);
   }else if(uMode==14){
     // Moonlit flower field: dark violet soil with patches of low foliage.
     float moss=noise2(vWorld.xz*(.16+.10*density));
@@ -127,12 +140,43 @@ void main(){
     float wake=sin(p.y*(1.5+density*.28)-uTime*.28+wave*.6);
     float glint=pow(max(0.0,.5+.5*wave*wake),12.0);
     color=mix(uGroundBase,uGroundAccent,.15+.17*wave);
-    color=mix(color,uGroundHighlight,glint*.38*intensity);
+    color=mix(color,uGroundHighlight,glint*.38*intensity*uWaterReflection);
+  }else if(uMode==19){
+    // Slate rock, green lower slopes and pale snowy upper shoulders.
+    float strata=noise2(vWorld.xz*.18);
+    float snow=smoothstep(7.0,26.0,vWorld.y);
+    color=mix(uGroundBase,uGroundAccent,.31+.32*strata);
+    color=mix(color,uGroundHighlight,snow*.83);
+  }else if(uMode==20){
+    // Layered red sandstone walls with sediment bands.
+    float layer=sin(vWorld.y*.75+noise2(vWorld.xz*.08)*3.0);
+    color=mix(uGroundBase,uGroundAccent,.53+.18*layer);
+    color=mix(color,uGroundHighlight,.16+.1*layer);
+  }else if(uMode==21){
+    // Volcanic obsidian and stylized molten cracks.
+    float fissure=abs(sin(vWorld.x*.21+noise2(vWorld.xz*.045)*5.0)*sin(vWorld.z*.31));
+    float lava=1.0-smoothstep(.005,.075,fissure);
+    color=mix(uGroundBase,uGroundAccent,.1+.3*noise2(vWorld.xz*.25));
+    color=mix(color,uGroundHighlight,lava*.75*intensity);
+  }else if(uMode==22){
+    // Blue glacier with bright carved crevasse ridges.
+    float fissure=abs(sin(vWorld.x*.17+noise2(vWorld.xz*.035)*4.0));
+    float cracks=1.0-smoothstep(.025,.12,fissure);
+    color=mix(uGroundBase,uGroundAccent,.51+.25*noise2(vWorld.xz*.13));
+    color=mix(color,uGroundHighlight,.28+.35*(1.0-cracks));
+  }else if(uMode==23){
+    // Soft distant ground below suspended islands.
+    float cloud=noise2(vWorld.xz*.08+vec2(uTime*.006));
+    color=mix(uGroundBase,uGroundAccent,.25+.3*cloud);
+    color=mix(color,uGroundHighlight,.16*cloud);
   }
-  if(uMode==11||uMode==12||uMode==15){
+  if(uMode==11||uMode==12||uMode==15||uMode==19||uMode==20||uMode==21||uMode==22){
     // Sloped sides are visibly darker than the sun-facing dune / hillside.
     color*=.61+.46*vTerrainLight;
   }
+  float daylight=smoothstep(-.18,.18,sin((uWorldHour-6.0)*3.14159265/12.0));
+  color*=mix(.20,1.0,daylight)*(1.0-.58*uStorm);
+  color+=uGroundHighlight*.04*max(0.0,uSunStrength)*daylight;
   float alpha=clamp(fog*boundary*min(1.0,intensity),0.0,1.0);
   if(alpha<.003)discard;
   gl_FragColor=vec4(color,alpha);
