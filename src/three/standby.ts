@@ -1,6 +1,7 @@
 import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
-import type {ThreeComposition,ThreeObject,Vector3Tuple} from './model';
+import {threePose,type ThreeComposition,type ThreeObject,type Vector3Tuple} from './model';
+import {threeEntrancePose,type ThreeEntranceSettings} from './entrance';
 
 export type StandbyTransitionMode='exit-enter'|'morph';
 export type ThreeStandbySettings={
@@ -75,6 +76,18 @@ export function matchThreeObjects(from:readonly ThreeObject[],to:readonly ThreeO
 }
 const vec=(a:Vector3Tuple,b:Vector3Tuple,t:number):Vector3Tuple=>
   [mix(a[0],b[0],t),mix(a[1],b[1],t),mix(a[2],b[2],t)];
+/** Interpolate angular positions through the shortest route, even after hours of spin.
+ * Equivalent full turns never cause a high-speed rewind during a close-up morph. */
+export function blendRotation(from:Vector3Tuple,to:Vector3Tuple,t:number):Vector3Tuple{
+  const p=clamp01(t);
+  if(p===0)return [...from];
+  if(p===1)return [...to];
+  return from.map((start,i)=>{
+    const delta=to[i]-start;
+    const wrapped=((delta+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
+    return start+wrapped*p;
+  }) as Vector3Tuple;
+}
 const dot=(a:Vector3Tuple,b:Vector3Tuple)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const norm=(v:Vector3Tuple)=>Math.hypot(...v);
 const unit=(v:Vector3Tuple):Vector3Tuple=>{
@@ -150,7 +163,7 @@ export function morphPose(from:ThreeObject|undefined,to:ThreeObject|undefined,
     cameraSafeMorphPosition(oldPose?.position??a.position,newPose?.position??b.position,p,
       cameraPosition,Math.max(from.radius,to.radius)):
     vec(oldPose?.position??a.position,newPose?.position??b.position,p);
-  const rotation=vec(oldPose?.rotation??a.rotation,newPose?.rotation??b.rotation,p);
+  const rotation=blendRotation(oldPose?.rotation??a.rotation,newPose?.rotation??b.rotation,p);
   if(layer==='shared')return {position,rotation,radius:mix(a.radius,b.radius,p),opacity:1,colorMix:p};
   if(from&&to){
     // Unlike unmatched shapes, matched crossfades should never collapse to zero.
@@ -160,6 +173,33 @@ export function morphPose(from:ThreeObject|undefined,to:ThreeObject|undefined,
   }
   if(from)return {position,rotation,radius:Math.max(.0001,a.radius*(1-p)),opacity:1-p,colorMix:0};
   return {position,rotation,radius:Math.max(.0001,b.radius*p),opacity:p,colorMix:1};
+}
+/** Shared source of truth for the rendered solids AND their connecting wires.
+ * Both read this exact pose on the same frame; edges must never jump ahead of shapes. */
+export function standbyObjectPose(
+  from:ThreeObject|undefined,to:ThreeObject|undefined,
+  seconds:number,transition:ThreeStandbyTransition,
+  variant:'shared'|'old'|'new',
+  floatAmount:number,rotationAmount:number,entrance:ThreeEntranceSettings,
+  newSeed:string,
+):MorphPose{
+  if(transition.mode==='morph'){
+    const oldPose=from?threePose(from,transition.fromTime+seconds,floatAmount,rotationAmount):undefined;
+    const newPose=to?threePose(to,seconds,floatAmount,rotationAmount):undefined;
+    return morphPose(from,to,seconds/transition.duration,variant,oldPose,newPose);
+  }
+  const source=variant==='old'?from:to;
+  if(!source)throw new Error('退場・登場の対象図形がありません。');
+  const pose=threePose(source,variant==='old'?transition.fromTime+seconds:seconds,floatAmount,rotationAmount);
+  const phases=splitExitEnter(seconds,transition.duration);
+  const normalized=variant==='old'?1-phases.exit:phases.enter;
+  const arrival=threeEntrancePose(source,normalized*entrance.duration,
+    {...entrance,enabled:true},variant==='old'?transition.fromSeed:newSeed);
+  const position=pose.position.map((v,i)=>v+arrival.offset[i]) as Vector3Tuple;
+  const rotation:[number,number,number]=[...pose.rotation];
+  rotation[2]+=arrival.rotationZ;
+  return {position,rotation,radius:source.radius*arrival.scale,
+    opacity:arrival.opacity,colorMix:variant==='old'?0:1};
 }
 export function splitExitEnter(seconds:number,duration:number):{exit:number;enter:number}{
   const fraction=clamp01(seconds/Math.max(.001,duration));
