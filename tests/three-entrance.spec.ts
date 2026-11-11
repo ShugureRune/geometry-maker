@@ -18,7 +18,7 @@ async function start(page:Page){
 async function project(page:Page){
   await category(page,'書き出し');
   const download=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const file=await download;
   return JSON.parse((await readFile((await file.path())!)).toString('utf8')) as {
     settings:{animation:boolean;entrance:{enabled:boolean;mode:string;duration:number;stagger:boolean}};
@@ -85,7 +85,7 @@ test('3D random seed preserves entrance UI and settings JSON roundtrip / legacy 
   await category(page,'アニメーション');
   await expect(page.getByLabel('登場アニメーションの時間')).toHaveValue('9');
   const current=await project(page);
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'seed-settings.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))
   });
   await category(page,'アニメーション');
@@ -95,7 +95,7 @@ test('3D random seed preserves entrance UI and settings JSON roundtrip / legacy 
   await category(page,'書き出し');
   const old={...current,settings:{...current.settings}};
   delete (old.settings as Partial<typeof old.settings>).entrance;
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'old-3d.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(old))
   });
   await category(page,'アニメーション');
