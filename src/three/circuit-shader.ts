@@ -98,14 +98,14 @@ void main(){
     body=pcbFill(packageDistance,aa)*chip;
     float packageOutline=1.0-smoothstep(0.008-aa,0.008+aa,abs(packageDistance+0.015));
     silk=max(silk,packageOutline*chip*0.52);
-    float pinPitch=abs(fract((uv.y+0.155)/0.079)-0.5);
+    float pinPitch=abs(fract((uv.y+0.04)/0.080)-0.5);
     float pinMask=1.0-smoothstep(0.26,0.38,pinPitch);
     float leftRightPins=pcbFill(pcbBox(vec2(abs(uv.x)-0.234,uv.y),vec2(0.033,0.147),0.004),aa);
-    float verticalPitch=abs(fract((uv.x+0.15)/0.080)-0.5);
+    float verticalPitch=abs(fract((uv.x+0.04)/0.080)-0.5);
     float topBottomPins=pcbFill(pcbBox(vec2(uv.x,abs(uv.y)-0.178),vec2(0.145,0.025),0.004),aa)
       *(1.0-smoothstep(0.26,0.38,verticalPitch));
     metal=max(metal,max(pinMask*leftRightPins,topBottomPins)*chip);
-    // Pin one, die mark and chip's unobtrusive silk-screen serial bars.
+    // Pin one, die mark and chip's unobtrusive silk-screen serial bars. The center pins line up with the four copper feeds.
     metal=max(metal,(1.0-smoothstep(0.020-aa,0.020+aa,length(uv-vec2(-0.135,0.084))))*chip*0.55);
     silk=max(silk,pcbFill(pcbBox(uv-vec2(0.015,-0.015),vec2(0.082,0.008),0.001),aa)*0.25*chip);
   }else{
