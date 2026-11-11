@@ -7,6 +7,7 @@ import {
 import {seededRandom} from '../scene';
 import {worldDefaults} from './world-settings';
 import {NaturalDetails} from './NaturalDetails';
+import {WorldExtras} from './WorldExtras';
 import {hasTerrainRelief,OUTDOOR_SURFACE_HALF_EXTENT,terrainDefaults,terrainHeightAt,terrainSegments,terrainStretchCoordinate} from './terrain';
 import {floorGridPlacement} from './floor-grid';
 import {outdoorGrassCount,outdoorSnowCount,outdoorVisibilityDefaults,outdoorVisibleDistance,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
@@ -199,6 +200,7 @@ export function OutdoorRenderer(props:Props){
   return <>
     <OutdoorSurface {...props}/>
     <NaturalDetails {...props}/>
+    <WorldExtras {...props}/>
     {kind==='whiteout-snow'&&<OutdoorSnow {...props}/>}
     {kind==='foggy-grassland'&&<OutdoorGrass {...props}/>}
   </>;
