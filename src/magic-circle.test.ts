@@ -16,6 +16,8 @@ describe('2D magic circle studio',()=>{
     const a=generateMagicCircleScene('spell-117','1:1',magicDefaults);
     expect(generateMagicCircleScene('spell-117','1:1',magicDefaults)).toEqual(a);
     expect(generateMagicCircleScene('spell-118','1:1',magicDefaults)).not.toEqual(a);
+    const sparse={...magicDefaults,ornamentDensity:0,complexity:0} as const;
+    expect(generateMagicCircleScene('spell-117','1:1',sparse)).not.toEqual(generateMagicCircleScene('spell-118','1:1',sparse));
     expect(a.version).toBe(MAGIC_ALGORITHM_VERSION);
     expect(new Set(a.shapes.map(s=>s.id)).size).toBe(a.shapes.length);
   });
