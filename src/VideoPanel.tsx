@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import {canStreamVideo,pickVideoFile} from './video-file';
 import type {VideoDestination} from './video';
 import { ambientVideoSeconds } from './ambient';
@@ -43,11 +44,11 @@ export function VideoPanel({ settings, onChange, artwork }: { settings: VideoSet
   }
   return <details className="video-panel" onToggle={e => setOpen(e.currentTarget.open)}>
     <summary>動画書き出し</summary>
-    <p className="help">高解像度動画の書き出しはPC推奨。WebCodecs対応ブラウザが必要です。MP4はH.264エンコーダー対応時のみ利用できます。</p>
-    {artwork.ambient?.settings.enabled&&<p className="help">待機画面を書き出します。完全ループは1周期、無限変化は詳細設定の書き出し時間を使用します。</p>}
+    <HelpInfo>高解像度動画の書き出しはPC推奨。WebCodecs対応ブラウザが必要です。MP4はH.264エンコーダー対応時のみ利用できます。</HelpInfo>
+    {artwork.ambient?.settings.enabled&&<HelpInfo>待機画面を書き出します。完全ループは1周期、無限変化は詳細設定の書き出し時間を使用します。</HelpInfo>}
     {artwork.ambient?.settings.enabled&&<>
       {canStreamVideo()&&<label><input type="checkbox" disabled={busy} checked={disk} onChange={e=>setDisk(e.target.checked)}/> ファイルへ逐次保存（対応PC向け）</label>}
-      <p className="help">逐次保存は圧縮データをファイルへ順に書き込みます。通常保存の待機動画は30秒・64MBまでです。長い動画は対応PCのChrome/Edgeで逐次保存を使用してください。</p>
+      <HelpInfo>逐次保存は圧縮データをファイルへ順に書き込みます。通常保存の待機動画は30秒・64MBまでです。長い動画は対応PCのChrome/Edgeで逐次保存を使用してください。</HelpInfo>
       {longAmbient&&<p className="export-error">30秒を超える待機動画は逐次保存を選ぶか、時間を短くしてください。</p>}
     </>}
     <fieldset disabled={busy}>
@@ -62,7 +63,7 @@ export function VideoPanel({ settings, onChange, artwork }: { settings: VideoSet
       <label htmlFor="video-fps">動画FPS</label><select id="video-fps" value={fps} onChange={e => onChange({ ...settings, exportVideoFps: Number(e.target.value) as VideoSettings['exportVideoFps'] })}>{[24, 30, 60].map(f => <option key={f} value={f}>{f} fps</option>)}</select>
     </fieldset>
     <p className={invalid ? 'export-error' : 'help'}>{invalid || '256〜4096pxの偶数、合計8,388,608画素まで。現在の構図を維持し、比率が異なる場合は背景色の余白を追加します。'}</p>
-    <p className="help">長さ：約{(artwork.ambient?.settings.enabled?ambientVideoSeconds(artwork.ambient.settings):timeline.encodedSeconds).toFixed(2)}秒{artwork.ambient?.settings.enabled?'（待機画面）':'（図形の成長・文字・グリッドの動きを収録）'}。{!artwork.ambient?.settings.enabled&&!artwork.animation.animationEnabled&&!gridSeconds && 'アニメーションOFF：最初の背景フレーム以降は完成状態を保持します。'}</p>
+    <HelpInfo>長さ：約{(artwork.ambient?.settings.enabled?ambientVideoSeconds(artwork.ambient.settings):timeline.encodedSeconds).toFixed(2)}秒{artwork.ambient?.settings.enabled?'（待機画面）':'（図形の成長・文字・グリッドの動きを収録）'}。{!artwork.ambient?.settings.enabled&&!artwork.animation.animationEnabled&&!gridSeconds && 'アニメーションOFF：最初の背景フレーム以降は完成状態を保持します。'}</HelpInfo>
     {!videoAvailable() ? <p className="export-error">このブラウザはWebCodecs動画エンコードに未対応です。PCの最新Chrome/Edgeをお試しください。</p> : supported === false && !invalid ? <p className="export-error">選択した形式・解像度のエンコードに未対応です。別の形式・解像度をお試しください。</p> : null}
     <div className="export-actions"><button type="button" disabled={busy || !!invalid || longAmbient || supported !== true} onClick={() => void save()}>動画を書き出す</button>{busy && <button type="button" onClick={() => controller.current?.abort()}>動画書き出しをキャンセル</button>}</div>
     {busy && <><progress aria-label="動画書き出し進捗" value={progress} max="1" /><p>{Math.floor(progress * 100)}%</p></>}
