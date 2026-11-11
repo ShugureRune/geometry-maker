@@ -49,7 +49,12 @@ export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
   const [threeCategory,setThreeCategory]=useState<Category|null>('shapes');
   const activeCategory=renderMode==='2d'?category:threeCategory;
-  const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>({...threeDefaults,animation:!matchMedia('(prefers-reduced-motion: reduce)').matches}));
+  const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>{
+    const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return {...threeDefaults,animation:!reducedMotion,
+      // Keep the new reveal opt-in on devices explicitly requesting fewer animations.
+      entrance:{...threeDefaults.entrance!,enabled:!reducedMotion}};
+  });
   const threeApi=useRef<ThreePreviewHandle|null>(null);
   const threeView=useRef<ThreeView|undefined>(undefined);
   const [threeReady,setThreeReady]=useState(false);
