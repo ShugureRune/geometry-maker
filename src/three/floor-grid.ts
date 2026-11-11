@@ -3,6 +3,8 @@
  */
 export type FloorGridSettings={
   enabled:boolean;
+  /** Regular infinite grid or a flat printed-circuit-board pattern. */
+  style:'grid'|'circuit';
   color:string;
   opacity:number;
   spacing:number;
@@ -10,9 +12,14 @@ export type FloorGridSettings={
   glow:number;
   extent:number;
   scrollSpeed:number;
+  /** Probability of each connected PCB trace edge (0–100%). */
+  circuitDensity:number;
+  /** Speed of bright signals along the traces; zero stops the signals. */
+  circuitSpeed:number;
 };
 export const floorGridDefaults:FloorGridSettings={
   enabled:false,
+  style:'grid',
   color:'#43cfff',
   opacity:.62,
   spacing:2.5,
@@ -20,11 +27,21 @@ export const floorGridDefaults:FloorGridSettings={
   glow:80,
   extent:70,
   scrollSpeed:0,
+  circuitDensity:58,
+  circuitSpeed:1.5,
 };
 
 export function validateFloorGrid(value:unknown):FloorGridSettings{
   if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('3D床グリッド設定が不正です。');
   const g=value as Record<string,unknown>;
+  // Legacy 3D JSON had only a grid and no circuit options.
+  const style=g.style===undefined?floorGridDefaults.style:g.style;
+  const circuitDensity=g.circuitDensity===undefined?floorGridDefaults.circuitDensity:g.circuitDensity;
+  const circuitSpeed=g.circuitSpeed===undefined?floorGridDefaults.circuitSpeed:g.circuitSpeed;
+  if(style!=='grid'&&style!=='circuit')throw new Error('3D床デザインが不正です。');
+  if(typeof circuitDensity!=='number'||!Number.isFinite(circuitDensity)||circuitDensity<0||circuitDensity>100||
+     typeof circuitSpeed!=='number'||!Number.isFinite(circuitSpeed)||circuitSpeed<0||circuitSpeed>6)
+    throw new Error('3D床回路の密度・信号速度が範囲外です。');
   if(typeof g.enabled!=='boolean'||typeof g.color!=='string'||!/^#[0-9a-f]{6}$/i.test(g.color))
     throw new Error('3D床グリッドの有効状態・色が不正です。');
   const limits={opacity:[0,1],spacing:[.5,8],thickness:[.5,5],glow:[0,200],extent:[24,120],scrollSpeed:[0,8]} as const;
@@ -33,8 +50,9 @@ export function validateFloorGrid(value:unknown):FloorGridSettings{
     if(typeof v!=='number'||!Number.isFinite(v)||v<min||v>max)
       throw new Error(`3D床グリッドの${key}が範囲外です。`);
   }
-  return {enabled:g.enabled,color:g.color,opacity:g.opacity as number,spacing:g.spacing as number,
-    thickness:g.thickness as number,glow:g.glow as number,extent:g.extent as number,scrollSpeed:g.scrollSpeed as number};
+  return {enabled:g.enabled,style,color:g.color,opacity:g.opacity as number,spacing:g.spacing as number,
+    thickness:g.thickness as number,glow:g.glow as number,extent:g.extent as number,scrollSpeed:g.scrollSpeed as number,
+    circuitDensity,circuitSpeed};
 }
 
 /** World-unit scroll, seamless every cell; obeys 3D play/pause and JSON restored time. */
