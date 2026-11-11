@@ -42,7 +42,7 @@ test('create, drag, directly edit and export a title from the live canvas',async
  expect(position).toBeGreaterThan(55);
  await page.getByRole('navigation',{name:'設定カテゴリー'}).getByRole('button',{name:'書き出し'}).click();
  const pending=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ await page.getByRole('button',{name:'作品の設定を保存'}).click();
  const json=JSON.parse((await readFile((await (await pending).path())!)).toString());
  expect(json.textOverlay).toMatchObject({text:'移動できた！',fontSize:130,color:'#23bbdd',colorMode:'solid'});
  expect(json.textOverlay.x).toBeGreaterThan(55);
