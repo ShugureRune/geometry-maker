@@ -1,3 +1,4 @@
+import {HelpInfo} from '../HelpInfo';
 import type {ThreeSettings} from './settings';
 import {standbyDefaults,type ThreeStandbySettings} from './standby';
 import {ThreeRange} from './ThreeControls';
@@ -53,10 +54,10 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
           '自動再生中。現在の3D構図が完成してから切り替わります。'}
       </p>
     </>}
-    <p className="help">
+    <HelpInfo>
       退場→登場では現在の図形が登場演出を逆再生してから次の図形が出現。
       モーフでは似た図形同士が移動・変形・色変化し、余った図形は縮小消滅、
       増えた図形は縮小状態から登場します。既存の3D登場・回転設定は保持します。
-    </p>
+    </HelpInfo>
   </section>;
 }
