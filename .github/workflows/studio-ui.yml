@@ -5,20 +5,24 @@ on:
     branches: [main]
     paths:
       - 'src/App.tsx'
+      - 'src/studio-autosave.ts'
       - 'src/main.tsx'
       - 'src/studio-redesign.css'
       - 'src/StudioCommandPalette.tsx'
       - 'src/SettingsCategories.tsx'
       - 'tests/studio-ui.spec.ts'
+      - 'tests/studio-autosave.spec.ts'
       - '.github/workflows/studio-ui.yml'
   pull_request:
     paths:
       - 'src/App.tsx'
+      - 'src/studio-autosave.ts'
       - 'src/main.tsx'
       - 'src/studio-redesign.css'
       - 'src/StudioCommandPalette.tsx'
       - 'src/SettingsCategories.tsx'
       - 'tests/studio-ui.spec.ts'
+      - 'tests/studio-autosave.spec.ts'
       - '.github/workflows/studio-ui.yml'
   workflow_dispatch:
 
@@ -38,7 +42,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Test Studio v2 desktop and iPhone-size UI
-        run: npx playwright test tests/studio-ui.spec.ts
+        run: npx playwright test tests/studio-ui.spec.ts tests/studio-autosave.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
