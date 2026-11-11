@@ -1,4 +1,5 @@
 import {ThreeRange} from './ThreeControls';
+import {WEATHER_TYPES,worldDefaults,type WeatherType,type WorldSettings} from './world-settings';
 import {hasTerrainRelief,terrainDefaults,type TerrainSettings} from './terrain';
 import {hasOutdoorVisibility,outdoorVisibilityDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyDefaults,type SkySettings,type SkyKind,type SkyPalette,type OutdoorVisibilitySettings} from './sky-settings';
 
@@ -7,6 +8,9 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
   const update=(patch:Partial<SkySettings>)=>onChange({...sky,...patch});
   const terrain=sky.terrain??terrainDefaults;
   const updateTerrain=(patch:Partial<TerrainSettings>)=>update({terrain:{...terrain,...patch}});
+  const world=sky.world??worldDefaults;
+  const updateWorld=(patch:Partial<WorldSettings>)=>update({world:{...world,...patch}});
+  const water=['shallow-water','salt-flat','dark-mirror'].includes(sky.kind);
   const visibility=sky.visibility??outdoorVisibilityDefaults;
   const updateVisibility=(patch:Partial<OutdoorVisibilitySettings>)=>update({visibility:{...visibility,...patch}});
   const preset=SKY_PALETTES[sky.kind],palette=sky.colors?.[sky.kind]??preset;
@@ -31,7 +35,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
     update({colors:next});
   };
   return <section className="control-section three-controls" aria-labelledby="sky-heading">
-    <h3 id="sky-heading">3D空間の背景（18種類）</h3>
+    <h3 id="sky-heading">3D空間の背景（23種類）</h3>
     <label htmlFor="three-sky-kind">3D背景の種類</label>
     <select id="three-sky-kind" value={sky.kind} onChange={e=>update({kind:e.target.value as SkyKind})}>
       {SKY_KINDS.map(kind=><option value={kind} key={kind}>{SKY_LABELS[kind]}</option>)}
@@ -43,6 +47,55 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         step={10} unit="%" onChange={density=>update({density})}/>
       <ThreeRange id="three-sky-motion" label={naturalMotion[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'波の動く速さ':sky.kind==='whiteout-snow'?'雪が舞う速さ':'風の速さ'):'背景が動く速さ')} value={sky.motion} min={0} max={300}
         step={10} unit="%" onChange={motion=>update({motion})}/>
+      {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
+        <legend>太陽・時間帯と陰影</legend>
+        <ThreeRange id="three-world-hour" label="時間帯（0=深夜・6=朝・12=昼・18=夕方）"
+          value={world.timeOfDay} min={0} max={24} step={1} unit="時"
+          onChange={timeOfDay=>updateWorld({timeOfDay})}/>
+        <ThreeRange id="three-world-sun" label="太陽光の強さ"
+          value={world.sunStrength} min={0} max={200} step={10} unit="%"
+          onChange={sunStrength=>updateWorld({sunStrength})}/>
+      </fieldset>}
+      {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
+        <legend>自然物・立体雲・天候</legend>
+        <ThreeRange id="three-world-nature" label="草・花・岩などの密度"
+          value={world.natureDensity} min={0} max={200} step={10} unit="%"
+          onChange={natureDensity=>updateWorld({natureDensity})}/>
+        <ThreeRange id="three-world-clouds" label="立体雲の量"
+          value={world.cloudAmount} min={0} max={200} step={10} unit="%"
+          onChange={cloudAmount=>updateWorld({cloudAmount})}/>
+        <label htmlFor="three-world-weather">天候</label>
+        <select id="three-world-weather" value={world.weather}
+          onChange={e=>updateWorld({weather:e.target.value as WeatherType})}>
+          {WEATHER_TYPES.map(kind=><option key={kind} value={kind}>{({
+            clear:'晴れ',rain:'雨',snow:'雪',storm:'嵐',
+          } as Record<WeatherType,string>)[kind]}</option>)}
+        </select>
+        {world.weather!=='clear'&&<ThreeRange id="three-world-weather-strength" label="天候の強さ"
+          value={world.weatherStrength} min={0} max={200} step={10} unit="%"
+          onChange={weatherStrength=>updateWorld({weatherStrength})}/>}
+      </fieldset>}
+      {water&&<fieldset className="three-kind-fieldset">
+        <legend>水面の反射・波</legend>
+        <ThreeRange id="three-world-water-reflection" label="空の反射の強さ"
+          value={world.waterReflection} min={0} max={200} step={10} unit="%"
+          onChange={waterReflection=>updateWorld({waterReflection})}/>
+        <ThreeRange id="three-world-water-waves" label="水面の波・揺らぎ"
+          value={world.waterWaves} min={0} max={200} step={10} unit="%"
+          onChange={waterWaves=>updateWorld({waterWaves})}/>
+        <p className="help">リアルタイムの空色・光の方向を使った軽量な水面反射です。実際の図形・山を鏡写しにするフルシーン反射とは異なります。</p>
+      </fieldset>}
+      {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
+        <legend>探索カメラ</legend>
+        <label className="three-checkbox" htmlFor="three-world-explore">
+          <input id="three-world-explore" type="checkbox" checked={world.explore}
+            onChange={e=>updateWorld({explore:e.target.checked})}/> 自由探索モードを有効化
+        </label>
+        <ThreeRange id="three-world-explore-speed" label="探索移動速度"
+          value={world.exploreSpeed} min={1} max={20} step={1} unit="倍"
+          onChange={exploreSpeed=>updateWorld({exploreSpeed})}/>
+        <p className="help">PCでは画面クリックでマウス視点操作、WASDで移動、Space/Shiftで上下移動。Escでマウス操作を解除。スマホでは画面上の矢印で移動・回転できます。</p>
+      </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
         <legend>屋外の描画距離・霧</legend>
         <ThreeRange id="three-outdoor-view-distance" label="描画距離" value={visibility.distance}
@@ -78,6 +131,6 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <button type="button" onClick={resetPalette} disabled={!sky.colors?.[sky.kind]}>この背景の標準色に戻す</button>
       </fieldset>
     </>}
-    <p className="help">18種類の3D背景に対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</p>
+    <p className="help">23種類の3D背景に対応。時間帯・太陽光・天候・自然物・探索モードに対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</p>
   </section>;
 }
