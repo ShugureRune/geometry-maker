@@ -158,9 +158,12 @@ export default function App() {
     let elapsed=0,last=performance.now();
     const timer=window.setInterval(()=>{
       const now=performance.now(),delta=Math.max(0,Math.min(.5,(now-last)/1000));last=now;
+      const focus=document.activeElement;
+      const typing=focus instanceof HTMLTextAreaElement||
+        (focus instanceof HTMLInputElement&&['text','number','search'].includes(focus.type))||
+        (focus instanceof HTMLElement&&focus.isContentEditable);
       if(document.hidden||threeExportBusy||
-        (standby.pauseOnInteraction&&(now<standbyInteractionUntil.current||
-          !!document.activeElement?.closest('input,select,textarea,[contenteditable=true]'))))return;
+        (standby.pauseOnInteraction&&(now<standbyInteractionUntil.current||typing)))return;
       elapsed+=delta;
       if(elapsed>=standby.intervalSeconds){elapsed=0;beginStandbyTransition();}
     },200);
