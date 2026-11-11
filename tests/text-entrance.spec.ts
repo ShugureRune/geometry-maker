@@ -18,7 +18,7 @@ test('text entrance settings animate preview independently and save completed SV
  await expect.poll(async()=>Number(await overlay.getAttribute('data-text-progress')),{timeout:4000}).toBe(1);
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const jsonPending=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ await page.getByRole('button',{name:'作品の設定を保存'}).click();
  const json=JSON.parse((await readFile((await (await jsonPending).path())!)).toString());
  expect(json.textOverlay).toMatchObject({enabled:true,entrance:'slide-up',entranceDelay:.3,entranceDuration:1.2,
   entranceEasing:'linear',text:'登場！\nGeometry 𒉼'});
