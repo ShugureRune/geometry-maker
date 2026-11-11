@@ -514,3 +514,30 @@ test('3D floor motherboard central core, IC count and signals change PNG and sur
   expect(digest(await png(page))).toBe(paused);
   expect(errors).toEqual([]);
 });
+
+test('3D floor dense CPU city preset amplifies circuitry and remains deterministic',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{
+    if(message.type()==='error'&&/WebGLProgram|Shader Error|VALIDATE_STATUS|GLSL/.test(message.text()))
+      errors.push(message.text());
+  });
+  await start(page);
+  await category(page,'アニメーション');
+  await page.getByLabel('3Dアニメーションを有効化').uncheck();
+  await category(page,'背景');
+  await page.getByLabel('3D床グリッドを有効化').check();
+  await page.getByLabel('床のデザイン').selectOption('circuit');
+  const before=digest(await png(page));
+  await category(page,'背景');
+  await page.getByRole('button',{name:'巨大演算都市（高密度）'}).click();
+  await expect(page.locator('#floor-circuit-core-scale')).toHaveValue('1.6');
+  await expect(page.locator('#floor-circuit-chip-count')).toHaveValue('24');
+  await expect(page.locator('#floor-circuit-detail')).toHaveValue('95');
+  await expect(page.locator('#floor-circuit-density')).toHaveValue('90');
+  await expect(page.getByLabel('中央演算コア・立体ICチップを表示')).toBeChecked();
+  const after=digest(await png(page));
+  expect(after).not.toBe(before);
+  expect(digest(await png(page))).toBe(after);
+  expect(errors).toEqual([]);
+});
