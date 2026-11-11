@@ -368,7 +368,12 @@ export function CircuitWorld({grid,seconds,sceneHeight,view,low=false}:{
   view:RefObject<ThreeView|undefined>;low?:boolean;
 }){
   const group=useRef<Group>(null);
-  const layout=useMemo(()=>makeCircuitLayout(grid,low),[grid,low]);
+  // Do not destroy and recreate the chip GPU instances when the user hides
+  // this layer. Keep the exact same geometry alive and just toggle visibility,
+  // preventing a different PNG or a one-frame initialization flash.
+  const layout=useMemo(()=>makeCircuitLayout({...grid,circuitWorldEnabled:true},low),
+    [grid.enabled,grid.style,grid.spacing,grid.circuitCoreScale,
+      grid.circuitChipCount,grid.circuitDensity,grid.circuitDetail,low]);
   const copper=useMemo(()=>trackGeometry(layout.tracks,Math.max(.045,grid.thickness*.062),.061),
     [layout,grid.thickness]);
   const backing=useMemo(()=>trackGeometry(layout.tracks,Math.max(.08,grid.thickness*.135),.051),
@@ -380,7 +385,7 @@ export function CircuitWorld({grid,seconds,sceneHeight,view,low=false}:{
     if(group.current)group.current.position.set(...floorGridPlacement(sceneHeight,view.current?.target));
   });
   if(layout.coreHalf<=0)return null;
-  return <group ref={group} name="living-3d-motherboard" rotation={[-Math.PI/2,0,0]}
+  return <group ref={group} name="living-3d-motherboard" visible={grid.circuitWorldEnabled} rotation={[-Math.PI/2,0,0]}
     position={floorGridPlacement(sceneHeight,view.current?.target)} frustumCulled={false}>
     <mesh geometry={backing} renderOrder={-0.5}>
       <meshBasicMaterial color={grid.circuitAccentColor} side={DoubleSide} toneMapped={false}
