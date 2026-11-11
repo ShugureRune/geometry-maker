@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaults,EASINGS,type AnimationSettings } from './animation';
 export function usePlayback(settings:AnimationSettings){
@@ -36,5 +37,5 @@ export function AnimationControls({settings,onChange,playback}:{settings:Animati
  <div className="play-buttons"><button disabled={!settings.animationEnabled} onClick={()=>{if(position===1)setPosition(0);setPlaying(!playing);}}>{playing?'一時停止':'再生'}</button><button onClick={()=>{onChange({...settings,animationEnabled:true});playback.restart();}}>最初から再生</button><button onClick={()=>{setPlaying(false);setPosition(1);}}>完成状態を表示</button></div>
  <label>タイムライン<input type="range" min="0" max="1000" step="1" value={Math.round(position*1000)} onChange={e=>{setPlaying(false);setPosition(+e.target.value/1000);}}/></label>
  <output data-testid="playback-position">{(position*settings.animationDuration).toFixed(2)} / {settings.animationDuration}秒（{Math.round(position*100)}%）</output>
- <p className="help">有効時はシード確定・再生成で最初から再生します。ページを開いただけでは再生しません。静止画保存は常に完成状態です。</p></section>;
+ <HelpInfo>有効時はシード確定・再生成で最初から再生します。ページを開いただけでは再生しません。静止画保存は常に完成状態です。</HelpInfo></section>;
 }
