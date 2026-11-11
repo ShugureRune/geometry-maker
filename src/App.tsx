@@ -1,4 +1,5 @@
-import { SettingsCategories, type Category } from './SettingsCategories';
+import { SettingsCategories, categories, type Category } from './SettingsCategories';
+import {StudioCommandPalette, type StudioCommand} from './StudioCommandPalette';
 import {ShapeKindControls} from './ShapeKindControls';
 import {MagicCircleControls,MagicColorControls} from './MagicCircleControls';
 import {MagicCirclePreview} from './MagicCirclePreview';
@@ -23,7 +24,7 @@ import {PreviewTextEditor} from './PreviewTextEditor';
 import {textOverlayDefaults,type TextOverlaySettings} from './text-overlay';
 import {applyImagePalette} from './image-palette';
 import { coloredBackground, legacyColors, reseedColors, rerollColor, type Slot, type ColorSettings } from './colors';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {generateThreeComposition, spaceThreeComposition, THREE_ALGORITHM_VERSION, visibleThreeObjects} from './three/model';
 import {generateCelestialBodies, celestialDefaults} from './three/celestial';
 import {threeDefaults, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './three/settings';
@@ -38,6 +39,7 @@ import {SkyControls} from './three/SkyControls';
 import {floorGridDefaults} from './three/floor-grid';
 import type {ThreeProject} from './three/project';
 import './three/three.css';
+import './studio-redesign.css';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, type AlgorithmVersion, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
@@ -51,6 +53,30 @@ export default function App() {
   const [category,setCategory]=useState<Category|null>('shapes');
   const [threeCategory,setThreeCategory]=useState<Category|null>('shapes');
   const activeCategory=renderMode==='2d'?category:threeCategory;
+  const [studioFocus,setStudioFocus]=useState(false);
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+  const [commandOpen,setCommandOpen]=useState(false);
+  const closeCommands=useCallback(()=>setCommandOpen(false),[]);
+  const [sidebarWidth,setSidebarWidth]=useState(()=>{
+    try{
+      const stored=Number(localStorage.getItem('geometry-studio-sidebar-width'));
+      return Number.isFinite(stored)&&stored>=280&&stored<=480?stored:360;
+    }catch{return 360;}
+  });
+  useEffect(()=>{
+    try{localStorage.setItem('geometry-studio-sidebar-width',String(sidebarWidth));}catch{}
+  },[sidebarWidth]);
+  useEffect(()=>{
+    const handler=(event:KeyboardEvent)=>{
+      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
+        event.preventDefault();setCommandOpen(prev=>!prev);
+      }else if(event.key==='Escape'&&studioFocus&&!commandOpen){
+        setStudioFocus(false);
+      }
+    };
+    window.addEventListener('keydown',handler);
+    return()=>window.removeEventListener('keydown',handler);
+  },[studioFocus,commandOpen]);
   const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>{
     const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
     return {...threeDefaults,animation:!reducedMotion,
@@ -182,6 +208,17 @@ export default function App() {
     threeComposition,threeBaseComposition,threeBackground,visualTheme,colorSettings]);
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
   function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
+  function goToSettings(next:Category){
+    if(next==='text'&&(renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION))return;
+    (renderMode==='2d'?setCategory:setThreeCategory)(next);
+    setStudioFocus(false);setSidebarCollapsed(false);
+    // Only reposition the page on phones; desktop keeps the live preview in place.
+    if(matchMedia('(max-width:720px)').matches){
+      requestAnimationFrame(()=>document.querySelector('.studio-controls')?.scrollIntoView({
+        block:'start',behavior:'smooth'
+      }));
+    }
+  }
   function chooseVisualTheme(theme:VisualTheme){
    setVisualTheme(theme);
    if(theme==='standard'){
@@ -197,21 +234,64 @@ export default function App() {
   }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
   function completedArtwork(transparentOnly=false){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={twoDBackground} transparent={version===MAGIC_ALGORITHM_VERSION&&transparentOnly} textOverlay={version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
-  return <div className="app">
-    <header className="topbar">
+  const studioCommands:StudioCommand[]=[
+    ...categories.filter(item=>!(renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION)&&item.id==='text'
+      ?false:renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION?item.id!=='text':true)
+      .map(item=>({id:'open-'+item.id,title:item.label+'の設定を開く',
+        description:'設定パネル / '+item.label,keywords:item.id,run:()=>goToSettings(item.id)})),
+    {id:'seed',title:'新しいシードを生成',description:'ランダムな構図をすぐ生成',keywords:'random 乱数',run:randomizeSeed},
+    {id:'focus',title:studioFocus?'集中表示を終了':'プレビューに集中',
+      description:'作業パネルを隠してキャンバスを広げる',keywords:'full screen canvas',run:()=>setStudioFocus(v=>!v)},
+    {id:'panel',title:'設定パネルの表示を切り替える',
+      description:'サイドバーを開く・閉じる',keywords:'sidebar',run:()=>{setStudioFocus(false);setSidebarCollapsed(v=>!v);}},
+    {id:'theme',title:'ライト・ダーク表示を切り替える',
+      description:'編集画面の配色だけを変更',keywords:'theme',run:()=>setUiTheme(v=>v==='dark'?'light':'dark')},
+    {id:'2d',title:'2Dモードに切り替える',description:'SVG編集に戻る',run:()=>switchRenderMode('2d')},
+    {id:'3d',title:'3Dモードに切り替える',description:'WebGLキャンバスを表示',run:()=>switchRenderMode('3d')},
+  ];
+  const workspaceStyle={'--studio-sidebar-width':sidebarWidth+'px'} as CSSProperties;
+  return <div className={'app studio-app'+(studioFocus?' studio-focus':'')+
+    (sidebarCollapsed?' studio-sidebar-collapsed':'')}>
+    <header className="topbar studio-topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
       <div className="render-mode-switch segmented" role="group" aria-label="描画モード">
         <button type="button" aria-pressed={renderMode==='2d'} onClick={()=>switchRenderMode('2d')}>2Dモード</button>
         <button type="button" aria-pressed={renderMode==='3d'} onClick={()=>switchRenderMode('3d')}>3Dモード</button>
       </div>
-      <button className="ui-theme-button" onClick={()=>setUiTheme(t=>t==='dark'?'light':'dark')} aria-label="UIテーマ切り替え">{uiTheme==='dark'?'ライトモード':'ダークモード'}</button><div className="mode-badge"><span /> {renderMode==='2d'?'2D':'3D'} STUDIO <span className="version">v0.1</span></div>
+      <div className="studio-topbar-tools">
+        <button type="button" className="studio-command-launch" aria-label="コマンド検索"
+          title="Ctrl / ⌘ + K" onClick={()=>setCommandOpen(true)}>
+          <span aria-hidden="true">⌕</span><span>検索</span><kbd>⌘ K</kbd>
+        </button>
+        <button type="button" className="studio-panel-toggle" aria-label="設定パネルの表示切り替え"
+          aria-pressed={!sidebarCollapsed&&!studioFocus}
+          onClick={()=>{if(studioFocus){setStudioFocus(false);setSidebarCollapsed(false);}
+            else setSidebarCollapsed(v=>!v);}}>
+          <span aria-hidden="true">▥</span><span>パネル</span>
+        </button>
+        <button className="ui-theme-button studio-theme-toggle" type="button"
+          onClick={()=>setUiTheme(t=>t==='dark'?'light':'dark')} aria-label="UIテーマ切り替え"
+          title="UIテーマ切り替え">{uiTheme==='dark'?'☀':'☾'}<span>{uiTheme==='dark'?'ライト':'ダーク'}</span></button>
+      </div>
+      <div className="mode-badge"><span /> {renderMode==='2d'?'2D':'3D'} STUDIO <span className="version">v2</span></div>
     </header>
 
-    <main className="workspace">
-      <aside className="controls" aria-label="生成設定">
+    <main className="workspace studio-workspace" style={workspaceStyle}>
+      <aside className="controls studio-controls" aria-label="生成設定" id="studio-settings">
+        <div className="studio-controls-header">
+          <span><i aria-hidden="true"/> INSPECTOR</span>
+          <button type="button" aria-label="設定パネルを折りたたむ" title="パネルを折りたたむ"
+            onClick={()=>setSidebarCollapsed(true)}>✕</button>
+        </div>
         <div className="panel-intro"><span className="eyebrow">MAKE IT YOURS</span><h2>ひとつのシードから、<br />あなただけの幾何学を。</h2><p>文字や数字を変えて、新しい構図に出会う。</p></div>
 
         <SettingsCategories active={activeCategory} onChange={renderMode==='2d'?setCategory:setThreeCategory} disabled={renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION?['text']:[]}/>
+        <div className="studio-sidebar-resize">
+          <label htmlFor="studio-sidebar-width">パネル幅</label>
+          <input id="studio-sidebar-width" type="range" min={280} max={480} step={20}
+            value={sidebarWidth} onChange={event=>setSidebarWidth(Number(event.target.value))}/>
+          <output htmlFor="studio-sidebar-width">{sidebarWidth}px</output>
+        </div>
         <div id="panel-shapes" className="category-panel" data-category="shapes" role="region" aria-labelledby="category-shapes" hidden={activeCategory!=='shapes'}>
           <h2 className="category-title">図形</h2>
         <section className="control-section" aria-labelledby="seed-heading">
@@ -361,8 +441,22 @@ export default function App() {
         </div>
       </aside>
 
-      <section className="preview-panel" aria-labelledby="preview-heading">
-        <div className="preview-toolbar"><div><span className="eyebrow">YOUR CANVAS</span><h2 id="preview-heading">ライブプレビュー</h2></div><span className="live-indicator"><i /> リアルタイム反映</span></div>
+      <section className="preview-panel studio-preview-panel" aria-labelledby="preview-heading">
+        <div className="preview-toolbar studio-preview-toolbar">
+          <div className="studio-preview-heading">
+            <span className="eyebrow">01 / LIVE CANVAS</span>
+            <h2 id="preview-heading">ライブプレビュー <span className="studio-canvas-version">{renderMode==='3d'?'3D':'2D'}</span></h2>
+            <p>アイデアを即座に描画、すべてリアルタイムに反映。</p>
+          </div>
+          <div className="studio-preview-toolbar-actions">
+            <span className="live-indicator"><i/> リアルタイム反映</span>
+            <button type="button" className="studio-focus-button" aria-pressed={studioFocus}
+              onClick={()=>setStudioFocus(v=>!v)}>
+              <span aria-hidden="true">{studioFocus?'↙':'⤢'}</span>
+              {studioFocus?'集中表示を終了':'集中表示'}
+            </button>
+          </div>
+        </div>
         <div className="canvas-stage">
           {renderMode==='2d'?<PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
@@ -387,6 +481,25 @@ export default function App() {
             </ThreeBoundary>
           </div>}
         </div>
+        <div className="studio-quickbar" role="group" aria-label="クイック調整">
+          <div className="studio-quickbar-caption"><span className="studio-quickbar-symbol" aria-hidden="true">✳</span>
+            <span><strong>QUICK TUNE</strong><small>今のシーンを調整</small></span></div>
+          <label className="studio-quick-field">比率
+            <select aria-label="クイック比率" value={ratio} onChange={event=>setRatio(event.target.value as Ratio)}>
+              {Object.keys(RATIOS).map(value=><option key={value} value={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="studio-quick-field studio-quick-density">密度 <span>{density}%</span>
+            <input type="range" aria-label="クイック密度" min={0} max={100} step={5} value={density}
+              onChange={event=>setDensity(Number(event.target.value))}/>
+          </label>
+          <div className="studio-quick-actions">
+            <button type="button" onClick={randomizeSeed} title="新しいシードを生成">
+              <span aria-hidden="true">↻</span> 新しいシード</button>
+            <button type="button" className="studio-quick-export" onClick={()=>goToSettings('export')}>
+              <span aria-hidden="true">↥</span> 書き出しへ</button>
+          </div>
+        </div>
         {renderMode==='3d'&&<div className="three-view-toolbar"><p>ドラッグで回転 · ホイール／ピンチでズーム</p><button type="button" disabled={!threeReady} onClick={()=>threeApi.current?.resetView()}>視点をリセット</button></div>}
         <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> {renderMode==='2d'?'SVG · 2D':'WebGL · 3D'}</span><span>{threeComposition && renderMode==='3d' ? visibleThreeObjects(threeComposition,density,threeSettings.enabledKinds).length + generateCelestialBodies(threeComposition,threeSettings.celestial??celestialDefaults,density).length : scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{renderMode==='2d'?version:THREE_ALGORITHM_VERSION}</span></div>
@@ -394,6 +507,19 @@ export default function App() {
       </section>
 
     </main>
+    <nav className="studio-mobile-dock" aria-label="モバイルクイック操作">
+      <button type="button" onClick={()=>goToSettings('shapes')}>
+        <span aria-hidden="true">◈</span><small>設定</small></button>
+      <button type="button" onClick={randomizeSeed}>
+        <span aria-hidden="true">↻</span><small>新規</small></button>
+      <button type="button" onClick={()=>goToSettings('export')}>
+        <span aria-hidden="true">↥</span><small>保存</small></button>
+      <button type="button" aria-pressed={studioFocus} onClick={()=>setStudioFocus(v=>!v)}>
+        <span aria-hidden="true">{studioFocus?'↙':'⤢'}</span><small>{studioFocus?'戻る':'集中'}</small></button>
+      <button type="button" onClick={()=>setCommandOpen(true)}>
+        <span aria-hidden="true">⌕</span><small>探す</small></button>
+    </nav>
+    <StudioCommandPalette open={commandOpen} onClose={closeCommands} commands={studioCommands}/>
     <footer><span>GENERATIVE DESIGN, DETERMINISTIC BY NATURE.</span><span>2D / 3D 背景スタジオ</span></footer>
   </div>;
 }
