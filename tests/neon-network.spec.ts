@@ -24,7 +24,7 @@ async function savePNG(page:Page,width=512,height=512){
 }
 const hash=(bytes:Buffer)=>createHash('sha256').update(bytes).digest('hex');
 async function saveJSON(page:Page){
-  await category(page,'書き出し');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  await category(page,'書き出し');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const download=await pending;return readFile((await download.path())!,'utf8');
 }
 
@@ -79,11 +79,11 @@ test('pulse shares the pausable 3D clock and JSON restores exact paused pose and
   const saved=await saveJSON(page),project=JSON.parse(saved);expect(project.settings.network.animation).toBe('pulse');expect(project.elapsedSeconds).toBeGreaterThan(0);
   await category(page,'装飾');await page.getByRole('button',{name:'スタンダード',exact:true}).click();
   await category(page,'図形');await page.getByLabel('シード値',{exact:true}).fill('changed');
-  await category(page,'書き出し');await page.getByLabel('3D設定JSONファイル',{exact:true}).setInputFiles({name:'network.json',mimeType:'application/json',buffer:Buffer.from(saved)});
+  await category(page,'書き出し');await page.getByLabel('保存した3D設定ファイル',{exact:true}).setInputFiles({name:'network.json',mimeType:'application/json',buffer:Buffer.from(saved)});
   await expect(page.getByText('3D設定を読み込みました。',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled();
   await expect(page.getByTestId('current-seed')).toHaveText('cosmic-3d');expect(hash(await savePNG(page))).toBe(hash(paused));
   const after=JSON.parse(await saveJSON(page));expect(after.settings).toEqual(project.settings);expect(after.elapsedSeconds).toBe(project.elapsedSeconds);
-  await page.getByLabel('3D設定JSONファイル',{exact:true}).setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{')});
+  await page.getByLabel('保存した3D設定ファイル',{exact:true}).setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{')});
   await expect(page.getByRole('alert')).toContainText('JSONの書式');await expect(page.getByTestId('current-seed')).toHaveText('cosmic-3d');
 });
 
