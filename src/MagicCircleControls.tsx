@@ -10,26 +10,26 @@ export function MagicCircleControls({value,onChange,seed}:Props&{seed:string}){
   const range=(id:string,label:string,key:'complexity'|'ringCount'|'symmetry'|'ornamentDensity'|'strokeScale'|'rotationTurns'|'chaos',min:number,max:number,step=1,suffix='')=>
     <div className="magic-range" key={id}>
       <label className="range-label" htmlFor={id}>{label} <output htmlFor={id}>{value[key]}{suffix}</output></label>
-      <input id={id} type="range" min={min} max={max} step={step} value={value[key]} onChange={e=>set(key,Number(e.target.value))}/>
+      <input id={id} type="range" aria-label={id==='magic-chaos'?'構造のランダム度':undefined} min={min} max={max} step={step} value={value[key]} onChange={e=>set(key,Number(e.target.value))}/>
     </div>;
   return <section className="control-section magic-controls" aria-labelledby="magic-controls-title" data-testid="magic-controls">
     <h3 id="magic-controls-title">魔法陣スタジオ <span aria-hidden="true">✧</span></h3>
     <HelpInfo>中心対称の専用アルゴリズム。シードを変えても円環と紋様が整うように生成します。</HelpInfo>
-    <label htmlFor="magic-generation-mode">魔法陣の生成方式</label>
-    <select id="magic-generation-mode" value={value.generationMode} onChange={e=>set('generationMode',e.target.value as MagicCircleSettings['generationMode'])}>
+    <label htmlFor="magic-generation-mode">作り方</label>
+    <select id="magic-generation-mode" aria-label="魔法陣の生成方式" value={value.generationMode} onChange={e=>set('generationMode',e.target.value as MagicCircleSettings['generationMode'])}>
       <option value="classic">クラシック — 3種類のスタイル</option>
       <option value="infinite">無限生成 — シードで構造から変える</option>
     </select>
     {value.generationMode==='classic'?<>
-    <label htmlFor="magic-style">魔法陣のスタイル</label>
-    <select id="magic-style" value={value.style} onChange={e=>set('style',e.target.value as MagicCircleSettings['style'])}>
+    <label htmlFor="magic-style">見た目の種類</label>
+    <select id="magic-style" aria-label="魔法陣のスタイル" value={value.style} onChange={e=>set('style',e.target.value as MagicCircleSettings['style'])}>
       <option value="star">星紋・召喚陣</option>
       <option value="geometric">幾何学・錬成陣</option>
       <option value="crest">紋章・花弁陣</option>
     </select>
     </>:<div className="magic-infinite-options" data-testid="magic-infinite-controls">
       <HelpInfo>シードごとに中心紋様・各円環の役割・装飾・対称性を組み替えます。必ず放射状の整った構図になる生成方式です。</HelpInfo>
-      {range('magic-chaos','構造のランダム度','chaos',0,100,5,'%')}
+      {range('magic-chaos','形の変わりやすさ','chaos',0,100,5,'%')}
       <label className="glow-toggle"><input type="checkbox" checked={value.rareEffects}
         onChange={e=>set('rareEffects',e.target.checked)}/> レアな特殊紋様を生成する</label>
       <button type="button" onClick={()=>set('variation',(value.variation+1)%1_000_000)}>
@@ -38,10 +38,10 @@ export function MagicCircleControls({value,onChange,seed}:Props&{seed:string}){
       <p className="help" data-testid="magic-variation">派生番号：{value.variation}（シードと設定JSONで再現可能）</p>
       {(()=>{const b=buildMagicBlueprint(seed,value);return <p className="help" data-testid="magic-blueprint-summary">設計図：{b.symmetry}方向対称 · {b.ringCount}層 · 中心{b.coreKind} · 装飾{b.motifFamily}{b.rareEffect?' · 特殊：'+b.rareEffect:''}</p>})()}
     </div>}
-    {range('magic-complexity','紋様の複雑さ','complexity',0,100,5,'%')}
+    {range('magic-complexity','模様の細かさ','complexity',0,100,5,'%')}
     {range('magic-rings',value.generationMode==='infinite'?'基準の円環数':'同心円の数','ringCount',2,8)}
     {range('magic-symmetry',value.generationMode==='infinite'?'基準の対称数':'対称数','symmetry',3,12)}
-    {range('magic-ornaments','装飾密度','ornamentDensity',0,100,5,'%')}
+    {range('magic-ornaments','飾りの多さ','ornamentDensity',0,100,5,'%')}
     {range('magic-stroke','魔法陣の線幅','strokeScale',50,200,5,'%')}
     <label htmlFor="magic-rune-style">円環の装飾</label>
     <select id="magic-rune-style" value={value.runeStyle} onChange={e=>set('runeStyle',e.target.value as MagicCircleSettings['runeStyle'])}>
