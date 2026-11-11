@@ -451,7 +451,7 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   expect(errors).toEqual([]);
 });
 
-test('3D motherboard central core, IC count and signals change PNG and survive JSON',async({page})=>{
+test('3D floor motherboard central core, IC count and signals change PNG and survive JSON',async({page})=>{
   const errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{
