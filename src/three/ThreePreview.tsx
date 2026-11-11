@@ -58,7 +58,6 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   standby?:StandbySolid;skipEntrance?:boolean;
 }) {
   const mesh = useRef<Mesh>(null);
-  const morphLineAlpha=useRef(1);
   const fromColor=useMemo(()=>{
     const role=standby?.from?.role??object.role;
     return new Color(standby?.transition.fromBackground.figureColors?.[role]??{primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'}[role]);
@@ -79,6 +78,15 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const translucent=neon.enabled&&neon.display==='transparent';
   const appearance=settings.visibilityAnimation??visibilityDefaults;
   const fades=visibilityUsesFade(appearance),scales=visibilityUsesScale(appearance);
+  // New morph layers start invisible, including their neon outline. A line ref
+  // initialized at 1 causes a single bright frame before the first useFrame.
+  const standbyStartAlpha=standby?
+    (standby.variant==='new'?0:1)*threeVisibility(object,
+      standby.variant==='old'?standby.transition.fromTime:0,appearance):1;
+  const morphLineAlpha=useRef(standbyStartAlpha);
+  useLayoutEffect(()=>{
+    if(standby)morphLineAlpha.current=standbyStartAlpha;
+  },[standby?.transition.id,standby?.variant]);
   const entrance=settings.entrance??entranceDefaults;
   // Paused static scenes initially show the complete figure; pausing during a reveal freezes the current frame.
   const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
