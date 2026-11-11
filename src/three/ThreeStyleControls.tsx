@@ -30,7 +30,10 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
   const net=(patch:Partial<typeof network>)=>onChange({...settings,network:{...network,...patch}});
   const outline=(patch:Partial<typeof neon>)=>onChange({...settings,neon:{...neon,...patch}});
   return <section className="control-section three-controls three-style-controls" aria-labelledby="three-style-heading">
-    <h3 id="three-style-heading">光る線とつながり</h3>
+    <div className="studio-setting-label studio-setting-heading">
+      <h3 id="three-style-heading">光る線とつながり</h3>
+      <HelpInfo>高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスは3Dの再生・一時停止と連動します。</HelpInfo>
+    </div>
     <div className="three-style-presets" role="group" aria-label="3Dスタイルプリセット">
       {(['standard','network','cyber'] as StylePreset[]).map((preset,i)=>{
         const value=stylePreset(preset);
@@ -69,6 +72,6 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         {neon.display==='transparent'&&<ThreeRange id="neon-face-opacity" label="面の濃さ" min={0} max={1} step={.05} value={neon.faceOpacity} onChange={faceOpacity=>outline({faceOpacity})}/>}
       </>}
     </fieldset>
-    <HelpInfo>高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスは3Dの再生・一時停止と連動します。</HelpInfo>
+
   </section>;
 }
