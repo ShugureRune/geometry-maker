@@ -119,3 +119,27 @@ test('Studio v2 advanced settings share one checkbox design and circled info tog
   await expect(standbyInfo.locator('.studio-info-content')).toContainText('なめらか');
   expect(errors).toEqual([]);
 });
+
+test('Compact seed help sits next to the label instead of beneath the seed input',async({page})=>{
+  await page.goto('./');
+  const row=page.locator('#panel-shapes .studio-setting-label').filter({
+    has:page.getByText('模様の合言葉',{exact:true}),
+  });
+  const label=row.locator('label[for="seed"]');
+  const trigger=row.locator('.studio-info-disclosure > summary');
+  await expect(label).toBeVisible();
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-label','シードの説明');
+  await expect(trigger.locator('.studio-info-icon')).toHaveText('i');
+  await expect(row.locator('.studio-info-content')).toBeHidden();
+  const labelBox=await label.boundingBox(),buttonBox=await trigger.boundingBox();
+  expect(labelBox).not.toBeNull();expect(buttonBox).not.toBeNull();
+  expect(buttonBox!.width).toBeLessThanOrEqual(34);
+  expect(buttonBox!.x).toBeGreaterThanOrEqual(labelBox!.x+labelBox!.width-2);
+  expect(Math.abs(buttonBox!.y+buttonBox!.height/2-(labelBox!.y+labelBox!.height/2)))
+    .toBeLessThan(12);
+  await trigger.click();
+  await expect(row.locator('.studio-info-content')).toContainText('同じ模様');
+  await trigger.click();
+  await expect(row.locator('.studio-info-content')).toBeHidden();
+});
