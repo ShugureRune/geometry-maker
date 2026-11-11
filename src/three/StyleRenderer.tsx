@@ -22,11 +22,11 @@ export function useOutlineGeometry(enabled:boolean,low:boolean){
   return geometries;
 }
 
-export function NeonOutline({geometry,object,settings,background,low,seconds,morphOpacity}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;morphOpacity?:RefObject<number>}){
+export function NeonOutline({geometry,object,settings,background,low,seconds,morphOpacity,skipEntrance=false}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;morphOpacity?:RefObject<number>;skipEntrance?:boolean}){
   const neon=settings.neon??neonDefaults, {invalidate,size}=useThree();
   const fading=visibilityUsesFade(settings.visibilityAnimation??visibilityDefaults);
   const entrance=settings.entrance??entranceDefaults;
-  const entranceFade=entrance.enabled&&(settings.animation||seconds.current>0);
+  const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
   const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,transparent:fading||entranceFade||!!morphOpacity,toneMapped:true}),[fading,entranceFade,morphOpacity]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;value.scale.setScalar(1.002);return value;},[geometry,material]);
   useEffect(()=>()=>material.dispose(),[material]);
@@ -48,7 +48,7 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
     if(morphOpacity){material.opacity=morphOpacity.current;return;}
     if(fading||entranceFade){
       const visibility=fading?threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults):1;
-      const arrival=entrance.enabled&&(settings.animation||seconds.current>0)
+      const arrival=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0)
         ?threeEntranceProgress(object,seconds.current,entrance):1;
       material.opacity=visibility*arrival;
     }
@@ -56,7 +56,7 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'}}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};skipEntrance?:boolean}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
@@ -97,7 +97,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       // the black ghost left behind after the original figure disappears.
       if(!segment)continue;
       const entrance=settings.entrance??entranceDefaults;
-      const appearing=!standby&&entrance.enabled&&(settings.animation||seconds.current>0);
+      const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
       const ap=appearing?threeEntrancePose(a,seconds.current,entrance,seed):null;
       const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
       const reveal=appearing?Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
