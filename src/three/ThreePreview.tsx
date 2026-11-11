@@ -1,7 +1,7 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
 import {useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
-import {ACESFilmicToneMapping, CanvasTexture, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2} from 'three';
+import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
@@ -25,14 +25,18 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
+import {clamp01,easeInOut,matchThreeObjects,morphPose,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
+  transition?:ThreeStandbyTransition|null;
+  onTransitionComplete?:(id:number)=>void;
 };
 type Clock = RefObject<number>;
+type StandbySolid={transition:ThreeStandbyTransition;variant:'shared'|'old'|'new';from?:ThreeObject;to?:ThreeObject};
 
 function drawBackground(context: CanvasRenderingContext2D, width: number, height: number, background: Background) {
   if (background.mode === 'solid') context.fillStyle = background.solid;
@@ -45,10 +49,20 @@ function drawBackground(context: CanvasRenderingContext2D, width: number, height
   context.fillRect(0, 0, width, height);
 }
 
-function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed}: {
+function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed, standby}: {
   object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries; seed:string;
+  standby?:StandbySolid;
 }) {
   const mesh = useRef<Mesh>(null);
+  const morphLineAlpha=useRef(1);
+  const fromColor=useMemo(()=>{
+    const role=standby?.from?.role??object.role;
+    return new Color(standby?.transition.fromBackground.figureColors?.[role]??{primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'}[role]);
+  },[standby?.transition.fromBackground,standby?.from?.role,object.role]);
+  const toColor=useMemo(()=>{
+    const role=standby?.to?.role??object.role;
+    return new Color(background.figureColors?.[role]??{primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'}[role]);
+  },[background,standby?.to?.role,object.role]);
   const surfaceRef=useRef<MeshStandardMaterial|MeshPhysicalMaterial>(null);
   const segments = low ? 16 : 40;
   const kind = object.kind;
@@ -64,9 +78,45 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const entrance=settings.entrance??entranceDefaults;
   // Paused static scenes initially show the complete figure; pausing during a reveal freezes the current frame.
   const entranceFade=entrance.enabled&&(settings.animation||seconds.current>0);
+  const standbyFade=!!standby;
   const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
   useFrame(() => {
     if (!mesh.current) return;
+    if(standby){
+      const {transition,variant,from,to}=standby;
+      const oldPose=from?threePose(from,transition.fromTime+seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
+      const newPose=to?threePose(to,seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
+      let position:[number,number,number],rotation:[number,number,number],radius:number,alpha:number,colorMix:number;
+      if(transition.mode==='morph'){
+        const form=morphPose(from,to,seconds.current/transition.duration,variant,oldPose,newPose);
+        ({position,rotation,radius,opacity:alpha,colorMix}=form);
+      }else{
+        const time=splitExitEnter(seconds.current,transition.duration);
+        const source=variant==='old'?from!:to!;
+        const base=variant==='old'?oldPose!:newPose!;
+        const normalized=variant==='old'?1-time.exit:time.enter;
+        const arrival=threeEntrancePose(source,normalized*entrance.duration,{...entrance,enabled:true},variant==='old'?transition.fromSeed:seed);
+        position=base.position.map((n,i)=>n+arrival.offset[i]) as [number,number,number];
+        rotation=[...base.rotation] as [number,number,number];rotation[2]+=arrival.rotationZ;
+        radius=source.radius*arrival.scale;
+        alpha=arrival.opacity;
+        colorMix=variant==='old'?0:1;
+      }
+      const visibility=threeVisibility(object,variant==='old'?transition.fromTime+seconds.current:seconds.current,appearance);
+      const totalAlpha=alpha*visibility;
+      mesh.current.position.set(...position);mesh.current.rotation.set(...rotation);
+      mesh.current.scale.setScalar(Math.max(.0001,radius)*(scales?Math.max(.001,visibility):1));
+      mesh.current.visible=totalAlpha>.001;
+      mesh.current.castShadow=!low&&surfaceVisible&&!translucent&&!fades&&totalAlpha>=.999;
+      morphLineAlpha.current=totalAlpha;
+      if(surfaceRef.current){
+        surfaceRef.current.opacity=baseOpacity*totalAlpha;
+        surfaceRef.current.depthWrite=!translucent&&!fades&&totalAlpha>=.999;
+        surfaceRef.current.color.copy(fromColor).lerp(toColor,colorMix);
+        surfaceRef.current.emissive.copy(surfaceRef.current.color);
+      }
+      return;
+    }
     const pose = threePose(object, seconds.current, settings.floatAmount, settings.rotationAmount);
     const arrival=entrance.enabled&&(settings.animation||seconds.current>0)
       ?threeEntrancePose(object,seconds.current,entrance,seed):null;
@@ -102,15 +152,15 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
     {kind === 'torus-knot' && <torusKnotGeometry args={[.50, .15, low ? 48 : 112, low ? 6 : 12, 2, 3]}/>} 
     {/* Transparency changes the compiled OPAQUE shader variant; replace the
         material on this boundary so alpha sliders never use a stale program. */}
-    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
+    {material === 'glass' ? <meshPhysicalMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade||standbyFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={settings.roughness * .6} metalness={settings.metalness * .2}
       transmission={low||translucent ? 0 : .65} thickness={.6} transparent opacity={baseOpacity}
-      depthWrite={!translucent&&!fades&&!entranceFade} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
-      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
-        transparent={translucent||fades||entranceFade} opacity={baseOpacity} depthWrite={!translucent&&!fades&&!entranceFade}
+      depthWrite={!translucent&&!fades&&!entranceFade&&!standbyFade} polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1} emissive={color} emissiveIntensity={emissive * .45}/>
+      : <meshStandardMaterial ref={surfaceRef} key={`${translucent?'translucent':'surface'}-${fades||entranceFade||standbyFade?'fade':'normal'}`} visible={surfaceVisible} color={color} roughness={material === 'matte' ? Math.max(.65, settings.roughness) : settings.roughness}
+        transparent={translucent||fades||entranceFade||standbyFade} opacity={baseOpacity} depthWrite={!translucent&&!fades&&!entranceFade&&!standbyFade}
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
-    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} morphOpacity={standby?morphLineAlpha:undefined}/>}
   </mesh>;
 }
 
