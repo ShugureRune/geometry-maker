@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import { VideoPanel } from './VideoPanel';
 import { videoDefaults, videoSettings, type VideoSettings } from './video-settings';
 import type { VideoArtwork } from './video-frame';
@@ -76,7 +77,7 @@ export function ExportPanel({ textOverlay, magicSettings, videoArtwork, version,
       <label htmlFor="export-height">高さ (px)<input id="export-height" type="number" min="256" max="8192" step="1" inputMode="numeric" value={height} disabled={busy} aria-invalid={!!invalid} aria-describedby="resolution-feedback" onChange={e => { setCustom(true); setHeight(e.target.value); }} /></label>
     </div>
     <p id="resolution-feedback" className={invalid ? 'export-error' : 'help'}>{invalid || (tooLarge ? 'PNGは合計16,777,216画素まで。SVG・JSONは保存できます。' : '256〜8192px。PNGは合計16,777,216画素まで。')}</p>
-    {margins && <p className="help">構図と書き出しの比率が異なるため、中央配置して{magicTransparent?'透明な':'背景色の'}余白を追加します。図形は変形・切り取りしません。</p>}
+    {margins && <HelpInfo>構図と書き出しの比率が異なるため、中央配置して{magicTransparent?'透明な':'背景色の'}余白を追加します。図形は変形・切り取りしません。</HelpInfo>}
     {version===MAGIC_ALGORITHM_VERSION&&<p className="help" data-testid="magic-export-info">{magicTransparent?'透過保存ON：魔法陣の線だけをアルファ付きPNG / 背景なしSVGで保存します。':'背景付き保存：魔法陣の設定から透過PNG / SVGに切り替えられます。'}</p>}
     <div className="export-actions">
       <button type="button" disabled={busy || !!invalid || tooLarge} onClick={() => void save('png')}>{busy ? '処理中…' : 'PNGを書き出す'}</button>
