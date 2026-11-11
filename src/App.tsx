@@ -234,8 +234,8 @@ export default function App() {
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
   function completedArtwork(transparentOnly=false){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={twoDBackground} transparent={version===MAGIC_ALGORITHM_VERSION&&transparentOnly} textOverlay={version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   const studioCommands:StudioCommand[]=[
-    ...categories.filter(item=>!(renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION)&&item.id==='text'
-      ?false:renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION?item.id!=='text':true)
+    ...categories.filter(item=>item.id!=='text'||
+      (renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION))
       .map(item=>({id:'open-'+item.id,title:item.label+'の設定を開く',
         description:'設定パネル / '+item.label,keywords:item.id,run:()=>goToSettings(item.id)})),
     {id:'seed',title:'新しいシードを生成',description:'ランダムな構図をすぐ生成',keywords:'random 乱数',run:randomizeSeed},
