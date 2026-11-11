@@ -180,6 +180,48 @@ export const skyFragmentShader = [
   '    c+=vec3(.13,.14,.12)*haze;',
   '    c+=gain*density*vec3(.04,.05,.04)*smoothstep(.5,.8,cloud);',
   '  }',
+  '  else if(uMode==12){'
+  '    // Desert: endless dusty golden sky and a bleached indistinct horizon.'
+  '    float dust=fbm(vec2(d.x*3.2+d.y*.6,d.z*3.2-d.y*1.8)+vec2(t*.004,0.0));'
+  '    float horizon=exp(-pow(d.y*6.0,2.0));'
+  '    c=mix(vec3(.42,.27,.22),vec3(.78,.59,.40),smoothstep(-.75,.95,d.y));'
+  '    c+=vec3(.17,.14,.10)*horizon+gain*density*vec3(.10,.055,.03)*(dust-.35);'
+  '  }else if(uMode==13){'
+  '    // Salt flats: wide, high-key silver sky with a soft pink-blue veil.'
+  '    float cloud=fbm(vec2(d.x*3.5+d.y*.9,d.z*3.5-d.y)+vec2(t*.003,0.0));'
+  '    c=mix(vec3(.66,.75,.78),vec3(.85,.91,.92),smoothstep(-.5,.8,d.y));'
+  '    c+=vec3(.12,.11,.10)*exp(-pow(d.y*5.0,2.0));'
+  '    c+=gain*density*vec3(.035,.03,.045)*smoothstep(.48,.77,cloud);'
+  '  }else if(uMode==14){'
+  '    // Moonlit flowers: purple-blue night without any artificial lights.'
+  '    float glow=exp(-pow((d.y-.18)*3.0,2.0));'
+  '    c=mix(vec3(.008,.011,.035),vec3(.025,.028,.10),smoothstep(-.9,.8,d.y));'
+  '    c+=gain*vec3(.075,.055,.115)*glow;',
+  '    c+=vec3(.33,.35,.62)*st*gain*.36;'
+  '  }else if(uMode==15){'
+  '    // Forest edge: green-grey low light swallowed by a cloudy ceiling.'
+  '    float cloud=fbm(vec2(d.x*2.0+d.y,d.z*2.0-d.y)+vec2(t*.005,-t*.002));'
+  '    c=mix(vec3(.10,.17,.16),vec3(.23,.29,.27),smoothstep(-.6,.85,d.y));'
+  '    c+=vec3(.14,.15,.13)*exp(-pow(d.y*5.5,2.0));'
+  '    c+=gain*density*vec3(.035,.045,.035)*smoothstep(.42,.74,cloud);'
+  '  }else if(uMode==16){'
+  '    // Empty twilight plain: no stars or sun, suspended between day and night.'
+  '    c=mix(vec3(.20,.13,.26),vec3(.39,.35,.46),smoothstep(-.55,.9,d.y));'
+  '    float glow=exp(-pow((d.y+.05)*4.5,2.0));'
+  '    c+=vec3(.25,.13,.14)*glow*.9;',
+  '  }else if(uMode==17){'
+  '    // Sea of cloud: blue-above-white horizon with very soft sky.'
+  '    float n=fbm(vec2(d.x*3.2+d.y,d.z*3.2-d.y)+vec2(t*.003,0.0));'
+  '    c=mix(vec3(.61,.75,.86),vec3(.39,.56,.74),smoothstep(-.4,.9,d.y));'
+  '    c+=vec3(.29,.25,.18)*exp(-pow((d.y+.09)*5.0,2.0));'
+  '    c+=gain*density*vec3(.11,.13,.14)*smoothstep(.39,.7,n)*.5;'
+  '  }else if(uMode==18){'
+  '    // Black mirror: no visible structures, only dark fog and dim teal haze.'
+  '    float mist=exp(-pow(d.y*5.0,2.0));'
+  '    float n=fbm(vec2(d.x*2.1+d.y,d.z*2.1-d.y)+vec2(t*.004,t*.002));'
+  '    c=mix(vec3(.002,.004,.014),vec3(.011,.025,.036),smoothstep(-.8,.7,d.y));'
+  '    c+=vec3(.035,.085,.10)*mist*(.5+.5*n)*gain;'
+  '  }'
   '  if(uCustomColor>.5){',
   '    // Preserve original luminance/detail while mapping it to editable colors.',
   '    float lum=clamp(dot(c,vec3(.2126,.7152,.0722)),0.0,1.5);',
