@@ -390,11 +390,20 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await page.locator('#floor-circuit-speed').fill('2');
   const circuit=digest(await png(page));
   expect(circuit).not.toBe(regular);
+  expect(errors).toEqual([]); // Surface GLSL compilation errors before image comparisons.
   expect(digest(await png(page))).toBe(circuit); // Paused time must not jitter.
   await category(page,'背景');
   await page.locator('#floor-circuit-density').fill('0');
+  await expect(page.locator('#floor-circuit-density')).toHaveValue('0');
   const noWires=digest(await png(page));
-  expect(noWires).not.toBe(circuit);
+  if(noWires===circuit){
+    await category(page,'背景');
+    await page.getByLabel('3D床グリッドを有効化').uncheck();
+    const disabled=digest(await png(page));
+    throw new Error('PCB density did not change the image. noFloor='+disabled+
+      ' circuit='+circuit+' control='+await page.locator('#floor-circuit-density').count()+
+      ' browserErrors='+JSON.stringify(errors));
+  }
   await category(page,'背景');
   await page.locator('#floor-circuit-density').fill('90');
   await category(page,'アニメーション');
