@@ -1,0 +1,47 @@
+name: Studio v2 UI browser checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/studio-redesign.css'
+      - 'src/StudioCommandPalette.tsx'
+      - 'src/SettingsCategories.tsx'
+      - 'tests/studio-ui.spec.ts'
+      - '.github/workflows/studio-ui.yml'
+  pull_request:
+    paths:
+      - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/studio-redesign.css'
+      - 'src/StudioCommandPalette.tsx'
+      - 'src/SettingsCategories.tsx'
+      - 'tests/studio-ui.spec.ts'
+      - '.github/workflows/studio-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  studio-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Test Studio v2 desktop and iPhone-size UI
+        run: npx playwright test tests/studio-ui.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: studio-ui-failures
+          path: test-results/
+          retention-days: 7
