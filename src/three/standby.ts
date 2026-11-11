@@ -113,9 +113,14 @@ export function cameraSafeMorphPosition(a:Vector3Tuple,b:Vector3Tuple,t:number,
   const candidate:Vector3Tuple=[
     va[0]+delta[0]*closest,va[1]+delta[1]*closest,va[2]+delta[2]*closest
   ];
-  // Only guard a path that would cross the near view, not every normal morph.
-  if(norm(candidate)>Math.max(guardRadius*1.35,1.25)||norm(delta)<.45)
-    return vec(a,b,p);
+  // Fade the camera-safety path in continuously around the threshold.
+  // A moving/bobbing figure can cross this boundary mid-morph; a hard
+  // if/else would make it teleport even with a smoothly changing progress.
+  const closestDistance=norm(candidate);
+  const clearance=Math.max(guardRadius*1.35,1.25);
+  const blendWidth=Math.max(.5,guardRadius*.5);
+  const protection=easeInOut((clearance+blendWidth-closestDistance)/blendWidth);
+  if(protection<=0||norm(delta)<.45)return vec(a,b,p);
   const na=unit(va),nb=unit(vb);
   const cosine=Math.max(-1,Math.min(1,dot(na,nb)));
   const theta=Math.acos(cosine);
@@ -141,11 +146,13 @@ export function cameraSafeMorphPosition(a:Vector3Tuple,b:Vector3Tuple,t:number,
     ]);
   }
   const distance=mix(la,lb,p);
-  return [
+  const arc:Vector3Tuple=[
     camera[0]+direction[0]*distance,
     camera[1]+direction[1]*distance,
     camera[2]+direction[2]*distance
   ];
+  // Far paths remain unchanged; close-up paths never snap on/off at one frame.
+  return vec(vec(a,b,p),arc,protection);
 }
 /** Matched shapes interpolate their true transforms. For different mesh topologies,
  * the renderer draws two geometries with interleaved opacity, avoiding malformed vertices. */
