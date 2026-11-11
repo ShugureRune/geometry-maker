@@ -60,14 +60,14 @@ export default function App() {
   const lastGlow=useRef(100);
   const [ratio, setRatio] = useState<Ratio>('16:9');
   const [ambient,setAmbient]=useState({...ambientDefaults});
-  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient,ratio);
+  const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
+  const [magicSettings,setMagicSettings]=useState<MagicCircleSettings>({...magicDefaults});
+  const ambientClock=useAmbientClock(renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&ambient.enabled,ambient.lowPower,ambient,ratio);
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState(createRandomSeed);
   const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
   const [uiTheme,setUiTheme]=useState(()=>{try{return localStorage.getItem('geometry-ui-theme')==='light'?'light':'dark';}catch{return 'dark';}});
   useEffect(()=>{document.documentElement.dataset.theme=uiTheme;try{localStorage.setItem('geometry-ui-theme',uiTheme);}catch{}},[uiTheme]);
-  const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
-  const [magicSettings,setMagicSettings]=useState<MagicCircleSettings>({...magicDefaults});
   const committedSeed=useRef(seed);
   const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
   const gridSeconds=useGridClock(renderMode==='2d'&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
@@ -96,7 +96,7 @@ export default function App() {
 
   const [animation,setAnimation]=useState<AnimationSettings>({...defaults,animationEnabled:true});
   const playback=usePlayback(animation);
-  useEffect(()=>{if(ambient.enabled)playback.setPlaying(false);},[ambient.enabled]);
+  useEffect(()=>{if(ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION)playback.setPlaying(false);},[ambient.enabled,version]);
   useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
   function replayOnRegenerate(){if(renderMode==='2d'&&animation.animationEnabled)playback.restart(true);}
