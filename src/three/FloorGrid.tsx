@@ -1,5 +1,5 @@
 import {useFrame,useThree} from '@react-three/fiber';
-import {useMemo,useRef,type RefObject} from 'react';
+import {useLayoutEffect,useMemo,useRef,type RefObject} from 'react';
 import {Color,DoubleSide,Mesh,ShaderMaterial} from 'three';
 import {floorGridDiameter,floorGridOffset,floorGridPlacement,floorGridStrokeWidth,type FloorGridSettings} from './floor-grid';
 import type {ThreeView} from './settings';
@@ -75,6 +75,30 @@ export function FloorGrid({grid,sceneHeight,seconds,view,low=false}:{
     uCircuitWorldRadius:{value:1.82*Math.max(.65,Math.min(1.8,grid.spacing/2.5))*grid.circuitCoreScale*2.4},
     uTime:{value:seconds.current},
   }),[grid,seconds,physicalWidth]);
+  // Configure every setting before an eager PNG export or the first frame
+  // after the shader is reused. In frameloop="demand", useFrame alone can
+  // leave the previous PCB mask active for one render.
+  useLayoutEffect(()=>{
+    if(!material.current)return;
+    const u=material.current.uniforms;
+    u.uGridColor.value.set(grid.color);
+    u.uSpacing.value=grid.spacing;
+    u.uWorldLineWidth.value=physicalWidth;
+    u.uOpacity.value=grid.opacity;
+    u.uGlow.value=grid.glow;
+    u.uExtent.value=diameter;
+    u.uCircuitDensity.value=grid.circuitDensity/100;
+    u.uCircuitSpeed.value=grid.circuitSpeed;
+    u.uCircuitDetail.value=grid.circuitDetail/100;
+    u.uCircuitBoardOpacity.value=grid.circuitBoardOpacity;
+    u.uCircuitAccent.value.set(grid.circuitAccentColor);
+    u.uCircuitWorldEnabled.value=
+      grid.circuitWorldEnabled&&grid.style==='circuit'&&grid.circuitDensity>0?1:0;
+    u.uCircuitWorldRadius.value=
+      1.82*Math.max(.65,Math.min(1.8,grid.spacing/2.5))*grid.circuitCoreScale*2.4;
+    u.uOffset.value=floorGridOffset(seconds.current,grid);
+    u.uTime.value=seconds.current;
+  },[grid,physicalWidth,diameter,seconds]);
   useFrame(()=>{
     if(material.current){
       material.current.uniforms.uOffset.value=floorGridOffset(seconds.current,grid);
