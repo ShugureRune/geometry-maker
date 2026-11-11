@@ -186,7 +186,7 @@ export function standbyObjectPose(
   if(transition.mode==='morph'){
     const oldPose=from?threePose(from,transition.fromTime+seconds,floatAmount,rotationAmount):undefined;
     const newPose=to?threePose(to,seconds,floatAmount,rotationAmount):undefined;
-    return morphPose(from,to,seconds/transition.duration,variant,oldPose,newPose);
+    return morphPose(from,to,seconds/transition.duration,variant,oldPose,newPose,transition.cameraPosition);
   }
   const source=variant==='old'?from:to;
   if(!source)throw new Error('退場・登場の対象図形がありません。');
