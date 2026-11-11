@@ -410,9 +410,47 @@ export default function ThreePreview(props: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
-      {objects.map(object => <Solid key={object.id} object={object} settings={props.settings} background={props.background} visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}/>)}
-      {celestialObjects.map(body => <CelestialObjectMesh key={body.id} body={body} settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}/>)}
-      {edges.length>0&&<NetworkLines objects={objects} edges={edges} settings={props.settings} background={props.background} low={low} seconds={seconds} seed={props.skySeed}/>}
+      {props.transition ? props.transition.mode==='morph'?
+        matches.map(match=><group key={match.id}>
+          {match.from&&match.to&&match.from.kind===match.to.kind?
+            <Solid object={match.to} settings={props.settings} background={props.background}
+              visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
+              standby={{transition:props.transition!,variant:'shared',from:match.from,to:match.to}}/> :
+            <>
+              {match.from&&<Solid object={match.from} settings={props.settings} background={props.transition!.fromBackground}
+                visualTheme={props.transition!.fromTheme} low={low} seconds={seconds} outlines={outlines}
+                seed={props.transition!.fromSeed}
+                standby={{transition:props.transition!,variant:'old',from:match.from,to:match.to}}/>}
+              {match.to&&<Solid object={match.to} settings={props.settings} background={props.background}
+                visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
+                standby={{transition:props.transition!,variant:'new',from:match.from,to:match.to}}/>}
+            </>}
+        </group>):
+        <>
+          {previousObjects.map(object=><Solid key={'exit-'+object.id} object={object} settings={props.settings}
+            background={props.transition!.fromBackground} visualTheme={props.transition!.fromTheme}
+            low={low} seconds={seconds} outlines={outlines} seed={props.transition!.fromSeed}
+            standby={{transition:props.transition!,variant:'old',from:object}}/>)}
+          {objects.map(object=><Solid key={'enter-'+object.id} object={object} settings={props.settings}
+            background={props.background} visualTheme={props.visualTheme}
+            low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
+            standby={{transition:props.transition!,variant:'new',to:object}}/>)}
+        </>:
+        objects.map(object=><Solid key={object.id} object={object} settings={props.settings}
+          background={props.background} visualTheme={props.visualTheme} low={low}
+          seconds={seconds} outlines={outlines} seed={props.skySeed}/>)}
+      {props.transition&&previousCelestial.map(body=><CelestialObjectMesh key={'old-'+body.id}
+        body={body} settings={props.settings} low={low} seconds={seconds} seed={props.transition!.fromSeed}
+        standby={{transition:props.transition!,layer:'old'}}/>)}
+      {celestialObjects.map(body=><CelestialObjectMesh key={body.id} body={body}
+        settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}
+        standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>)}
+      {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
+        settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
+        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old'}}/>}
+      {edges.length>0&&<NetworkLines objects={objects} edges={edges}
+        settings={props.settings} background={props.background} low={low} seconds={seconds}
+        seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
