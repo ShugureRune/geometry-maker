@@ -117,7 +117,8 @@ describe('eighteen procedural 3D sky presets',()=>{
   it('renders 3 distinct, seam-free liminal skies and actual ground with fog',()=>{
     for(const mode of [9,10,11])expect(skyFragmentShader).toContain('uMode=='+mode);
     for(const mode of [9,10,11])expect(outdoorFragmentShader).toContain('uMode=='+mode);
-    expect(outdoorFragmentShader).toContain('smoothstep(uFogDistance*.26,uFogDistance,distanceXZ)');
+    expect(outdoorFragmentShader).toContain('smoothstep(uViewDistance*.26,uViewDistance,distanceXZ)');
+    expect(outdoorFragmentShader).toContain('uFogEnabled>.5');
     expect(outdoorFragmentShader).toContain('vec3 color=uGroundBase;');
     expect(outdoorGrassVertexShader).toContain('instanceMatrix');
     expect(outdoorGrassVertexShader).toContain('sin(uTime*1.4');
