@@ -228,12 +228,12 @@ test('13 solid kinds are individually selectable, save to 3D JSON, and render wi
   expect((await png(page)).length).toBeGreaterThan(10_000);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const json=await readFile((await (await pending).path())!,'utf8');
   const settings=JSON.parse(json).settings;
   expect(settings.enabledKinds).toEqual(['cylinder','cone','capsule','prism','pyramid','torus-knot']);
-  await page.getByRole('button',{name:'3D設定JSONを読込',exact:true}).click();
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({name:'shapes.json',mimeType:'application/json',buffer:Buffer.from(json)});
+  await page.getByRole('button',{name:'保存した3D設定を読み込む',exact:true}).click();
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({name:'shapes.json',mimeType:'application/json',buffer:Buffer.from(json)});
   await category(page,'図形');
   await expect(page.getByLabel('カプセルを生成')).toBeChecked();
   await expect(page.getByLabel('立方体を生成')).not.toBeChecked();
@@ -276,7 +276,7 @@ test('3D figures fade, scale and disappear without changing IDs, and preserve pa
   expect(digest(await png(page))).toBe(paused);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const bytes=await readFile((await (await pending).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.visibilityAnimation).toMatchObject({
@@ -286,7 +286,7 @@ test('3D figures fade, scale and disappear without changing IDs, and preserve pa
   await page.getByLabel('出現・消失アニメーションを有効化').uncheck();
   await expect(preview).toHaveAttribute('data-visibility-enabled','false');
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({name:'appearance.json',mimeType:'application/json',buffer:bytes});
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({name:'appearance.json',mimeType:'application/json',buffer:bytes});
   await category(page,'アニメーション');
   await expect(page.getByLabel('出現・消失アニメーションを有効化')).toBeChecked();
   await expect(page.locator('#three-visibility-mode')).toHaveValue('fade-scale');
@@ -340,7 +340,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   expect(neonGrid).not.toBe(glowing);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const bytes=await readFile((await (await pending).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.floorGrid).toMatchObject({
@@ -351,7 +351,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   await expect(preview).toHaveAttribute('data-floor-grid','off');
   expect(digest(await png(page))).not.toBe(neonGrid);
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'floor-grid.json',mimeType:'application/json',buffer:bytes,
   });
   await expect(preview).toHaveAttribute('data-floor-grid','on');
@@ -430,7 +430,7 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   const savedFrame=digest(await png(page));
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const projectBytes=await readFile((await (await pending).path())!);
   expect(JSON.parse(projectBytes.toString()).settings.floorGrid).toMatchObject({
     enabled:true,style:'circuit',circuitDensity:90,circuitSpeed:2,thickness:4,spacing:3.5,
@@ -440,7 +440,7 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await page.getByLabel('床のデザイン').selectOption('grid');
   expect(digest(await png(page))).not.toBe(savedFrame);
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'pcb-floor.json',mimeType:'application/json',buffer:projectBytes,
   });
   await expect(preview).toHaveAttribute('data-floor-style','circuit');
@@ -502,7 +502,7 @@ test('3D floor motherboard central core, IC count and signals change PNG and sur
   expect(digest(await png(page))).toBe(paused);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存',exact:true}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const saved=await readFile((await (await pending).path())!);
   expect(JSON.parse(saved.toString()).settings.floorGrid).toMatchObject({
     circuitWorldEnabled:true,circuitChipCount:8,circuitCoreScale:1.4,
@@ -510,7 +510,7 @@ test('3D floor motherboard central core, IC count and signals change PNG and sur
   await category(page,'背景');
   await page.getByLabel('中央演算コア・立体ICチップを表示').uncheck();
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'living-motherboard.json',mimeType:'application/json',buffer:saved,
   });
   await expect(preview).toHaveAttribute('data-floor-style','circuit');
