@@ -75,6 +75,19 @@ describe('3D standby transition grammar',()=>{
     expect(cameraSafeMorphPosition([5,5,5],[7,5,5],.5,camera,1)).toEqual([6,5,5]);
     expect(cameraSafeMorphPosition(from,to,.5)).toEqual([0,0,0]);
   });
+  it('does not snap when a bobbing object crosses the close-camera safety threshold',()=>{
+    const camera:[number,number,number]=[0,0,0];
+    const points=Array.from({length:81},(_,i)=>{
+      const z=1.2+i*.01;
+      return cameraSafeMorphPosition([-2,0,z],[2,0,z],.5,camera,1);
+    });
+    for(let i=1;i<points.length;i++){
+      const jump=Math.hypot(...points[i].map((n,j)=>n-points[i-1][j]));
+      expect(jump).toBeLessThan(.13);
+    }
+    const far=cameraSafeMorphPosition([-2,0,3],[2,0,3],.5,camera,1);
+    expect(far).toEqual([0,0,3]);
+  });
   it('exit-enter waits for exit completion and never leaves both sides invisible at end',()=>{
     expect(splitExitEnter(0,4)).toEqual({exit:0,enter:0});
     expect(splitExitEnter(2,4)).toEqual({exit:1,enter:0});
