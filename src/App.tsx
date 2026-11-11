@@ -277,7 +277,7 @@ export default function App() {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
             setDensity(settings.density ?? 50);setVisualTheme(settings.visualTheme??'standard');setTextOverlay(settings.textOverlay??{...textOverlayDefaults});
             setEnabledShapeKinds(settings.enabledShapeKinds??[...ALL_SHAPE_KINDS]);
-            setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
+            setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(settings.algorithmVersion===MAGIC_ALGORITHM_VERSION?1:0);
             setMagicSettings(settings.magicCircle??{...magicDefaults});
              setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
             setSeed(settings.seed); setRatio(settings.aspectRatio);
