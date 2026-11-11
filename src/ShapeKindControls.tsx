@@ -10,10 +10,12 @@ export function ShapeKindControls({enabled,onChange}:{enabled:readonly ShapeKind
  }
  return <section className="control-section shape-kind-controls" aria-labelledby="shape-kinds-heading">
   <div className="section-heading">
-   <h3 id="shape-kinds-heading">表示する図形</h3>
+   <div className="studio-setting-label studio-setting-heading">
+     <h3 id="shape-kinds-heading">表示する図形</h3>
+     <HelpInfo>OFFの図形は非表示で終わらず、近い種類のON図形に自動で置き換えます。同じシードと設定なら同じ結果です。</HelpInfo>
+   </div>
    <span className="tiny-label">{enabled.length} / {ALL_SHAPE_KINDS.length} 種類</span>
   </div>
-  <HelpInfo>OFFの図形は非表示で終わらず、近い種類のON図形に自動で置き換えます。同じシードと設定なら同じ結果です。</HelpInfo>
   <div className="shape-kind-presets" role="group" aria-label="図形の一括選択">
    <button type="button" onClick={()=>onChange([...ALL_SHAPE_KINDS])}>すべてON</button>
    <button type="button" onClick={()=>onChange(['circle'])}>すべてOFF（円のみ残す）</button>
