@@ -34,6 +34,7 @@ type Props = {
   initialTime?:number;
   transition?:ThreeStandbyTransition|null;
   onTransitionComplete?:(id:number)=>void;
+  skipEntrance?:boolean;
 };
 type Clock = RefObject<number>;
 type StandbySolid={transition:ThreeStandbyTransition;variant:'shared'|'old'|'new';from?:ThreeObject;to?:ThreeObject};
@@ -49,9 +50,9 @@ function drawBackground(context: CanvasRenderingContext2D, width: number, height
   context.fillRect(0, 0, width, height);
 }
 
-function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed, standby}: {
+function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed, standby, skipEntrance=false}: {
   object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries; seed:string;
-  standby?:StandbySolid;
+  standby?:StandbySolid;skipEntrance?:boolean;
 }) {
   const mesh = useRef<Mesh>(null);
   const morphLineAlpha=useRef(1);
@@ -77,7 +78,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const fades=visibilityUsesFade(appearance),scales=visibilityUsesScale(appearance);
   const entrance=settings.entrance??entranceDefaults;
   // Paused static scenes initially show the complete figure; pausing during a reveal freezes the current frame.
-  const entranceFade=entrance.enabled&&(settings.animation||seconds.current>0);
+  const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
   const standbyFade=!!standby;
   const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
   useFrame(() => {
@@ -118,7 +119,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
       return;
     }
     const pose = threePose(object, seconds.current, settings.floatAmount, settings.rotationAmount);
-    const arrival=entrance.enabled&&(settings.animation||seconds.current>0)
+    const arrival=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0)
       ?threeEntrancePose(object,seconds.current,entrance,seed):null;
     const opacity=arrival?.opacity??1;
     mesh.current.position.set(pose.position[0]+(arrival?.offset[0]??0),
@@ -160,7 +161,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
-    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} morphOpacity={standby?morphLineAlpha:undefined}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} morphOpacity={standby?morphLineAlpha:undefined} skipEntrance={skipEntrance}/>}
   </mesh>;
 }
 
@@ -417,6 +418,7 @@ export default function ThreePreview(props: Props) {
     data-standby-active={props.transition?'true':'false'}
     data-standby-mode={props.transition?.mode??'off'}
     data-standby-pairs={matches.length}
+    data-standby-entrance-complete={props.skipEntrance?'true':'false'}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
@@ -461,19 +463,21 @@ export default function ThreePreview(props: Props) {
         </>:
         objects.map(object=><Solid key={object.id} object={object} settings={props.settings}
           background={props.background} visualTheme={props.visualTheme} low={low}
-          seconds={seconds} outlines={outlines} seed={props.skySeed}/>)}
+          seconds={seconds} outlines={outlines} seed={props.skySeed} skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousCelestial.map(body=><CelestialObjectMesh key={'old-'+body.id}
         body={body} settings={props.settings} low={low} seconds={seconds} seed={props.transition!.fromSeed}
         standby={{transition:props.transition!,layer:'old'}}/>)}
       {celestialObjects.map(body=><CelestialObjectMesh key={body.id} body={body}
         settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}
-        standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>)}
+        standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
+        skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
         settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
         seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old'}}/>}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges}
         settings={props.settings} background={props.background} low={low} seconds={seconds}
-        seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>}
+        seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
+        skipEntrance={props.skipEntrance}/>}
       <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
