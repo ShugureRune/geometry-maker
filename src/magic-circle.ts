@@ -1,5 +1,6 @@
 import {polar} from './geometry';
 import {RATIOS,seededRandom,type Ratio,type Scene,type Shape,type Point} from './scene';
+import {MAGIC_COLOR_MODES,MAGIC_PALETTES,magicColorDefaults,validMagicColorSet,type MagicColorMode,type MagicColorSet,type MagicPaletteId} from './magic-colors';
 
 export const MAGIC_ALGORITHM_VERSION = '2d-magic-v1' as const;
 export const MAGIC_STYLES = ['star','geometric','crest'] as const;
@@ -13,12 +14,18 @@ export type MagicCircleSettings = {
   strokeScale:number;
   runeStyle:'runes'|'dots'|'arcs';
   rotationTurns:number;
+  colorMode:MagicColorMode;
+  colorPreset:MagicPaletteId;
+  paletteReroll:number;
+  customColors:MagicColorSet;
   showBackground:boolean;
   transparentExport:boolean;
 };
 export const magicDefaults:MagicCircleSettings={
   style:'star',complexity:65,ringCount:5,symmetry:6,ornamentDensity:65,
   strokeScale:100,runeStyle:'runes',rotationTurns:1,
+  colorMode:'auto',colorPreset:'violet-ritual',paletteReroll:0,
+  customColors:{...magicColorDefaults,gradient:[...magicColorDefaults.gradient]},
   showBackground:true,transparentExport:false
 };
 const numberIn=(x:unknown,minimum:number,maximum:number):x is number=>
@@ -35,13 +42,16 @@ export function validateMagicSettings(value:unknown):MagicCircleSettings{
     !numberIn(merged.strokeScale,50,200)||
     !['runes','dots','arcs'].includes(merged.runeStyle as string)||
     !numberIn(merged.rotationTurns,0,3)||
+    !MAGIC_COLOR_MODES.includes(merged.colorMode as MagicColorMode)||
+    !MAGIC_PALETTES.some(p=>p.id===merged.colorPreset)||
+    !numberIn(merged.paletteReroll,0,1_000_000)||
+    !validMagicColorSet(merged.customColors)||
     typeof merged.showBackground!=='boolean'||typeof merged.transparentExport!=='boolean'
   )throw new Error('魔法陣設定の値が不正です。');
-  return merged as MagicCircleSettings;
+  return {...merged,customColors:{...merged.customColors,gradient:[...merged.customColors.gradient]}} as MagicCircleSettings;
 }
 export const magicIs=(value:string)=>value===MAGIC_ALGORITHM_VERSION;
 
-const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const CLOSED=(points:Point[])=>[...points,points[0]];
 const MOTIFS:readonly (readonly Point[])[]=[
   [{x:-.3,y:-.85},{x:.25,y:-.85},{x:-.22,y:0},{x:.33,y:.85}],
@@ -219,16 +229,20 @@ export function generateMagicCircleScene(seed:string,ratio:Ratio,options:MagicCi
   };
   return {version:MAGIC_ALGORITHM_VERSION,width,height,composition,shapes};
 }
-/** The same phase function serves live SVG preview and recorded video. */
-export function magicCircleMotion(scene:Scene,settings:MagicCircleSettings,phase:number):Record<string,string>{
-  if(settings.rotationTurns===0||phase<=0||scene.version!==MAGIC_ALGORITHM_VERSION)return {};
+/** Continuous, time-based rotation. The growth timeline is intentionally independent.
+ * Full turns wrap seamlessly and never freeze when growth reaches 100%.
+ * Live preview and recorded video pass the same elapsed-seconds / cycle duration. */
+export function magicCircleMotion(scene:Scene,settings:MagicCircleSettings,seconds:number,cycleSeconds=6):Record<string,string>{
+  if(settings.rotationTurns===0||scene.version!==MAGIC_ALGORITHM_VERSION||
+    !Number.isFinite(seconds)||!Number.isFinite(cycleSeconds)||cycleSeconds<=0)return {};
   const x=scene.width/2,y=scene.height/2;
+  const phase=((seconds*settings.rotationTurns/cycleSeconds)%1+1)%1;
   const transforms:Record<string,string>={};
   for(const shape of scene.shapes){
     if(!shape.group.startsWith('ring-'))continue;
     const n=Number(shape.group.slice(5));
     if(!Number.isInteger(n))continue;
-    const angle=(n%2?-1:1)*settings.rotationTurns*360*clamp(phase,0,1);
+    const angle=Number(((n%2?-1:1)*phase*360).toFixed(6));
     transforms[shape.id]='rotate('+angle+' '+x+' '+y+')';
   }
   return transforms;

@@ -7,8 +7,11 @@ describe('2D magic circle studio',()=>{
   it('has strictly validated settings and backwards-compatible defaults',()=>{
     expect(validateMagicSettings({style:'crest'}).style).toBe('crest');
     expect(validateMagicSettings({style:'crest'}).symmetry).toBe(magicDefaults.symmetry);
+    expect(validateMagicSettings({style:'crest'}).colorMode).toBe('auto');
     for(const invalid of [{symmetry:2},{ringCount:9},{complexity:101},{strokeScale:25},
-      {rotationTurns:-1},{style:'unknown'},{transparentExport:'true'},{evil:true},null,[]]){
+      {rotationTurns:-1},{style:'unknown'},{transparentExport:'true'},
+      {colorMode:'nope'},{colorPreset:'unknown'},{paletteReroll:-1},
+      {customColors:{...magicDefaults.customColors,primary:'broken'}},{evil:true},null,[]]){
       expect(()=>validateMagicSettings(invalid)).toThrow();
     }
   });
@@ -52,14 +55,18 @@ describe('2D magic circle studio',()=>{
     expect(newScene.composition.type).toBe('magic');
     expect(newScene.shapes.some(s=>s.id==='poly-main')).toBe(true);
   });
-  it('animates alternating rings about the true canvas center, and restores at full turns',()=>{
+  it('rotates continuously after summon completes, and loops without a visible jump',()=>{
     const scene=generateMagicCircleScene('orbit','16:9',magicDefaults);
-    const spin=magicCircleMotion(scene,magicDefaults,.25);
+    const spin=magicCircleMotion(scene,magicDefaults,1.5,6);
     expect(spin['ward-outer']).toBe('rotate(90 800 450)');
     expect(spin['ring-1']).toBe('rotate(-90 800 450)');
-    expect(magicCircleMotion(scene,magicDefaults,0)).toEqual({});
-    expect(magicCircleMotion(scene,{...magicDefaults,rotationTurns:0},.5)).toEqual({});
-    expect(magicCircleMotion(scene,magicDefaults,1)['ward-outer']).toBe('rotate(360 800 450)');
+    expect(magicCircleMotion(scene,magicDefaults,6,6)['ward-outer']).toBe('rotate(0 800 450)');
+    expect(magicCircleMotion(scene,magicDefaults,7.5,6)).toEqual(spin);
+    expect(magicCircleMotion(scene,magicDefaults,13.5,6)).toEqual(spin);
+    expect(magicCircleMotion(scene,magicDefaults,6.5,6)['ward-outer']).toBe('rotate(30 800 450)');
+    expect(magicCircleMotion(scene,{...magicDefaults,rotationTurns:0},2,6)).toEqual({});
+    expect(magicCircleMotion(scene,{...magicDefaults,rotationTurns:3},.5,6)['ward-outer']).toBe('rotate(90 800 450)');
+    expect(magicCircleMotion(scene,magicDefaults,1.5,0)).toEqual({});
   });
   it('ring count, detailed stamps and style alter actual shapes',()=>{
     const simple=generateMagicCircleScene('variation','1:1',{...magicDefaults,style:'star',ringCount:2,complexity:0,ornamentDensity:0});

@@ -1,7 +1,9 @@
 import { SettingsCategories, type Category } from './SettingsCategories';
 import {ShapeKindControls} from './ShapeKindControls';
-import {MagicCircleControls} from './MagicCircleControls';
-import {MAGIC_ALGORITHM_VERSION,magicDefaults,magicCircleMotion,type MagicCircleSettings} from './magic-circle';
+import {MagicCircleControls,MagicColorControls} from './MagicCircleControls';
+import {MagicCirclePreview} from './MagicCirclePreview';
+import {backgroundForMagic,magicPaletteById,magicPaletteFromSeed} from './magic-colors';
+import {MAGIC_ALGORITHM_VERSION,magicDefaults,type MagicCircleSettings} from './magic-circle';
 import {ALL_SHAPE_KINDS,type ShapeKind} from './shape-controls';
 import { AmbientControls, AmbientStage, useAmbientClock, ambientDefaults } from './AmbientControls';
 import {figureScrollAngle} from './ambient';
@@ -70,15 +72,18 @@ export default function App() {
   useEffect(()=>{document.documentElement.dataset.theme=uiTheme;try{localStorage.setItem('geometry-ui-theme',uiTheme);}catch{}},[uiTheme]);
   const committedSeed=useRef(seed);
   const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
-  const gridSeconds=useGridClock(renderMode==='2d'&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
+  const gridSeconds=useGridClock(renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
   const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
   const activeColors = colorSettings ?? legacyColors(background);
   // Old manual 2D settings may omit figureColors intentionally. In 3D the
   // visible color slots are always the material colors, including locked slots.
   const threeBackground=useMemo(()=>({...background,figureColors:{primary:activeColors.slots.primary.color,support:activeColors.slots.support.color,accent:activeColors.slots.accent.color}}),[background,activeColors]);
-  const twoDBackground=useMemo(()=>version===MAGIC_ALGORITHM_VERSION?{
-    ...background,figureColors:{primary:activeColors.slots.primary.color,support:activeColors.slots.support.color,accent:activeColors.slots.accent.color}
-  }:background,[version,background,activeColors]);
+  const magicColors=useMemo(()=>magicSettings.colorMode==='auto'
+    ?magicPaletteFromSeed(seed,magicSettings.paletteReroll)
+    :magicSettings.colorMode==='preset'?magicPaletteById(magicSettings.colorPreset)
+      :magicSettings.customColors,[seed,magicSettings]);
+  const twoDBackground=useMemo(()=>version===MAGIC_ALGORITHM_VERSION
+    ?backgroundForMagic(background,magicColors):background,[version,background,magicColors]);
   function applyColors(c:ColorSettings) { setColorSettings(c);setBackground(bg=>coloredBackground(bg,c)); }
   function changeSeed(value:string) {setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
   function editor(id:Slot,label:string) { const slot=activeColors.slots[id];return <ColorEditor label={label} value={slot.color} locked={slot.locked}
@@ -133,7 +138,6 @@ export default function App() {
    replayOnRegenerate();
   }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
-  const magicMotion=version===MAGIC_ALGORITHM_VERSION&&animation.animationEnabled?magicCircleMotion(scene,magicSettings,playback.position):undefined;
   function completedArtwork(transparentOnly=false){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={twoDBackground} transparent={version===MAGIC_ALGORITHM_VERSION&&transparentOnly} textOverlay={version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
     <header className="topbar">
@@ -186,7 +190,7 @@ export default function App() {
         </div>
         <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={activeCategory!=='background'}>
           <h2 className="category-title">背景</h2>
-        <section className="control-section" aria-labelledby="background-heading">
+        {!(renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION)&&<section className="control-section" aria-labelledby="background-heading">
           <div className="section-heading"><h3 id="background-heading"><span>02</span> 背景</h3><span className="tiny-label">BACKGROUND</span></div>
           <div className="segmented" role="group" aria-label="背景の種類">
             <button type="button" aria-pressed={background.mode === 'solid'} onClick={() => setBackground({ ...background, mode: 'solid' })}>単色</button>
@@ -197,14 +201,17 @@ export default function App() {
             <input id="angle" type="range" min="0" max="360" value={background.angle} onChange={e=>setBackground({...background,angle:Number(e.target.value)})}/>
           </>}
           <p className="help">背景の各色は「カラー」で編集できます。</p>
-        </section>
-        {renderMode==='2d'&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
+        </section>}
+        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<p className="help">魔法陣の背景・自動配色は「カラー」から変更できます。背景なしでの表示や透過保存は「図形」の魔法陣設定で切り替えられます。</p>}
+        {renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
         {renderMode==='3d'&&<><SkyControls value={threeSettings.sky} onChange={sky=>setThreeSettings(settings=>({...settings,sky}))}/><FloorGridControls value={threeSettings.floorGrid??floorGridDefaults} onChange={floorGrid=>setThreeSettings(settings=>({...settings,floorGrid}))}/></>}
 
 
         </div>
         <div id="panel-colors" className="category-panel" data-category="colors" role="region" aria-labelledby="category-colors" hidden={activeCategory!=='colors'}>
           <h2 className="category-title">カラー</h2>
+        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION?
+          <MagicColorControls value={magicSettings} onChange={setMagicSettings} seed={seed}/> : <>
         <section className="control-section" aria-labelledby="theme-heading">
           <h3 id="theme-heading">ビジュアルテーマ</h3>
           <label htmlFor="visual-theme">テーマを選ぶ</label>
@@ -236,7 +243,7 @@ export default function App() {
           {editor('primary','主役色')}{editor('support','補助色')}{editor('accent','アクセント色')}
           <p className="help">シード連動が初期状態です。固定中も手動編集・個別再抽選ができます。入力色をそのまま描画します。</p>
         </section>
-
+        </>}
         </div>
         <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION||activeCategory!=='text'}>
           <h2 className="category-title">文字</h2>
@@ -296,7 +303,7 @@ export default function App() {
         <div className="canvas-stage">
           {renderMode==='2d'?<PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
-              {ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={twoDBackground} growth={growth} motion={magicMotion} transparent={version===MAGIC_ALGORITHM_VERSION&&!magicSettings.showBackground} textOverlay={version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>}
+              {ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:version===MAGIC_ALGORITHM_VERSION?<MagicCirclePreview scene={scene} background={twoDBackground} settings={magicSettings} animation={animation} growth={growth}/>:<Preview scene={scene} background={twoDBackground} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>}
             </div>
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>

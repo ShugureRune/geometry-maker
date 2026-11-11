@@ -61,3 +61,14 @@
 .three-kind-check span{overflow-wrap:anywhere}
 [data-theme=light] .three-kind-presets button{background:#ece5f7;color:#35254d;border-color:#9b88b4}
 [data-theme=light] .three-kind-check:has(input:checked){background:#eee6fa}
+
+/* Magic Circle colors are separate from the standard 2D color editor. */
+.magic-color-controls{border-left:3px solid #a7cafa;padding-left:12px}
+.magic-color-controls select{width:100%}
+.magic-color-controls>button{margin:12px 0;min-height:44px;border:1px solid #a58ce5;border-radius:8px;background:#32234f;color:#f1e8ff;padding:8px 12px;font-weight:600}
+.magic-palette-swatches{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+.magic-palette-swatches span{height:34px;min-width:34px;flex:1 1 34px;max-width:64px;border:1px solid #8b83a4;border-radius:7px}
+.magic-custom-colors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.magic-custom-colors label{display:grid;gap:7px;font-size:12px}
+.magic-custom-colors input[type=color]{width:100%;min-height:44px;padding:3px;border-radius:8px;border:1px solid #8b83a4;background:transparent}
+[data-theme=light] .magic-color-controls>button{background:#e5dcff;color:#292044}
