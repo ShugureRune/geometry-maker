@@ -5,6 +5,7 @@ import {
   Object3D,Points,ShaderMaterial,Vector2,
 } from 'three';
 import {seededRandom} from '../scene';
+import {NaturalDetails} from './NaturalDetails';
 import {floorGridPlacement} from './floor-grid';
 import {outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
 import type {ThreeView} from './settings';
@@ -151,9 +152,14 @@ function OutdoorSnow({sky,seed,seconds,low,sceneHeight,view}:Props){
 
 export function OutdoorRenderer(props:Props){
   const kind=props.sky.kind;
-  if(kind!=='shallow-water'&&kind!=='whiteout-snow'&&kind!=='foggy-grassland')return null;
+  if(![
+    'shallow-water','whiteout-snow','foggy-grassland',
+    'endless-desert','salt-flat','moonlit-flowers','forest-edge',
+    'twilight-plain','cloud-sea','dark-mirror',
+  ].includes(kind))return null;
   return <>
     <OutdoorSurface {...props}/>
+    <NaturalDetails {...props}/>
     {kind==='whiteout-snow'&&<OutdoorSnow {...props}/>}
     {kind==='foggy-grassland'&&<OutdoorGrass {...props}/>}
   </>;
