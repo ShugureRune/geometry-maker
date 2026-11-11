@@ -78,7 +78,7 @@ test('outdoor visibility saves and restores with 3D terrain and floor grid; no l
   const image=digest(await png(page));
   await category(page,'書き出し');
   const event=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await event).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.sky.visibility).toEqual({distance:850,fogEnabled:false});
@@ -89,7 +89,7 @@ test('outdoor visibility saves and restores with 3D terrain and floor grid; no l
   await page.locator('#three-outdoor-view-distance').fill('100');
   expect(digest(await png(page))).not.toBe(image);
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'visibility.json',mimeType:'application/json',buffer:bytes,
   });
   await category(page,'背景');
