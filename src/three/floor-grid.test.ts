@@ -55,14 +55,20 @@ describe('perspective 3D floor grid',()=>{
       background:{mode:'solid',solid:'#111526',colors:['#111526','#201133','#142030'],angle:0},
       settings:{...threeDefaults,floorGrid:circuit},elapsedSeconds:8.5,exportWidth:512,exportHeight:512};
     expect(parseThreeProject(threeProjectText(project)).settings.floorGrid).toEqual(circuit);
-    const {style:_,circuitDensity:__,circuitSpeed:___,...oldGrid}=circuit;
+    const {style:_,circuitDensity:__,circuitSpeed:___,
+      circuitDetail:____,circuitBoardOpacity:_____,circuitAccentColor:______, ...oldGrid}=circuit;
     expect(validateFloorGrid(oldGrid)).toEqual({...oldGrid,style:'grid',
-      circuitDensity:floorGridDefaults.circuitDensity,circuitSpeed:floorGridDefaults.circuitSpeed});
+      circuitDensity:floorGridDefaults.circuitDensity,circuitSpeed:floorGridDefaults.circuitSpeed,
+      circuitDetail:floorGridDefaults.circuitDetail,
+      circuitBoardOpacity:floorGridDefaults.circuitBoardOpacity,
+      circuitAccentColor:floorGridDefaults.circuitAccentColor});
     expect(parseThreeProject(JSON.stringify({...project,
       settings:{...project.settings,floorGrid:oldGrid}})).settings.floorGrid).toMatchObject({style:'grid'});
     for(const bad of [{style:'unknown'},{style:null},{circuitDensity:-1},{circuitDensity:101},
       {circuitDensity:NaN},{circuitDensity:null},{circuitSpeed:-.1},{circuitSpeed:6.1},
-      {circuitSpeed:Infinity},{circuitSpeed:'fast'}])
+      {circuitSpeed:Infinity},{circuitSpeed:'fast'},{circuitDetail:-1},{circuitDetail:101},
+      {circuitBoardOpacity:-.01},{circuitBoardOpacity:.86},{circuitBoardOpacity:NaN},
+      {circuitAccentColor:'cyan'},{circuitAccentColor:null}])
       expect(()=>validateFloorGrid({...circuit,...bad})).toThrow();
   });
   it('saves, validates and restores the floor grid, including old 3D JSON',()=>{
