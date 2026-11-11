@@ -36,29 +36,29 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
     update({colors:next});
   };
   return <section className="control-section three-controls" aria-labelledby="sky-heading">
-    <h3 id="sky-heading">3D空間の背景（23種類）</h3>
+    <h3 id="sky-heading">空と景色</h3>
     <label htmlFor="three-sky-kind">3D背景の種類</label>
     <select id="three-sky-kind" value={sky.kind} onChange={e=>update({kind:e.target.value as SkyKind})}>
       {SKY_KINDS.map(kind=><option value={kind} key={kind}>{SKY_LABELS[kind]}</option>)}
     </select>
     {sky.kind!=='classic'&&<>
-      <ThreeRange id="three-sky-intensity" label="背景エフェクトの強さ" value={sky.intensity} min={0} max={200}
+      <ThreeRange id="three-sky-intensity" label="景色の明るさ" value={sky.intensity} min={0} max={200}
         step={5} unit="%" onChange={intensity=>update({intensity})}/>
       <ThreeRange id="three-sky-density" label={naturalDensity[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'水面模様の細かさ':sky.kind==='whiteout-snow'?'雪粒子の量':'草の密度'):'星・粒子・模様の密度')} value={sky.density} min={0} max={200}
         step={10} unit="%" onChange={density=>update({density})}/>
       <ThreeRange id="three-sky-motion" label={naturalMotion[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'波の動く速さ':sky.kind==='whiteout-snow'?'雪が舞う速さ':'風の速さ'):'背景が動く速さ')} value={sky.motion} min={0} max={300}
         step={10} unit="%" onChange={motion=>update({motion})}/>
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>太陽・時間帯と陰影</legend>
+        <legend>時間と日差し</legend>
         <ThreeRange id="three-world-hour" label="時間帯（0=深夜・6=朝・12=昼・18=夕方）"
           value={world.timeOfDay} min={0} max={24} step={1} unit="時"
           onChange={timeOfDay=>updateWorld({timeOfDay})}/>
-        <ThreeRange id="three-world-sun" label="太陽光の強さ"
+        <ThreeRange id="three-world-sun" label="日差しの強さ"
           value={world.sunStrength} min={0} max={200} step={10} unit="%"
           onChange={sunStrength=>updateWorld({sunStrength})}/>
       </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>自然物・立体雲・天候</legend>
+        <legend>自然と天気</legend>
         <ThreeRange id="three-world-nature" label="草・花・岩などの密度"
           value={world.natureDensity} min={0} max={200} step={10} unit="%"
           onChange={natureDensity=>updateWorld({natureDensity})}/>
@@ -77,7 +77,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
           onChange={weatherStrength=>updateWorld({weatherStrength})}/>}
       </fieldset>}
       {water&&<fieldset className="three-kind-fieldset">
-        <legend>水面の反射・波</legend>
+        <legend>水の見た目</legend>
         <ThreeRange id="three-world-water-reflection" label="空の反射の強さ"
           value={world.waterReflection} min={0} max={200} step={10} unit="%"
           onChange={waterReflection=>updateWorld({waterReflection})}/>
@@ -87,18 +87,18 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <HelpInfo>リアルタイムの空色・光の方向を使った軽量な水面反射です。実際の図形・山を鏡写しにするフルシーン反射とは異なります。</HelpInfo>
       </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>探索カメラ</legend>
+        <legend>自由に歩く</legend>
         <label className="three-checkbox" htmlFor="three-world-explore">
           <input id="three-world-explore" type="checkbox" checked={world.explore}
             onChange={e=>updateWorld({explore:e.target.checked})}/> 自由探索モードを有効化
         </label>
-        <ThreeRange id="three-world-explore-speed" label="探索移動速度"
+        <ThreeRange id="three-world-explore-speed" label="歩く速さ"
           value={world.exploreSpeed} min={1} max={20} step={1} unit="倍"
           onChange={exploreSpeed=>updateWorld({exploreSpeed})}/>
         <HelpInfo>PCでは画面クリックでマウス視点操作、WASDで移動、Space/Shiftで上下移動。Escでマウス操作を解除。スマホでは画面上の矢印で移動・回転できます。</HelpInfo>
       </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>屋外の描画距離・霧</legend>
+        <legend>遠くの見え方</legend>
         <ThreeRange id="three-outdoor-view-distance" label="描画距離" value={visibility.distance}
           min={100} max={1000} step={50} unit="%" onChange={distance=>updateVisibility({distance})}/>
         <label htmlFor="three-outdoor-fog-enabled">
@@ -109,7 +109,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <HelpInfo>距離を増やすと遠くの地面まで描画します。霧OFFでは遠景がくっきり見え、表示距離の端だけを目立たないように処理します。スマホでは遠方の地形を軽量なメッシュで描画します。</HelpInfo>
       </fieldset>}
       {hasTerrainRelief(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>3D地形の起伏</legend>
+        <legend>地面の形</legend>
         <ThreeRange id="three-terrain-relief" label="地形の起伏" value={terrain.relief}
           min={0} max={200} step={10} unit="%" onChange={relief=>updateTerrain({relief})}/>
         <ThreeRange id="three-terrain-detail" label="地形の細かさ" value={terrain.detail}
@@ -121,7 +121,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         </label>
         <HelpInfo>地面を本当に立体的に変形させます。0%は平面、100%は自然な起伏、200%は大きな砂丘・丘。中央を平坦にすると図形の近くは変形せず、遠くから丘になります。</HelpInfo>
       </fieldset>}
-      <fieldset className="three-kind-fieldset"><legend>背景の色をカスタマイズ</legend>
+      <fieldset className="three-kind-fieldset"><legend>景色の色</legend>
         {([['base','背景の暗い色'],['accent','メインの発光色'],['highlight','ハイライト色']] as const).map(([key,label])=>
           <div key={key} className="three-sky-color-row">
             <label htmlFor={`three-sky-color-${key}`}>{label}</label>
