@@ -13,6 +13,12 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
     <label className="three-checkbox"><input type="checkbox" checked={grid.enabled}
       onChange={event=>update({enabled:event.target.checked})}/> 3D床グリッドを有効化</label>
     {grid.enabled&&<>
+      <label htmlFor="floor-grid-style">床のデザイン</label>
+      <select id="floor-grid-style" value={grid.style}
+        onChange={event=>update({style:event.target.value as FloorGridSettings['style']})}>
+        <option value="grid">遠近グリッド</option>
+        <option value="circuit">平面電子回路（PCB）</option>
+      </select>
       <div className="three-custom-color">
         <label htmlFor="floor-grid-picker">床グリッドの色
           <input id="floor-grid-picker" type="color" value={grid.color}
@@ -35,9 +41,15 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
         min={0} max={200} step={5} unit="%" onChange={glow=>update({glow})}/>
       <ThreeRange id="floor-grid-extent" label="床グリッドの直径" value={grid.extent*FLOOR_GRID_DIAMETER_MULTIPLIER}
         min={240} max={1200} step={20} unit="単位" onChange={diameter=>update({extent:diameter/FLOOR_GRID_DIAMETER_MULTIPLIER})}/>
-      <ThreeRange id="floor-grid-scroll" label="床グリッドの流れる速度" value={grid.scrollSpeed}
+      {grid.style==='circuit'&&<>
+        <ThreeRange id="floor-circuit-density" label="回路配線の密度" value={grid.circuitDensity}
+          min={0} max={100} step={5} unit="%" onChange={circuitDensity=>update({circuitDensity})}/>
+        <ThreeRange id="floor-circuit-speed" label="回路を走る光の速度" value={grid.circuitSpeed}
+          min={0} max={6} step={.25} unit="倍" onChange={circuitSpeed=>update({circuitSpeed})}/>
+      </>}
+      <ThreeRange id="floor-grid-scroll" label="床パターン全体のスクロール速度" value={grid.scrollSpeed}
         min={0} max={8} step={.25} unit="単位/秒" onChange={scrollSpeed=>update({scrollSpeed})}/>
     </>}
-    <p className="help">3Dの図形の下に、カメラの注視点を中心として遠近感が変わる床だけを表示します。直径は以前の約10倍（初期700単位）です。線は遠くほど細くなり、密集する地平線付近では自然に消えます。図形やシードは変更されません。流れる速度は3Dの再生・一時停止と連動し、PNG・3D設定JSONにも反映されます。</p>
+    <p className="help">3D図形の下に、本物の遠近感がある床を表示します。通常のグリッドと、直角に分岐する配線・発光端子・光が流れる電子回路を切り替えられます。図形やシードは変更されず、3D再生・一時停止、PNG、設定JSONに対応します。</p>
   </section>;
 }
