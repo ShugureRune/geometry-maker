@@ -104,11 +104,11 @@ export function makeCircuitLayout(settings:FloorGridSettings,low=false):CircuitL
         parts.push({kind:'smd',position:[
           position[0]+size*(horizontal(arm)?.05:.79),
           position[1]+size*(horizontal(arm)?.79:.05),
-        ],size:.21*scale,orientation:chip.orientation});
+        ],size:.21*scale,orientation:horizontal(arm)?0:Math.PI/2});
         parts.push({kind:'smd',position:[
           position[0]-size*(horizontal(arm)?.05:.79),
           position[1]-size*(horizontal(arm)?.83:.05),
-        ],size:.16*scale,orientation:chip.orientation});
+        ],size:.16*scale,orientation:horizontal(arm)?0:Math.PI/2});
       }
       if(detail>.42&&id%3===0){
         parts.push({kind:'capacitor',position:[
