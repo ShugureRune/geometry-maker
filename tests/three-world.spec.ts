@@ -83,7 +83,7 @@ test('sun time, storms, natural density and water reflection adjust image and su
   const saved=digest(await png(page));
   await category(page,'書き出し');
   const download=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await download).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.sky.world).toMatchObject({
@@ -92,7 +92,7 @@ test('sun time, storms, natural density and water reflection adjust image and su
   await category(page,'背景');
   await page.locator('#three-world-hour').fill('12');
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'world.json',mimeType:'application/json',buffer:bytes,
   });
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-sky-kind','alpine-peaks');
