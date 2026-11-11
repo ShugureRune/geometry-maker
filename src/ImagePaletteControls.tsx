@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import {useRef,useState,type PointerEvent as ReactPointerEvent} from 'react';
 import {extractImagePalette,type ImagePalette,type PaletteScope,type PaletteFocus} from './image-palette';
 
@@ -111,11 +112,11 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
   <div className="section-heading">
    <h3 id="image-palette-heading">画像から配色</h3><span className="tiny-label">IMAGE PALETTE</span>
   </div>
-  <p className="help">写真・イラストから色を抽出します。主役優先では画像の端につながる背景を自動的に抑えます。</p>
+  <HelpInfo>写真・イラストから色を抽出します。主役優先では画像の端につながる背景を自動的に抑えます。</HelpInfo>
   <label htmlFor="image-palette-file" className="image-palette-upload-label">画像を選択</label>
   <input id="image-palette-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp,image/heic,image/heif"
    disabled={working} onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void analyze(file);}}/>
-  <p className="help">最大12MB・2400万画素。処理はこの端末内だけで完結し、画像は送信しません。</p>
+  <HelpInfo>最大12MB・2400万画素。処理はこの端末内だけで完結し、画像は送信しません。</HelpInfo>
   <label htmlFor="image-palette-focus">色を抽出する対象</label>
   <select id="image-palette-focus" value={focus} disabled={working} onChange={e=>{
    const next=e.target.value as PaletteFocus|'area';setFocus(next);reextract(next);
@@ -125,7 +126,7 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
    <option value="area">範囲を選択（好きな部分だけ）</option>
    <option value="all">画像全体（従来どおり）</option>
   </select>
-  <p className="help">背景が残るときは「範囲を選択」が確実です。選び直してもシードは変わりません。</p>
+  <HelpInfo>背景が残るときは「範囲を選択」が確実です。選び直してもシードは変わりません。</HelpInfo>
   {working&&<p role="status" className="help">画像を解析中…</p>}
   {error&&<p role="alert" className="image-palette-error">{error}</p>}
   {palette&&<div className="image-palette-result">
@@ -134,7 +135,7 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
     <div><strong title={name}>{name}</strong><span>代表色 {palette.swatches.length}色</span></div>
    </div>
    {focus==='area'&&<div className="image-palette-selection">
-    <p className="help">画像の取り込みたい部分を指やマウスで囲んでください。タップだけでも範囲を移動できます。</p>
+    <HelpInfo>画像の取り込みたい部分を指やマウスで囲んでください。タップだけでも範囲を移動できます。</HelpInfo>
     <div className="image-palette-pick-area" role="group" aria-label="色を抽出する画像範囲"
      style={{aspectRatio:(sampleRef.current?.width??1)+' / '+(sampleRef.current?.height??1),
       width:Math.min(280,320*(sampleRef.current?.width??1)/(sampleRef.current?.height??1))+'px'}}
@@ -160,7 +161,7 @@ export function ImagePaletteControls({onApply}:{onApply:(palette:ImagePalette,sc
     <button type="button" onClick={()=>apply('figures')}>図形だけ</button>
     <button type="button" disabled={working} onClick={()=>{if(sampleRef.current)reextract(focus);}}>抽出し直す</button>
    </div>
-   <p className="help">シード・図形配置・発光の設定は変更しません。ロックした色は上書きしません。背景の単色・グラデーション切り替えは「背景」タブで選べます。</p>
+   <HelpInfo>シード・図形配置・発光の設定は変更しません。ロックした色は上書きしません。背景の単色・グラデーション切り替えは「背景」タブで選べます。</HelpInfo>
   </div>}
   {notice&&<p className="image-palette-notice" role="status">{notice}</p>}
  </section>;
