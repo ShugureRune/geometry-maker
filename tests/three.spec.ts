@@ -169,6 +169,9 @@ test('failed lazy library loading leaves an explicit way back to 2D', async ({pa
   await page.route(/\/ThreePreview[^/]*\.(?:tsx|js)(?:\?|$)/, route => route.abort());
   await page.goto('./'); await page.getByRole('button', {name: '3Dモード', exact: true}).click();
   await expect(page.getByRole('alert')).toContainText('3D表示を開始できませんでした');
+  await expect(page.getByRole('alert')).toHaveAttribute('data-three-error-kind','module');
+  await expect(page.getByRole('button',{name:'最新版を再読み込み'})).toBeVisible();
+  await expect(page.getByTestId('three-error-detail')).toContainText('エラー種別：module');
   await page.getByRole('button', {name: '2Dモードへ戻る', exact: true}).click();
   await expect(page.getByTestId('preview')).toBeVisible();
 });
