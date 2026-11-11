@@ -1,3 +1,4 @@
+import {HelpInfo} from '../HelpInfo';
 import {useEffect, useState} from 'react';
 import {ThreeRange} from './ThreeControls';
 import type {ThreeSettings} from './settings';
@@ -36,11 +37,11 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         return <button type="button" key={preset} aria-pressed={JSON.stringify({network,neon})===JSON.stringify(value)} onClick={()=>onChange({...settings,...value})}>{['スタンダード','ネオンネットワーク','サイバーグリッド'][i]}</button>;
       })}
     </div>
-    <p className="help">プリセットは3Dスタイルだけを変更します。シード・配置・通常マテリアル・カメラは維持します。</p>
+    <HelpInfo>プリセットは3Dスタイルだけを変更します。シード・配置・通常マテリアル・カメラは維持します。</HelpInfo>
     <fieldset><legend>図形の自動接続</legend>
       <label className="three-checkbox"><input type="checkbox" checked={network.enabled} onChange={event=>net({enabled:event.target.checked})}/> 図形の接続を有効化</label>
       {network.enabled&&<>
-        <p className="help">接続方式：近い順。初期構図の中心間距離で判定し、浮遊中も接続を維持します。</p>
+        <HelpInfo>接続方式：近い順。初期構図の中心間距離で判定し、浮遊中も接続を維持します。</HelpInfo>
         <ThreeRange id="network-count" label="最大接続数" min={1} max={6} step={1} value={network.maxConnections} unit="本" onChange={maxConnections=>net({maxConnections})}/>
         <ThreeRange id="network-distance" label="接続距離" min={.5} max={15} step={.25} value={network.distance} unit="単位" onChange={distance=>net({distance})}/>
         <ThreeRange id="network-width" label="接続線の太さ" min={.25} max={6} step={.25} value={network.width} unit="倍" onChange={width=>net({width})}/>
@@ -68,6 +69,6 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         {neon.display==='transparent'&&<ThreeRange id="neon-face-opacity" label="面の不透明度" min={0} max={1} step={.05} value={neon.faceOpacity} onChange={faceOpacity=>outline({faceOpacity})}/>}
       </>}
     </fieldset>
-    <p className="help">高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスは3Dの再生・一時停止と連動します。</p>
+    <HelpInfo>高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスは3Dの再生・一時停止と連動します。</HelpInfo>
   </section>;
 }
