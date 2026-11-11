@@ -42,7 +42,7 @@ export type ThreeStandbyTransition={
   fromTime:number;
 };
 export type MorphMatch={id:string;from?:ThreeObject;to?:ThreeObject};
-const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
+const mix=(a:number,b:number,t:number)=>t<=0?a:t>=1?b:a+(b-a)*t;
 export const clamp01=(t:number)=>Math.max(0,Math.min(1,Number.isFinite(t)?t:0));
 export const easeInOut=(t:number)=>{const p=clamp01(t);return p*p*(3-2*p);};
 const cost=(a:ThreeObject,b:ThreeObject)=>{
