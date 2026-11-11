@@ -109,7 +109,7 @@ test('background-on PNG, safe JSON roundtrip and v4/v5 selection',async({page})=
   await page.getByLabel('同心円の数').fill('7');
   await page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す').check();
   await category(page,'書き出し');
-  const json=await exportFile(page,'設定JSONを保存');
+  const json=await exportFile(page,'作品の設定を保存');
   const settings=JSON.parse(json.toString('utf8'));
   expect(settings.algorithmVersion).toBe('2d-magic-v1');
   expect(settings.magicCircle.style).toBe('crest');
@@ -121,7 +121,7 @@ test('background-on PNG, safe JSON roundtrip and v4/v5 selection',async({page})=
   await page.getByLabel('生成アルゴリズム').selectOption('2d-v5');
   await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-v5');
   await category(page,'書き出し');
-  await page.locator('input[aria-label="設定JSONファイル"]').setInputFiles({name:'magic.json',mimeType:'application/json',buffer:json});
+  await page.locator('input[aria-label="保存した設定ファイル"]').setInputFiles({name:'magic.json',mimeType:'application/json',buffer:json});
   await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-magic-v1');
   await category(page,'図形');
   await expect(page.getByLabel('魔法陣のスタイル')).toHaveValue('crest');
@@ -158,7 +158,7 @@ test('infinite mode JSON restores seed variations and alpha SVG export',async({p
   await page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す').check();
   const blueprint=await page.getByTestId('shapes').innerHTML();
   await category(page,'書き出し');
-  const saved=await exportFile(page,'設定JSONを保存');
+  const saved=await exportFile(page,'作品の設定を保存');
   const json=JSON.parse(saved.toString('utf8'));
   expect(json.magicCircle).toMatchObject({generationMode:'infinite',variation:2,chaos:90,rareEffects:true,transparentExport:true});
   const svg=(await exportFile(page,'SVGを書き出す')).toString('utf8');
@@ -167,7 +167,7 @@ test('infinite mode JSON restores seed variations and alpha SVG export',async({p
   await category(page,'図形');
   await page.getByLabel('魔法陣の生成方式').selectOption('classic');
   await category(page,'書き出し');
-  await page.locator('input[aria-label="設定JSONファイル"]').setInputFiles({
+  await page.locator('input[aria-label="保存した設定ファイル"]').setInputFiles({
     name:'infinite.json',mimeType:'application/json',buffer:saved
   });
   await category(page,'図形');
