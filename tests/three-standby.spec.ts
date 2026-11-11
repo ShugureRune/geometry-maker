@@ -20,7 +20,7 @@ async function start(page:Page){
 async function saveJson(page:Page){
   await category(page,'書き出し');
   const d=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   return readFile((await (await d).path())!);
 }
 test('3D standby morph swaps seeds and completes while keeping the preview mounted',async({page})=>{
@@ -64,7 +64,7 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await category(page,'アニメーション');
   await page.getByLabel('3D待機画面モードを有効化').uncheck();
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル',{exact:true}).setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル',{exact:true}).setInputFiles({
     name:'standby.json',mimeType:'application/json',buffer:saved
   });
   await category(page,'アニメーション');
@@ -74,7 +74,7 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   const old={...original,settings:{...original.settings}};
   delete old.settings.standby;
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル',{exact:true}).setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル',{exact:true}).setInputFiles({
     name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(old))
   });
   await category(page,'アニメーション');
