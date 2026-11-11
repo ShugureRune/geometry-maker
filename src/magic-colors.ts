@@ -1,4 +1,4 @@
-import {seededRandom,type Background} from './scene';
+import type {Background} from './scene';
 
 /** Self-contained spell palettes, deliberately independent of the normal 2D color generator. */
 export type MagicColorSet={
@@ -35,7 +35,11 @@ export function validMagicColorSet(v:unknown):v is MagicColorSet{
     Array.isArray(c.gradient)&&c.gradient.length===3&&c.gradient.every(hex);
 }
 export function magicPaletteFromSeed(seed:string,reroll=0):MagicPalette{
-  const base=Math.floor(seededRandom('magic-palette-v1:'+seed)()*MAGIC_PALETTES.length);
+  // Local FNV-1a hash: never imports the v4/v5 scene generator or its color RNG.
+  let hash=2166136261;
+  const key='magic-palette-v1:'+seed;
+  for(let i=0;i<key.length;i++)hash=Math.imul(hash^key.charCodeAt(i),16777619);
+  const base=(hash>>>0)%MAGIC_PALETTES.length;
   // 3 is coprime to 8: each click gives another palette before any repeats.
   const index=(base+reroll*3)%MAGIC_PALETTES.length;
   const p=MAGIC_PALETTES[index];
