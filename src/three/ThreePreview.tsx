@@ -89,7 +89,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
       const newPose=to?threePose(to,seconds.current,settings.floatAmount,settings.rotationAmount):undefined;
       let position:[number,number,number],rotation:[number,number,number],radius:number,alpha:number,colorMix:number;
       if(transition.mode==='morph'){
-        const form=morphPose(from,to,seconds.current/transition.duration,variant,oldPose,newPose);
+        const form=morphPose(from,to,seconds.current/transition.duration,variant,oldPose,newPose,transition.cameraPosition);
         ({position,rotation,radius,opacity:alpha,colorMix}=form);
       }else{
         const time=splitExitEnter(seconds.current,transition.duration);
