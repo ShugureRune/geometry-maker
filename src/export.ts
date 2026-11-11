@@ -2,7 +2,7 @@ import { MAX_PNG_PIXELS, resolutionError } from './settings';
 
 /** Standalone SVG: no app CSS, CDN, fonts or external images. The inner viewBox
  * stays unchanged; mismatched output ratios use centered contain with background margins. */
-export function serializeArtwork(source: SVGSVGElement, width: number, height: number, marginColor: string): string {
+export function serializeArtwork(source: SVGSVGElement, width: number, height: number, marginColor: string, transparentMargins=false): string {
   const error = resolutionError(width, height);
   if (error) throw new Error(error);
   const clone = source.cloneNode(true) as SVGSVGElement;
@@ -20,7 +20,7 @@ export function serializeArtwork(source: SVGSVGElement, width: number, height: n
   outer.setAttribute('viewBox', `0 0 ${width} ${height}`);
   const background = document.createElementNS(ns, 'rect');
   background.setAttribute('width', String(width)); background.setAttribute('height', String(height)); background.setAttribute('fill', marginColor);
-  outer.append(background, clone);
+  if(transparentMargins)outer.append(clone);else outer.append(background, clone);
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(outer);
 }
 export async function pngBlob(svg: string, width: number, height: number): Promise<Blob> {
