@@ -25,7 +25,7 @@ test('text editor is reflected in preview, SVG and JSON without changing seed',a
  expect(await preview.locator('[data-testid="shapes"]').evaluate(n=>n.outerHTML)).toBe(stateBefore);
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const jsonEvent=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ await page.getByRole('button',{name:'作品の設定を保存'}).click();
  const json=JSON.parse((await readFile((await (await jsonEvent).path())!)).toString());
  expect(json.textOverlay).toMatchObject({enabled:true,text:'急行 池袋\nGeometry & Studio',x:42,y:65,rotation:-8,layer:'back'});
  const svgEvent=page.waitForEvent('download');
@@ -41,7 +41,7 @@ test('text editor is reflected in preview, SVG and JSON without changing seed',a
  await nav.getByRole('button',{name:'文字',exact:true}).click();
  await page.getByLabel('文字を表示').uncheck();
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
- await page.getByLabel('設定JSONファイル').setInputFiles({name:'text.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(json))});
+ await page.getByLabel('保存した設定ファイル').setInputFiles({name:'text.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(json))});
  await nav.getByRole('button',{name:'文字',exact:true}).click();
  await expect(page.getByLabel('文字を表示')).toBeChecked();
  await expect(page.getByLabel('表示する文字')).toHaveValue('急行 池袋\nGeometry & Studio');
@@ -75,7 +75,7 @@ test('text colors track figure colors and glow survives SVG and JSON export',asy
  await expect(overlay.getByTestId('text-glow').locator('text')).toHaveAttribute('fill','#ff2266');
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const jsonEvent=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ await page.getByRole('button',{name:'作品の設定を保存'}).click();
  const config=JSON.parse((await readFile((await (await jsonEvent).path())!)).toString());
  expect(config.textOverlay).toMatchObject({colorMode:'gradient',glowEnabled:true,glowColorMode:'custom',
   glowColor:'#ff2266',glowStrength:160,glowBlur:18});
@@ -112,7 +112,7 @@ test('one-click hollow neon creates outline-only SVG, exports settings and resto
  expect(await page.getByTestId('preview').getByTestId('shapes').evaluate(n=>n.outerHTML)).toBe(originalShape);
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const jsonPromise=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存'}).click();
+ await page.getByRole('button',{name:'作品の設定を保存'}).click();
  const json=JSON.parse((await readFile((await (await jsonPromise).path())!)).toString());
  expect(json.textOverlay).toMatchObject({enabled:true,fillMode:'transparent',strokeEnabled:true,
   strokeColorMode:'text',glowEnabled:true,glowTarget:'outline',colorMode:'accent'});
@@ -129,7 +129,7 @@ test('one-click hollow neon creates outline-only SVG, exports settings and resto
  await nav.getByRole('button',{name:'文字',exact:true}).click();
  await page.getByLabel('文字の塗り').selectOption('solid');
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
- await page.getByLabel('設定JSONファイル').setInputFiles({name:'neon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(json))});
+ await page.getByLabel('保存した設定ファイル').setInputFiles({name:'neon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(json))});
  await nav.getByRole('button',{name:'文字',exact:true}).click();
  await expect(page.getByLabel('文字の塗り')).toHaveValue('transparent');
  await expect(page.getByTestId('current-seed')).toHaveText(seed??'');
