@@ -4,7 +4,7 @@ import type {Category} from './SettingsCategories';
 
 export const STUDIO_AUTOSAVE_KEY='geometry-maker-studio-autosave-v1';
 const MAX_AUTOSAVE_LENGTH=160_000;
-const validCategories:readonly Category[]=['shapes','background','colors','text','decorations','animation','export'];
+const validCategories:readonly Category[]=['shapes','background','colors','text','decoration','animation','export'];
 
 export type StudioAutosave={
   schemaVersion:1;
