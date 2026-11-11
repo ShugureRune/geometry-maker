@@ -2,6 +2,7 @@
 export const SKY_KINDS = [
   'classic','starfield','galaxy','aurora','deep-sea','nebula',
   'cyber-tunnel','retrowave','digital',
+  'shallow-water','whiteout-snow','foggy-grassland',
 ] as const;
 export type SkyKind = typeof SKY_KINDS[number];
 
@@ -15,6 +16,9 @@ export const SKY_LABELS: Record<SkyKind,string> = {
   'cyber-tunnel':'サイバートンネル',
   retrowave:'レトロウェーブ',
   digital:'デジタル空間',
+  'shallow-water':'無限の浅瀬',
+  'whiteout-snow':'雪原ホワイトアウト',
+  'foggy-grassland':'白い霧の草原',
 };
 
 /** Three editable colors per preset: dark atmosphere, luminous midtone, and highlights.
@@ -30,6 +34,9 @@ export const SKY_PALETTES:Record<SkyKind,SkyPalette>={
   'cyber-tunnel':{base:'#04051a',accent:'#36cfff',highlight:'#ff5bcf'},
   retrowave:{base:'#120525',accent:'#ee399d',highlight:'#ffb45d'},
   digital:{base:'#011413',accent:'#10d87b',highlight:'#a9ffcf'},
+  'shallow-water':{base:'#91cbd3',accent:'#b9e3e5',highlight:'#f4f9f3'},
+  'whiteout-snow':{base:'#dbe9f3',accent:'#eff5f8',highlight:'#ffffff'},
+  'foggy-grassland':{base:'#b5c8b6',accent:'#8eae90',highlight:'#eef2e8'},
 };
 export type SkyPaletteOverrides=Partial<Record<SkyKind,SkyPalette>>;
 export function validateSkyPalette(value:unknown):SkyPalette{
@@ -86,6 +93,17 @@ export function skySeedNumber(seed:string,kind:SkyKind):number{
  * the original 34-frame tunnel, and 200 doubles it without adding meshes. */
 export function cyberTunnelFrameCount(density:number):number{
   return Math.max(0,Math.round(34*density/100));
+}
+
+/** Mobile/desktop scene budgets: both use one instanced grass draw call. */
+export function outdoorGrassCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?260:1150)*density/100));
+}
+export function outdoorSnowCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?140:440)*density/100));
+}
+export function outdoorFogDistance(kind:SkyKind):number{
+  return kind==='whiteout-snow'?38:kind==='foggy-grassland'?62:115;
 }
 
 export function skyIsAnimated(sky:SkySettings):boolean{

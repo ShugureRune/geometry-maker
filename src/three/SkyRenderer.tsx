@@ -7,6 +7,7 @@ import {
 import {seededRandom} from '../scene';
 import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
 import {makeSkyGlyphAtlas} from './sky-glyphs';
+import {OutdoorRenderer} from './OutdoorRenderer';
 import {floorGridPlacement} from './floor-grid';
 import type {ThreeView} from './settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
@@ -211,6 +212,8 @@ export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGrid
   const particles=['starfield','galaxy','aurora','deep-sea','nebula','digital'].includes(sky.kind);
   return <>
     <SkyDome sky={sky} seed={seed} seconds={seconds} low={low}/>
+    <OutdoorRenderer sky={sky} seed={seed} seconds={seconds} low={low}
+      sceneHeight={sceneHeight} floorGridEnabled={floorGridEnabled} view={view}/>
     {particles&&<SkyParticles sky={sky} seed={seed} seconds={seconds} low={low}/>}
     {sky.kind==='cyber-tunnel'&&<CyberTunnel sky={sky} seconds={seconds}/>}
     {sky.kind==='retrowave'&&<RetroFloor sky={sky} seconds={seconds} sceneHeight={sceneHeight}
