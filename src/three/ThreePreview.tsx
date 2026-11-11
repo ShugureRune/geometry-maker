@@ -79,7 +79,12 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
     mesh.current.visible=visibility*opacity>.001;
     mesh.current.scale.setScalar(object.radius*(scales?Math.max(.001,visibility):1)*(arrival?.scale??1));
     mesh.current.castShadow=!low&&surfaceVisible&&!translucent&&!fades&&opacity>=.999;
-    if(surfaceRef.current&&(fades||entranceFade))surfaceRef.current.opacity=baseOpacity*visibility*opacity;
+    if(surfaceRef.current){
+      if(fades||entranceFade)surfaceRef.current.opacity=baseOpacity*visibility*opacity;
+      // Once a figure is fully formed, restore opaque depth writes so complex
+      // seed compositions keep their correct front/back occlusion.
+      surfaceRef.current.depthWrite=!translucent&&!fades&&opacity>=.999;
+    }
   });
   return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent&&!fades&&!entranceFade} receiveShadow={!low}>
     {kind === 'sphere' && <sphereGeometry args={[1, segments, segments / 2]}/>}
