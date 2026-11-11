@@ -66,6 +66,19 @@ describe('seed-driven infinite magic circle blueprint',()=>{
       }
     }
   });
+  it('chaos controls the available design grammar, not only the number of rings',()=>{
+    const gentleCore=new Set(['star','polygon','flower']);
+    const gentleRings=new Set(['ward','nodes','spokes','seal']);
+    const samples=Array.from({length:90},(_,i)=>'chaos-'+i);
+    for(const seed of samples){
+      const b=buildMagicBlueprint(seed,{...infinite,chaos:0});
+      expect(gentleCore.has(b.coreKind)).toBe(true);
+      for(const ring of b.ringPlan)expect(gentleRings.has(ring.kind)).toBe(true);
+    }
+    const wild=samples.map(seed=>buildMagicBlueprint(seed,{...infinite,chaos:100}));
+    expect(new Set(wild.map(b=>b.coreKind)).size).toBe(MAGIC_CORE_KINDS.length);
+    expect(new Set(wild.flatMap(b=>b.ringPlan.map(r=>r.kind))).size).toBe(MAGIC_RING_KINDS.length);
+  });
   it('disables rare effects when requested without changing the classic generator',()=>{
     const noRare={...infinite,rareEffects:false};
     for(let i=0;i<50;i++)expect(buildMagicBlueprint('rare-'+i,noRare).rareEffect).toBeNull();
