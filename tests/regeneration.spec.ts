@@ -61,14 +61,14 @@ test('all new kinds render and grow from the same geometric contours',async({pag
 test('old JSON keeps v4 geometry and filenames, while v5 settings round trip with animation',async({page})=>{
  await page.goto('./');await page.getByLabel('アニメーションを有効化').uncheck();await page.getByLabel('シード値',{exact:true}).fill('undefined-heartbeat');await page.getByLabel('発光強度').fill('0');
  const old={schemaVersion:1,algorithmVersion:'2d-v4',seed:'reference',aspectRatio:'16:9',backgroundMode:'solid',solidColor:'#111526',gradientColors:['#111526','#222222','#333333'],gradientAngle:135,exportWidth:512,exportHeight:288};
- await page.getByLabel('設定JSONファイル').setInputFiles({name:'old.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(old))});
+ await page.getByLabel('保存した設定ファイル').setInputFiles({name:'old.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(old))});
  await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-v4');await expect(page.getByLabel('生成アルゴリズム')).toHaveValue('2d-v4');
  await expect(page.getByRole('status').filter({hasText:'旧v4設定'})).toBeVisible();
  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'SVGを書き出す',exact:true}).click();const oldSvg=await pending;expect(oldSvg.suggestedFilename()).toContain('2d-v4');expect(await readFile((await oldSvg.path())!,'utf8')).toContain('data-algorithm="2d-v4"');
  const legacy=await snapshot(page);await page.getByLabel('生成アルゴリズム').selectOption('2d-v5');expect(await snapshot(page)).not.toBe(legacy);
  await page.getByLabel('アニメーションを有効化').check();await page.getByLabel('成長時間（秒）').fill('12');await page.getByLabel('再生速度',{exact:true}).selectOption('1.5');await page.getByLabel('イージング').selectOption('ease-out-in');await page.getByLabel('図形密度').fill('100');
- const saved=page.waitForEvent('download');await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();const json=await saved;const data=await readFile((await json.path())!);expect(JSON.parse(data.toString())).toMatchObject({algorithmVersion:'2d-v5',animationEnabled:true,animationDuration:12,playbackSpeed:1.5,easingType:'ease-out-in',density:100});
- await page.getByLabel('成長時間（秒）').fill('1');await page.getByLabel('設定JSONファイル').setInputFiles({name:'v5.json',mimeType:'application/json',buffer:data});await expect(page.getByLabel('成長時間（秒）')).toHaveValue('12');await expect(page.getByLabel('図形密度')).toHaveValue('100');await expect(page.getByLabel('タイムライン',{exact:true})).toHaveValue('0');
+ const saved=page.waitForEvent('download');await page.getByRole('button',{name:'作品の設定を保存',exact:true}).click();const json=await saved;const data=await readFile((await json.path())!);expect(JSON.parse(data.toString())).toMatchObject({algorithmVersion:'2d-v5',animationEnabled:true,animationDuration:12,playbackSpeed:1.5,easingType:'ease-out-in',density:100});
+ await page.getByLabel('成長時間（秒）').fill('1');await page.getByLabel('保存した設定ファイル').setInputFiles({name:'v5.json',mimeType:'application/json',buffer:data});await expect(page.getByLabel('成長時間（秒）')).toHaveValue('12');await expect(page.getByLabel('図形密度')).toHaveValue('100');await expect(page.getByLabel('タイムライン',{exact:true})).toHaveValue('0');
 });
 
 test.describe('phone regeneration',()=>{
