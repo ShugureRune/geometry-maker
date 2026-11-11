@@ -59,11 +59,12 @@ test('3D seeded entrance reveals, finishes, and replay starts a new one-shot ani
   expect(await pngDigest(page)).toBe(stopped);
   await category(page,'アニメーション');
   await page.getByRole('button',{name:'3D登場演出を最初から再生'}).click();
-  // When paused, replay rewinds the clock; playing resumes the reveal.
+  // Replay also resumes playback even when the animation had been paused.
   const reset=await project(page);
-  expect(reset.elapsedSeconds).toBeLessThan(.6);
+  expect(reset.settings.animation).toBe(true);
+  expect(reset.elapsedSeconds).toBeLessThan(1.4);
   await category(page,'アニメーション');
-  await page.getByRole('button',{name:'3Dを再生'}).click();
+  await expect(page.getByRole('button',{name:'3Dを一時停止'})).toBeVisible();
   await expect(preview).toHaveAttribute('data-entrance-mode','spiral');
 });
 
