@@ -30,7 +30,9 @@ export function ThreeVideoPanel({api,seed,ready,disabled,onBusyChange}:{
   const [message,setMessage]=useState('');
   const controller=useRef<AbortController|null>(null);
   const mounted=useRef(true);
-  useEffect(()=>()=>{mounted.current=false;controller.current?.abort();},[]);
+  // React StrictMode runs effect setup/cleanup twice in development.
+  // Re-arm the mounted ref on every setup, or the export UI stays busy forever.
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;controller.current?.abort();};},[]);
   useEffect(()=>{onBusyChange?.(busy);},[busy,onBusyChange]);
   useEffect(()=>()=>{onBusyChange?.(false);},[onBusyChange]);
 
