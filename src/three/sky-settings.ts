@@ -1,4 +1,5 @@
 import {validateTerrain,type TerrainSettings} from './terrain';
+import {validateWorld,type WorldSettings} from './world-settings';
 
 /** Optional 3D-only procedural environments; legacy backgrounds stay untouched. */
 export const SKY_KINDS = [
@@ -7,6 +8,7 @@ export const SKY_KINDS = [
   'shallow-water','whiteout-snow','foggy-grassland',
   'endless-desert','salt-flat','moonlit-flowers','forest-edge',
   'twilight-plain','cloud-sea','dark-mirror',
+  'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
 ] as const;
 export type SkyKind = typeof SKY_KINDS[number];
 
@@ -30,6 +32,11 @@ export const SKY_LABELS: Record<SkyKind,string> = {
   'twilight-plain':'星のない薄明の平原',
   'cloud-sea':'雲海の上',
   'dark-mirror':'黒い水面と霧',
+  'alpine-peaks':'山岳地帯',
+  'grand-canyon':'巨大峡谷',
+  'volcanic-field':'火山地帯',
+  glacier:'氷河',
+  'floating-islands':'浮遊島',
 };
 
 /** Three editable colors per preset: dark atmosphere, luminous midtone, and highlights.
@@ -55,6 +62,11 @@ export const SKY_PALETTES:Record<SkyKind,SkyPalette>={
   'twilight-plain':{base:'#51445f',accent:'#a28da7',highlight:'#e8b5aa'},
   'cloud-sea':{base:'#8ea9cb',accent:'#d2dced',highlight:'#fff6ea'},
   'dark-mirror':{base:'#02070f',accent:'#162d39',highlight:'#8bb4c5'},
+  'alpine-peaks':{base:'#34435c',accent:'#768e8c',highlight:'#e3edf1'},
+  'grand-canyon':{base:'#68402e',accent:'#bd754b',highlight:'#f7bf88'},
+  'volcanic-field':{base:'#140f16',accent:'#57302c',highlight:'#ff7d31'},
+  glacier:{base:'#7ba9c0',accent:'#b7dce4',highlight:'#f4fdff'},
+  'floating-islands':{base:'#7fa6b3',accent:'#86b5a5',highlight:'#f4f0cf'},
 };
 export type SkyPaletteOverrides=Partial<Record<SkyKind,SkyPalette>>;
 export function validateSkyPalette(value:unknown):SkyPalette{
@@ -81,6 +93,7 @@ export const outdoorVisibilityDefaults:OutdoorVisibilitySettings={distance:400,f
 export const OUTDOOR_SKY_KINDS=[
   'shallow-water','whiteout-snow','foggy-grassland','endless-desert',
   'salt-flat','moonlit-flowers','forest-edge','twilight-plain','cloud-sea','dark-mirror',
+  'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
 ] as const;
 export function hasOutdoorVisibility(kind:SkyKind):boolean{
   return OUTDOOR_SKY_KINDS.some(v=>v===kind);
@@ -103,6 +116,7 @@ export type SkySettings = {
   colors?:SkyPaletteOverrides;
   terrain?:TerrainSettings;
   visibility?:OutdoorVisibilitySettings;
+  world?:WorldSettings;
 };
 export const skyDefaults:SkySettings={
   kind:'classic',intensity:100,density:100,motion:100,
@@ -120,7 +134,8 @@ export function validateSky(value:unknown):SkySettings{
   return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,motion:v.motion as number,
     ...(v.colors===undefined?{}:{colors:validateSkyPaletteOverrides(v.colors)}),
     ...(v.terrain===undefined?{}:{terrain:validateTerrain(v.terrain)}),
-    ...(v.visibility===undefined?{}:{visibility:validateOutdoorVisibility(v.visibility)})};
+    ...(v.visibility===undefined?{}:{visibility:validateOutdoorVisibility(v.visibility)}),
+    ...(v.world===undefined?{}:{world:validateWorld(v.world)})};
 }
 /** No frame-time random numbers. Repeated seed + kind produces the same universe. */
 export function skySeedNumber(seed:string,kind:SkyKind):number{
@@ -160,6 +175,11 @@ export function outdoorFogDistance(kind:SkyKind):number{
   if(kind==='moonlit-flowers')return 75;
   if(kind==='cloud-sea')return 170;
   if(kind==='dark-mirror')return 85;
+  if(kind==='alpine-peaks')return 480;
+  if(kind==='grand-canyon')return 520;
+  if(kind==='volcanic-field')return 430;
+  if(kind==='glacier')return 480;
+  if(kind==='floating-islands')return 580;
   return 115;
 }
 /** GPU instancing limits for the seven extra natural environments. */
