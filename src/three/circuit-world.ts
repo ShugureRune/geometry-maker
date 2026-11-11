@@ -65,7 +65,7 @@ export function makeCircuitLayout(settings:FloorGridSettings,low=false):CircuitL
       }
     }
     // Close-up memory banks sit around (not on top of) the processor.
-    for(const side of [-1,1]){
+    if(detail>.12)for(const side of [-1,1]){
       parts.push({kind:'memory',position:transform(arm,coreHalf+1.07*scale,side*.87*scale),
         size:.91*scale,orientation:horizontal(arm)?0:Math.PI/2});
     }
