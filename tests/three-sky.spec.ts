@@ -81,7 +81,7 @@ test('sky settings round-trip through JSON, keep existing neon/floor, and pause 
   expect(digest(await png(page))).toBe(paused);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await pending).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.sky).toEqual({kind:'aurora',intensity:145,density:150,motion:200});
@@ -90,7 +90,7 @@ test('sky settings round-trip through JSON, keep existing neon/floor, and pause 
   await page.getByLabel('3D背景の種類').selectOption('deep-sea');
   expect(digest(await png(page))).not.toBe(paused);
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({name:'sky.json',mimeType:'application/json',buffer:bytes});
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({name:'sky.json',mimeType:'application/json',buffer:bytes});
   await expect(preview).toHaveAttribute('data-sky-kind','aurora');
   await category(page,'背景');
   await expect(page.locator('#three-sky-intensity')).toHaveValue('145');
@@ -171,7 +171,7 @@ test('editable 3-color sky palettes have independent per-mode overrides, reset, 
   await expect(page.locator('#three-sky-color-accent')).toHaveValue('#aa66ff');
   await category(page,'書き出し');
   const download=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await download).path())!);
   const json=JSON.parse(bytes.toString());
   expect(json.settings.sky.colors.nebula).toEqual({base:'#101122',accent:'#ff8800',highlight:'#eedd11'});
@@ -181,7 +181,7 @@ test('editable 3-color sky palettes have independent per-mode overrides, reset, 
   await page.getByRole('button',{name:'この背景の標準色に戻す'}).click();
   expect(digest(await png(page))).toBe(original);
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({name:'palettes.json',mimeType:'application/json',buffer:bytes});
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({name:'palettes.json',mimeType:'application/json',buffer:bytes});
   await category(page,'背景');
   await select.selectOption('nebula');
   await expect(page.locator('#three-sky-color-accent')).toHaveValue('#ff8800');
