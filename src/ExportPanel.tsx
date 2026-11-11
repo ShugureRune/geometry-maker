@@ -46,7 +46,7 @@ export function ExportPanel({ textOverlay, magicSettings, videoArtwork, version,
         const blob = format === 'svg' ? new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }) : await pngBlob(svg, w, h);
         downloadBlob(blob, `${stem}_${w}x${h}${magicTransparent?'_transparent':''}.${format}`);
       }
-      setMessage(`${format.toUpperCase()}の保存を開始しました。`);
+      setMessage(format==='json'?'作品の設定ファイルの保存を開始しました。':`${format.toUpperCase()}の保存を開始しました。`);
     } catch (e) { setError(e instanceof Error ? e.message : '保存に失敗しました。解像度を下げて再度お試しください。'); }
     finally { setBusy(false); }
   }
@@ -54,7 +54,7 @@ export function ExportPanel({ textOverlay, magicSettings, videoArtwork, version,
     if (!file) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      if (file.size > MAX_SETTINGS_BYTES) throw new Error('設定JSONは64KB以下にしてください。');
+      if (file.size > MAX_SETTINGS_BYTES) throw new Error('設定ファイルは64KB以下にしてください。');
       const settings = parseSettings(await file.text());
       onRestore(settings); setVideo(videoSettings(settings)); setCustom(true); setWidth(String(settings.exportWidth)); setHeight(String(settings.exportHeight));
       setMessage(settings.algorithmVersion==='2d-v4'?'旧v4設定を読み込み、元の構図を保持しました。新版への変更は生成アルゴリズムから選べます。':'設定を読み込み、プレビューを更新しました。');
@@ -76,16 +76,19 @@ export function ExportPanel({ textOverlay, magicSettings, videoArtwork, version,
       <span aria-hidden="true">×</span>
       <label htmlFor="export-height">高さ (px)<input id="export-height" type="number" min="256" max="8192" step="1" inputMode="numeric" value={height} disabled={busy} aria-invalid={!!invalid} aria-describedby="resolution-feedback" onChange={e => { setCustom(true); setHeight(e.target.value); }} /></label>
     </div>
-    <p id="resolution-feedback" className={invalid ? 'export-error' : 'help'}>{invalid || (tooLarge ? 'PNGは合計16,777,216画素まで。SVG・JSONは保存できます。' : '256〜8192px。PNGは合計16,777,216画素まで。')}</p>
+    <p id="resolution-feedback" className={invalid ? 'export-error' : 'help'}>{invalid || (tooLarge ? 'PNGは合計16,777,216画素まで。SVG・設定ファイルは保存できます。' : '256〜8192px。PNGは合計16,777,216画素まで。')}</p>
     {margins && <HelpInfo>構図と書き出しの比率が異なるため、中央配置して{magicTransparent?'透明な':'背景色の'}余白を追加します。図形は変形・切り取りしません。</HelpInfo>}
     {version===MAGIC_ALGORITHM_VERSION&&<p className="help" data-testid="magic-export-info">{magicTransparent?'透過保存ON：魔法陣の線だけをアルファ付きPNG / 背景なしSVGで保存します。':'背景付き保存：魔法陣の設定から透過PNG / SVGに切り替えられます。'}</p>}
     <div className="export-actions">
       <button type="button" disabled={busy || !!invalid || tooLarge} onClick={() => void save('png')}>{busy ? '処理中…' : 'PNGを書き出す'}</button>
       <button type="button" disabled={busy || !!invalid} onClick={() => void save('svg')}>SVGを書き出す</button>
-      <button type="button" disabled={busy || !!invalid} onClick={() => void save('json')}>設定JSONを保存</button>
-      <button type="button" disabled={busy} onClick={() => fileInput.current?.click()}>設定JSONを読み込む</button>
+      <button type="button" disabled={busy || !!invalid} onClick={() => void save('json')}>作品の設定を保存</button>
+      <button type="button" disabled={busy} onClick={() => fileInput.current?.click()}>保存した設定を読み込む</button>
     </div>
-    <input ref={fileInput} type="file" accept=".json,application/json" aria-label="設定JSONファイル" hidden disabled={busy} onChange={e => void restore(e.target.files?.[0])} />
+    <div className="studio-setting-label"><span>設定ファイルについて</span>
+      <HelpInfo>図形の種類・色・シードなど、作品を再現するための設定を保存できます。画像や動画そのものは保存されません。後から「保存した設定を読み込む」で続きから編集できます。保存されるファイルの形式はJSONです。</HelpInfo>
+    </div>
+    <input ref={fileInput} type="file" accept=".json,application/json" aria-label="保存した設定ファイル" hidden disabled={busy} onChange={e => void restore(e.target.files?.[0])} />
     {error && <p className="export-error" role="alert">{error}</p>}
     <p className="export-message" role="status" aria-live="polite">{message}</p>
     <VideoPanel settings={video} onChange={setVideo} artwork={videoArtwork} />
