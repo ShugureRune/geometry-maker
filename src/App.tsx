@@ -62,6 +62,7 @@ export default function App() {
   const [threeReady,setThreeReady]=useState(false);
   const [threeRestore,setThreeRestore]=useState({serial:0,time:0});
   const [standbyTransition,setStandbyTransition]=useState<ThreeStandbyTransition|null>(null);
+  const [standbyFinishedSeed,setStandbyFinishedSeed]=useState<string|null>(null);
   const [threeExportBusy,setThreeExportBusy]=useState(false);
   const standbyInteractionUntil=useRef(0);
   const standbySerial=useRef(0);
@@ -368,7 +369,9 @@ export default function App() {
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
                 {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
+                   skipEntrance={standbyFinishedSeed===seed}
                    onTransitionComplete={id=>{
+                     setStandbyFinishedSeed(seed);
                      setStandbyTransition(current=>current?.id===id?null:current);
                      if(!standby.preserveCamera)threeApi.current?.resetView();
                    }}/>}
