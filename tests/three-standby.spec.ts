@@ -35,12 +35,20 @@ test('3D standby morph swaps seeds and completes while keeping the preview mount
   expect(Number(await preview.getAttribute('data-standby-pairs'))).toBeGreaterThan(0);
   expect(await page.getByTestId('current-seed').textContent()).not.toBe(before);
   await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:8000});
+  await expect(preview).toHaveAttribute('data-standby-entrance-complete','true');
+  const completed=JSON.parse((await saveJson(page)).toString('utf8'));
+  expect(completed.standbyComplete).toBe(true);
   await category(page,'アニメーション');
   await page.getByLabel('シード切り替え演出').selectOption('exit-enter');
   await page.getByLabel('切り替え演出の長さ').fill('1');
   await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
   await expect(preview).toHaveAttribute('data-standby-mode','exit-enter');
   await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:8000});
+  await expect(preview).toHaveAttribute('data-standby-entrance-complete','true');
+  await category(page,'アニメーション');
+  await page.getByLabel('3D図形を順番に登場させる').check();
+  await page.getByRole('button',{name:'3D登場演出を最初から再生'}).click();
+  await expect(preview).toHaveAttribute('data-standby-entrance-complete','false');
 });
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
