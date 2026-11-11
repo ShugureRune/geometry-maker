@@ -168,7 +168,7 @@ export default function App() {
           {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</p>}</div>
         </section>
         {renderMode==='2d'&&version===ALGORITHM_VERSION&&<ShapeKindControls enabled={enabledShapeKinds} onChange={setEnabledShapeKinds}/>}
-        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<MagicCircleControls value={magicSettings} onChange={setMagicSettings}/>}
+        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<MagicCircleControls value={magicSettings} onChange={setMagicSettings} seed={seed}/>}
         {renderMode==='3d'&&<ThreeShapeControls settings={threeSettings} onChange={setThreeSettings}/>}
 
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
