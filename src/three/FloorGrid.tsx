@@ -4,6 +4,7 @@ import {Color,DoubleSide,Mesh,ShaderMaterial} from 'three';
 import {floorGridDiameter,floorGridOffset,floorGridPlacement,floorGridStrokeWidth,type FloorGridSettings} from './floor-grid';
 import type {ThreeView} from './settings';
 import {circuitFragmentShader} from './circuit-shader';
+import {CircuitWorld} from './CircuitWorld';
 
 /** One anti-aliased floor plane: two triangles regardless of how many lines appear.
  * Real 3D depth, orbit-camera parallax and distance fog, with no mesh intersections.
@@ -48,8 +49,9 @@ void main(){
   #include <colorspace_fragment>
 }`;
 
-export function FloorGrid({grid,sceneHeight,seconds,view}:{
+export function FloorGrid({grid,sceneHeight,seconds,view,low=false}:{
   grid:FloorGridSettings;sceneHeight:number;seconds:RefObject<number>;view:RefObject<ThreeView|undefined>;
+  low?:boolean;
 }){
   const material=useRef<ShaderMaterial>(null);
   const mesh=useRef<Mesh>(null);
@@ -88,12 +90,15 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
     if(mesh.current)mesh.current.position.set(...floorGridPlacement(sceneHeight,view.current?.target));
   });
   if(!grid.enabled)return null;
-  return <mesh ref={mesh} name={grid.style==='circuit'?'perspective-floor-circuit':'perspective-floor-grid'} rotation={[-Math.PI/2,0,0]}
+  return <><mesh ref={mesh} name={grid.style==='circuit'?'perspective-floor-circuit':'perspective-floor-grid'} rotation={[-Math.PI/2,0,0]}
     position={floorGridPlacement(sceneHeight,view.current?.target)} frustumCulled={false} renderOrder={-1}>
     <planeGeometry args={[diameter,diameter]}/>
     <shaderMaterial key={grid.style} ref={material} vertexShader={vertexShader}
       fragmentShader={grid.style==='circuit'?circuitFragmentShader:fragmentShader}
       uniforms={uniforms} transparent depthWrite={false} depthTest={true}
       side={DoubleSide} toneMapped={false}/>
-  </mesh>;
+  </mesh>
+    {grid.style==='circuit'&&grid.circuitWorldEnabled&&<CircuitWorld grid={grid} seconds={seconds}
+      sceneHeight={sceneHeight} view={view} low={low}/>}
+  </>;
 }
