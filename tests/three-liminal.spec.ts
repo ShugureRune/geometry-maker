@@ -93,7 +93,7 @@ test('a paused outdoor sky and its colors persist in JSON with neon and the 3D f
   expect(hash(await png(page))).toBe(still);
   await category(page,'書き出し');
   const download=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const settings=await readFile((await (await download).path())!);
   const project=JSON.parse(settings.toString());
   expect(project.settings.sky.kind).toBe('shallow-water');
@@ -102,7 +102,7 @@ test('a paused outdoor sky and its colors persist in JSON with neon and the 3D f
   await category(page,'背景');
   await page.getByLabel('3D背景の種類').selectOption('whiteout-snow');
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'liminal.json',mimeType:'application/json',buffer:settings,
   });
   await expect(preview).toHaveAttribute('data-sky-kind','shallow-water');
