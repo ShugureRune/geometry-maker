@@ -10,7 +10,10 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
   const valid=/^#[0-9a-f]{6}$/i.test(hex);
   const update=(patch:Partial<FloorGridSettings>)=>onChange({...grid,...patch});
   return <section className="control-section three-controls three-style-controls" aria-labelledby="floor-grid-heading">
-    <h3 id="floor-grid-heading">床の模様</h3>
+    <div className="studio-setting-label studio-setting-heading">
+      <h3 id="floor-grid-heading">床の模様</h3>
+      <HelpInfo>3D図形の下に遠近感のある床を表示します。平面回路を選ぶと中央コア、立体IC、幹線と枝線、信号伝播を重ねられます。3D再生・一時停止、PNG、設定JSONに対応し、図形のシードや配置は変えません。</HelpInfo>
+    </div>
     <label className="three-checkbox"><input type="checkbox" aria-label="3D床グリッドを有効化" checked={grid.enabled}
       onChange={event=>update({enabled:event.target.checked})}/> 床を表示する</label>
     {grid.enabled&&<>
@@ -88,6 +91,6 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
       <ThreeRange id="floor-grid-scroll" label="床が動く速さ" value={grid.scrollSpeed}
         min={0} max={8} step={.25} unit="単位/秒" onChange={scrollSpeed=>update({scrollSpeed})}/>
     </>}
-    <HelpInfo>3D図形の下に遠近感のある床を表示します。平面回路を選ぶと中央コア、立体IC、幹線と枝線、信号伝播を重ねられます。3D再生・一時停止、PNG、設定JSONに対応し、図形のシードや配置は変えません。</HelpInfo>
+
   </section>;
 }
