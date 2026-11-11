@@ -22,6 +22,12 @@ export type FloorGridSettings={
   circuitBoardOpacity:number;
   /** Metallic pad/connector tint, separate from the glowing trace color. */
   circuitAccentColor:string;
+  /** Foreground 3D motherboard meshes above the flat background shader. */
+  circuitWorldEnabled:boolean;
+  /** Number of actual 3D IC packages around the central processor. */
+  circuitChipCount:number;
+  /** Main 3D processor's scale; independent of the flat micro-circuit density. */
+  circuitCoreScale:number;
 };
 export const floorGridDefaults:FloorGridSettings={
   enabled:false,
@@ -38,6 +44,9 @@ export const floorGridDefaults:FloorGridSettings={
   circuitDetail:72,
   circuitBoardOpacity:0.30,
   circuitAccentColor:'#f0b56b',
+  circuitWorldEnabled:true,
+  circuitChipCount:12,
+  circuitCoreScale:1,
 };
 
 export function validateFloorGrid(value:unknown):FloorGridSettings{
@@ -50,12 +59,18 @@ export function validateFloorGrid(value:unknown):FloorGridSettings{
   const circuitDetail=g.circuitDetail===undefined?floorGridDefaults.circuitDetail:g.circuitDetail;
   const circuitBoardOpacity=g.circuitBoardOpacity===undefined?floorGridDefaults.circuitBoardOpacity:g.circuitBoardOpacity;
   const circuitAccentColor=g.circuitAccentColor===undefined?floorGridDefaults.circuitAccentColor:g.circuitAccentColor;
+  const circuitWorldEnabled=g.circuitWorldEnabled===undefined?floorGridDefaults.circuitWorldEnabled:g.circuitWorldEnabled;
+  const circuitChipCount=g.circuitChipCount===undefined?floorGridDefaults.circuitChipCount:g.circuitChipCount;
+  const circuitCoreScale=g.circuitCoreScale===undefined?floorGridDefaults.circuitCoreScale:g.circuitCoreScale;
   if(style!=='grid'&&style!=='circuit')throw new Error('3D床デザインが不正です。');
   if(typeof circuitDensity!=='number'||!Number.isFinite(circuitDensity)||circuitDensity<0||circuitDensity>100||
      typeof circuitSpeed!=='number'||!Number.isFinite(circuitSpeed)||circuitSpeed<0||circuitSpeed>6||
      typeof circuitDetail!=='number'||!Number.isFinite(circuitDetail)||circuitDetail<0||circuitDetail>100||
      typeof circuitBoardOpacity!=='number'||!Number.isFinite(circuitBoardOpacity)||circuitBoardOpacity<0||circuitBoardOpacity>.85||
-     typeof circuitAccentColor!=='string'||!/^#[0-9a-f]{6}$/i.test(circuitAccentColor))
+     typeof circuitAccentColor!=='string'||!/^#[0-9a-f]{6}$/i.test(circuitAccentColor)||
+     typeof circuitWorldEnabled!=='boolean'||!Number.isInteger(circuitChipCount)||circuitChipCount<0||circuitChipCount>24||
+     typeof circuitCoreScale!=='number'||!Number.isFinite(circuitCoreScale)||
+     circuitCoreScale<.5||circuitCoreScale>2)
     throw new Error('3D床回路の密度・信号速度が範囲外です。');
   if(typeof g.enabled!=='boolean'||typeof g.color!=='string'||!/^#[0-9a-f]{6}$/i.test(g.color))
     throw new Error('3D床グリッドの有効状態・色が不正です。');
@@ -67,7 +82,8 @@ export function validateFloorGrid(value:unknown):FloorGridSettings{
   }
   return {enabled:g.enabled,style,color:g.color,opacity:g.opacity as number,spacing:g.spacing as number,
     thickness:g.thickness as number,glow:g.glow as number,extent:g.extent as number,scrollSpeed:g.scrollSpeed as number,
-    circuitDensity,circuitSpeed,circuitDetail,circuitBoardOpacity,circuitAccentColor};
+    circuitDensity,circuitSpeed,circuitDetail,circuitBoardOpacity,circuitAccentColor,
+    circuitWorldEnabled,circuitChipCount,circuitCoreScale};
 }
 
 /** World-unit scroll, seamless every cell; obeys 3D play/pause and JSON restored time. */
