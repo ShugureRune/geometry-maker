@@ -28,9 +28,8 @@ export function renderMagicBlueprint(ratio:Ratio,settings:MagicCircleSettings,b:
     add(id,'line',role,group,cx,cy,unit*.1,{points,...options});
   const ring=(id:string,radius:number,role:Shape['role'],group:string,options:Partial<Shape>={})=>
     add(id,'circle',role,group,cx,cy,radius,options);
-  const sigil=(index:number,angle:number,radius:number,family:MagicMotifFamily,size:number,group:string)=>{
+  const sigil=(index:number,variant:number,angle:number,radius:number,family:MagicMotifFamily,size:number,group:string)=>{
     const x=cx+Math.cos(angle*Math.PI/180)*radius,y=cy+Math.sin(angle*Math.PI/180)*radius;
-    const v=b.ringPlan[index%b.ringPlan.length].variant;
     // Each motif family has its own coherent mini-alphabet: no text/font dependency.
     const tokens:Record<MagicMotifFamily,Point[][]>={
       ancient:[[[-1,-1],[0,1],[1,-1],[-.5,0],[.5,0]].map(([x,y])=>({x,y})),
@@ -46,7 +45,7 @@ export function renderMagicBlueprint(ratio:Ratio,settings:MagicCircleSettings,b:
       mechanical:[[[-1,-.9],[1,-.9],[1,.3],[-.3,.3],[-.3,1]].map(([x,y])=>({x,y})),
         [[-1,1],[-1,-1],[.1,-1],[.1,1],[1,1]].map(([x,y])=>({x,y}))]
     };
-    const glyph=tokens[family][(v+index)%2].map(point=>({x:point.x*size,y:point.y*size}));
+    const glyph=tokens[family][variant%2].map(point=>({x:point.x*size,y:point.y*size}));
     add('glyph-'+group+'-'+index,'line','support',group,x,y,size,{points:glyph,rotation:angle+90,opacity:.86,glow:false,startDensity:22});
   };
   const sector=360/b.symmetry;
@@ -147,31 +146,32 @@ export function renderMagicBlueprint(ratio:Ratio,settings:MagicCircleSettings,b:
       }
       continue;
     }
-    const repeat=mode==='petals'||mode==='mesh'?Math.min(n,24):n;
+    const repeat=mode==='petals'||mode==='mesh'?b.symmetry*Math.min(2,Math.floor(n/b.symmetry)):n;
     for(let j=0;j<repeat;j++){
       const angle=a0+j*360/repeat;
+      const slot=j%(repeat/b.symmetry);
       const radial=(radius:number,offset=0)=>p(radius,angle+offset);
       const id='infinite-'+mode+'-'+index+'-'+j;
       switch(mode){
         case 'ward':{
-          line(id,[radial(r-unit*.016),radial(r+unit*.013)],j%b.symmetry===0?'accent':'support',group,
+          line(id,[radial(r-unit*.016),radial(r+unit*.013)],slot===0?'accent':'support',group,
             {startDensity:j%2===0?20:45});
           break;
         }
         case 'runes':{
-          if(density>0)sigil(j+index,angle,r,b.motifFamily,unit*(.0065+plan.variant%4*.0007),group);
+          if(density>0)sigil(j,plan.variant+slot,angle,r,b.motifFamily,unit*(.0065+plan.variant%4*.0007),group);
           break;
         }
         case 'nodes':{
           const q=radial(r);
           const kind:Shape['kind']=b.nodeStyle;
-          add(id,kind,j%3===0?'accent':'support',group,cx+q.x,cy+q.y,unit*.0065*(1+(j%3)*.13),
-            {rotation:angle,glow:j%3===0,startDensity:j%3===0?18:38});
+          add(id,kind,slot%3===0?'accent':'support',group,cx+q.x,cy+q.y,unit*.0065*(1+(slot%3)*.13),
+            {rotation:angle,glow:slot%3===0,startDensity:slot%3===0?18:38});
           break;
         }
         case 'spokes':{
           line(id,[radial(r-unit*.018),radial(r+unit*.02)],'accent',group,{startDensity:20});
-          if(j%2===0&&settings.complexity>=60)
+          if(slot%2===0&&settings.complexity>=60)
             line(id+'-branch',[radial(r+unit*.009),radial(r+unit*.018,sector*.21)],'support',group,{startDensity:43});
           break;
         }
@@ -190,7 +190,7 @@ export function renderMagicBlueprint(ratio:Ratio,settings:MagicCircleSettings,b:
         case 'mesh':{
           const sweep=360/repeat;
           line(id,[radial(r,0),radial(r,sweep*2)],'support',group,{startDensity:25});
-          if(j%2===0)line(id+'-chord',[radial(r-unit*.013),radial(r+unit*.013,sweep)],
+          if(slot%2===0)line(id+'-chord',[radial(r-unit*.013),radial(r+unit*.013,sweep)],
             'accent',group,{startDensity:40});
           break;
         }
@@ -198,7 +198,7 @@ export function renderMagicBlueprint(ratio:Ratio,settings:MagicCircleSettings,b:
           const pt=radial(r);
           add(id,'diamond','accent',group,cx+pt.x,cy+pt.y,unit*.008,
             {rotation:angle,startDensity:22});
-          if(j%3===0)line(id+'-edge',[radial(r-unit*.014),radial(r+unit*.014)],'support',group,
+          if(slot%3===0)line(id+'-edge',[radial(r-unit*.014),radial(r+unit*.014)],'support',group,
             {startDensity:39});
           break;
         }
