@@ -152,8 +152,13 @@ export default function App() {
     const mark=()=>{standbyInteractionUntil.current=performance.now()+5000;};
     for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
       document.addEventListener(event,mark,{passive:true});
-    return()=>{for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
-      document.removeEventListener(event,mark);};
+    const dragging=(event:PointerEvent)=>{if(event.buttons!==0)mark();};
+    document.addEventListener('pointermove',dragging,{passive:true});
+    return()=>{
+      for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
+        document.removeEventListener(event,mark);
+      document.removeEventListener('pointermove',dragging);
+    };
   },[renderMode,standby.enabled]);
   useEffect(()=>{
     if(renderMode!=='3d'||!standby.enabled||!threeReady||!threeSettings.animation||standbyTransition)return;
