@@ -1,12 +1,13 @@
 import type {GridBackgroundSettings} from './grid-background';
 import { generateDiverseScene } from './scene-v5';
+import {generateMagicCircleScene,MAGIC_ALGORITHM_VERSION,magicDefaults,type MagicCircleSettings} from './magic-circle';
 import type {ShapeKind} from './shape-controls';
 import { contoursOf, crossesRect, polar, radians, shapeBounds, worldPoint } from './geometry.ts';
 
 /** Geometry and styling changes require a new version to preserve seed semantics. */
 export const ALGORITHM_VERSION = '2d-v5';
 export const LEGACY_ALGORITHM_VERSION = '2d-v4';
-export type AlgorithmVersion = typeof ALGORITHM_VERSION | typeof LEGACY_ALGORITHM_VERSION;
+export type AlgorithmVersion = typeof ALGORITHM_VERSION | typeof LEGACY_ALGORITHM_VERSION | typeof MAGIC_ALGORITHM_VERSION;
 // Retain v3's blueprint streams: polishing a seed must not replace its composition.
 const BLUEPRINT_VERSION = '2d-v3';
 export const RATIOS = {
@@ -37,7 +38,7 @@ export type Shape = {
 };
 export type HeroPlan = Point & { kind: Shape['kind']; size: number; rotation: number; bleed: boolean; rings: number; arcStart: number; arcSweep: number };
 export type Composition = {
-  type: CompositionType; direction: number; quiet: Rect; unit: number; noiseSeed: number;
+  type: CompositionType | 'magic'; direction: number; quiet: Rect; unit: number; noiseSeed: number;
   focus: Point; anchors: HeroPlan[];
   clusters: (Point & { radius: number })[];
   lanes: (Point & { length: number; thickness: number })[];
@@ -359,6 +360,6 @@ export function generateSceneV4(seed: string, ratio: Ratio): Scene {
 }
 
 /** Version dispatch is explicit: old JSON never silently adopts new geometry. */
-export function generateScene(seed: string, ratio: Ratio, version: AlgorithmVersion = ALGORITHM_VERSION, enabledKinds?:readonly ShapeKind[]): Scene {
-  return version === LEGACY_ALGORITHM_VERSION ? generateSceneV4(seed, ratio) : generateDiverseScene(seed, ratio, enabledKinds);
+export function generateScene(seed: string, ratio: Ratio, version: AlgorithmVersion = ALGORITHM_VERSION, enabledKinds?:readonly ShapeKind[], magic:MagicCircleSettings=magicDefaults): Scene {
+  return version === MAGIC_ALGORITHM_VERSION ? generateMagicCircleScene(seed,ratio,magic) : version === LEGACY_ALGORITHM_VERSION ? generateSceneV4(seed, ratio) : generateDiverseScene(seed, ratio, enabledKinds);
 }
