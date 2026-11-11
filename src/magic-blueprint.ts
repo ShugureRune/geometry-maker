@@ -58,16 +58,20 @@ export function buildMagicBlueprint(seed:string,settings:MagicCircleSettings):Ma
   const freedom=settings.chaos/100;
   const symmetry=clamp(settings.symmetry+Math.round((layout()-.5)*8*freedom),3,12);
   const ringCount=clamp(settings.ringCount+Math.round((layout()-.5)*4*freedom),2,8);
-  const outerFrame=choose(['single','double','triple'] as const,layout);
-  const coreKind=choose(MAGIC_CORE_KINDS,core);
+  const outerFrame=choose(freedom<.35?['single','double'] as const:['single','double','triple'] as const,layout);
+  const corePool:readonly MagicCoreKind[]=freedom<.35?['star','polygon','flower']
+    :freedom<.7?['star','double-star','polygon','flower','sigil']:MAGIC_CORE_KINDS;
+  const coreKind=choose(corePool,core);
   const coreVariant=Math.floor(core()*24);
   const corePhase=core()*360/symmetry;
   const coreRadiusRatio=.113+core()*.035;
   const motifFamily=choose(MAGIC_MOTIF_FAMILIES,motifs);
   const nodeStyle=choose(['circle','diamond','triangle'] as const,motifs);
-  const kinds=MAGIC_RING_KINDS;
+  const kinds:readonly MagicRingKind[]=freedom<.35?['ward','nodes','spokes','seal']
+    :freedom<.7?['ward','runes','nodes','spokes','arcs','mesh','seal']:MAGIC_RING_KINDS;
   const ringPlan:RingPlan[]=[];
   for(let i=0;i<ringCount;i++){
+    // Chaos controls the available grammar, not just the number of rings.
     // Ring-specific streams ensure a new ring does not scramble earlier rings.
     const r=magicRng(key,'ring-'+i);
     let kind=choose(kinds,r);
