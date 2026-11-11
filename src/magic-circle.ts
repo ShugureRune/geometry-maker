@@ -242,7 +242,7 @@ export function magicCircleMotion(scene:Scene,settings:MagicCircleSettings,secon
     if(!shape.group.startsWith('ring-'))continue;
     const n=Number(shape.group.slice(5));
     if(!Number.isInteger(n))continue;
-    const angle=(n%2?-1:1)*phase*360;
+    const angle=Number(((n%2?-1:1)*phase*360).toFixed(6));
     transforms[shape.id]='rotate('+angle+' '+x+' '+y+')';
   }
   return transforms;
