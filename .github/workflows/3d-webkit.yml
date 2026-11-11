@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/App.tsx'
+      - 'src/studio-autosave.ts'
       - 'src/three/CircuitWorld.tsx'
       - 'src/three/circuit-world.ts'
       - 'src/three/circuit-shader.ts'
