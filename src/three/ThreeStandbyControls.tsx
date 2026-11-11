@@ -16,7 +16,14 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
     onChange({...settings,standby:{...standby,...part}});
   return <section className="control-section three-controls three-standby-controls"
     aria-labelledby="three-standby-heading" data-testid="three-standby-controls">
-    <h3 id="three-standby-heading">自動切り替え</h3>
+    <div className="studio-setting-label studio-setting-heading">
+      <h3 id="three-standby-heading">自動切り替え</h3>
+      <HelpInfo>
+      入れ替えでは今の図形が消えてから次の図形が登場します。
+      なめらか変化では似た図形同士が移動・変形・色変化し、余った図形は縮小して消え、
+      増えた図形は縮小状態から登場します。既存の3D登場・回転設定は保持します。
+    </HelpInfo>
+    </div>
     <label className="three-checkbox">
       <input type="checkbox" aria-label="3D待機画面モードを有効化" checked={standby.enabled}
         onChange={e=>onChange({...settings,animation:e.target.checked?true:settings.animation,
@@ -54,10 +61,6 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
           '自動再生中。現在の3D構図が完成してから切り替わります。'}
       </p>
     </>}
-    <HelpInfo>
-      入れ替えでは今の図形が消えてから次の図形が登場します。
-      なめらか変化では似た図形同士が移動・変形・色変化し、余った図形は縮小して消え、
-      増えた図形は縮小状態から登場します。既存の3D登場・回転設定は保持します。
-    </HelpInfo>
+
   </section>;
 }
