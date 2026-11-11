@@ -158,7 +158,7 @@ export default function App() {
           <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} onBlur={commitSeed} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing&&e.keyCode!==229)commitSeed();}} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={randomizeSeed} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
           <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</p>
           <div hidden={renderMode==='3d'}><label className="algorithm-label" htmlFor="algorithm-version">生成アルゴリズム</label>
-          <select id="algorithm-version" value={version} onChange={e=>{setVersion(e.target.value as AlgorithmVersion);playback.setPosition(0);playback.setPlaying(false);}}>
+          <select id="algorithm-version" value={version} onChange={e=>{setVersion(e.target.value as AlgorithmVersion);playback.setPosition(1);playback.setPlaying(false);}}>
             <option value={ALGORITHM_VERSION}>v5 — 拡張モード</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — クラシックモード</option><option value={MAGIC_ALGORITHM_VERSION}>魔法陣 — Magic Circle</option>
           </select>
           {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</p>}</div>
