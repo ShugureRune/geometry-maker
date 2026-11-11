@@ -1,5 +1,5 @@
 // Imported only from the lazy 3D renderer. No new runtime dependencies.
-import {useEffect, useMemo, type RefObject} from 'react';
+import {useEffect, useLayoutEffect, useMemo, type RefObject} from 'react';
 import {useFrame, useThree} from '@react-three/fiber';
 import {Color, type InterleavedBufferAttribute} from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
@@ -29,7 +29,20 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   const fading=visibilityUsesFade(settings.visibilityAnimation??visibilityDefaults);
   const entrance=settings.entrance??entranceDefaults;
   const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
-  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,transparent:fading||entranceFade||!!morphOpacity,toneMapped:true}),[fading,entranceFade,morphOpacity]);
+  // Initialize a newly created line with its real animation alpha. A default
+  // opacity of 1 can flash for one frame when entering/exiting a seed morph.
+  const currentOpacity=()=>{
+    if(morphOpacity)return morphOpacity.current;
+    const visibility=fading?threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults):1;
+    const arrival=entranceFade?threeEntranceProgress(object,seconds.current,entrance):1;
+    return visibility*arrival;
+  };
+  const material=useMemo(()=>new LineMaterial({worldUnits:true,depthTest:true,depthWrite:false,
+    transparent:fading||entranceFade||!!morphOpacity,toneMapped:true,opacity:currentOpacity()}),
+    [fading,entranceFade,morphOpacity]);
+  // Reconcile immediately on React commits, not only on the next animation tick.
+  useLayoutEffect(()=>{material.opacity=currentOpacity();},
+    [material,morphOpacity,object,seconds,fading,entranceFade,entrance,settings.visibilityAnimation]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;value.scale.setScalar(1.002);return value;},[geometry,material]);
   useEffect(()=>()=>material.dispose(),[material]);
   useEffect(()=>{
@@ -46,15 +59,8 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
     material.color.set(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
     material.color.multiplyScalar(radiance(material.color,neon.glow,low));material.uniformsNeedUpdate=true;invalidate();
   },[line,material,neon,object.role,background,low,size.height,invalidate]);
-  useFrame(()=>{
-    if(morphOpacity){material.opacity=morphOpacity.current;return;}
-    if(fading||entranceFade){
-      const visibility=fading?threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults):1;
-      const arrival=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0)
-        ?threeEntranceProgress(object,seconds.current,entrance):1;
-      material.opacity=visibility*arrival;
-    }
-  });
+  // Always write alpha before drawing; never leave a stale opacity on a reused material.
+  useFrame(()=>{material.opacity=currentOpacity();});
   return <primitive object={line} dispose={null}/>;
 }
 
@@ -73,7 +79,19 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     return byId;
   },[standby?.matches,standby?.layer]);
   const geometry=useMemo(()=>new LineSegmentsGeometry().setPositions(new Float32Array(edges.length*6)).setColors(new Float32Array(edges.length*6)),[edges]);
-  const material=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,depthTest:true,depthWrite:false,toneMapped:true}),[]);
+  const transitionEnvelope=()=>{
+    if(!standby)return 1;
+    const {transition,layer}=standby;
+    const t=seconds.current/transition.duration;
+    if(transition.mode==='morph')return layer==='old'?1-easeInOut(t):easeInOut(t);
+    const phases=splitExitEnter(seconds.current,transition.duration);
+    return layer==='old'?1-phases.exit:phases.enter;
+  };
+  const currentOpacity=()=>network.opacity*transitionEnvelope();
+  const material=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,
+    depthTest:true,depthWrite:false,toneMapped:true,opacity:currentOpacity()}),[]);
+  useLayoutEffect(()=>{material.opacity=currentOpacity();},
+    [material,network.opacity,standby?.transition.id,standby?.transition.mode,standby?.transition.duration,standby?.layer]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;return value;},[geometry,material]);
   const colors=useMemo(()=>topology.map(({a,b})=>[a,b].map(object=>{
     const color=new Color(styleColor(network.colorMode,network.customColor,object.role,background,network.contrast));
@@ -81,7 +99,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
   })),[topology,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);useEffect(()=>()=>material.dispose(),[material]);
   useEffect(()=>{
-    material.worldUnits=!low;material.linewidth=.018*network.width;material.opacity=network.opacity;
+    material.worldUnits=!low;material.linewidth=.018*network.width;
     line.onBeforeRender=function(renderer){
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
       if(low){material.linewidth=Math.max(.8,network.width*1.2)*material.resolution.y/Math.max(1,size.height);material.uniformsNeedUpdate=true;}
@@ -89,12 +107,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     invalidate();
   },[line,network.width,network.opacity,material,low,size.height,invalidate]);
   useFrame(()=>{
-    const t=standby?seconds.current/standby.transition.duration:0;
-    const envelope=standby?(standby.transition.mode==='morph'?
-      (standby.layer==='old'?1-easeInOut(t):easeInOut(t)):
-      (standby.layer==='old'?1-splitExitEnter(seconds.current,standby.transition.duration).exit:
-        splitExitEnter(seconds.current,standby.transition.duration).enter)):1;
-    material.opacity=network.opacity*envelope;
+    material.opacity=currentOpacity();
     const clock=standby?.layer==='old'?standby.transition.fromTime+seconds.current:seconds.current;
     const start=geometry.getAttribute('instanceStart') as InterleavedBufferAttribute, end=geometry.getAttribute('instanceEnd') as InterleavedBufferAttribute;
     const colorStart=geometry.getAttribute('instanceColorStart') as InterleavedBufferAttribute, colorEnd=geometry.getAttribute('instanceColorEnd') as InterleavedBufferAttribute;
