@@ -59,7 +59,7 @@ test('celestial settings are saved, restored and render identically while paused
   const before = await png(page);
   expect(hash(await png(page))).toBe(hash(before));
   const waiting = page.waitForEvent('download');
-  await page.getByRole('button', {name: '3D設定JSONを保存'}).click();
+  await page.getByRole('button', {name: '3Dの設定を保存'}).click();
   const download = await waiting;
   const bytes = await readFile((await download.path())!);
   const saved = JSON.parse(bytes.toString());
@@ -69,7 +69,7 @@ test('celestial settings are saved, restored and render identically while paused
   await page.getByLabel('3D天体を表示').uncheck();
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-celestial-count', '0');
   await category(page, '書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({name: 'celestial.json', mimeType: 'application/json', buffer: bytes});
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({name: 'celestial.json', mimeType: 'application/json', buffer: bytes});
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-celestial-count', '6');
   expect(hash(await png(page))).toBe(hash(before));
 });
