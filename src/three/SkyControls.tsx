@@ -1,3 +1,4 @@
+import {HelpInfo} from '../HelpInfo';
 import {ThreeRange} from './ThreeControls';
 import {WEATHER_TYPES,worldDefaults,type WeatherType,type WorldSettings} from './world-settings';
 import {hasTerrainRelief,terrainDefaults,type TerrainSettings} from './terrain';
@@ -83,7 +84,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <ThreeRange id="three-world-water-waves" label="水面の波・揺らぎ"
           value={world.waterWaves} min={0} max={200} step={10} unit="%"
           onChange={waterWaves=>updateWorld({waterWaves})}/>
-        <p className="help">リアルタイムの空色・光の方向を使った軽量な水面反射です。実際の図形・山を鏡写しにするフルシーン反射とは異なります。</p>
+        <HelpInfo>リアルタイムの空色・光の方向を使った軽量な水面反射です。実際の図形・山を鏡写しにするフルシーン反射とは異なります。</HelpInfo>
       </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
         <legend>探索カメラ</legend>
@@ -94,7 +95,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <ThreeRange id="three-world-explore-speed" label="探索移動速度"
           value={world.exploreSpeed} min={1} max={20} step={1} unit="倍"
           onChange={exploreSpeed=>updateWorld({exploreSpeed})}/>
-        <p className="help">PCでは画面クリックでマウス視点操作、WASDで移動、Space/Shiftで上下移動。Escでマウス操作を解除。スマホでは画面上の矢印で移動・回転できます。</p>
+        <HelpInfo>PCでは画面クリックでマウス視点操作、WASDで移動、Space/Shiftで上下移動。Escでマウス操作を解除。スマホでは画面上の矢印で移動・回転できます。</HelpInfo>
       </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
         <legend>屋外の描画距離・霧</legend>
@@ -105,7 +106,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
             onChange={e=>updateVisibility({fogEnabled:e.target.checked})}/>
           距離による霧を表示する
         </label>
-        <p className="help">距離を増やすと遠くの地面まで描画します。霧OFFでは遠景がくっきり見え、表示距離の端だけを目立たないように処理します。スマホでは遠方の地形を軽量なメッシュで描画します。</p>
+        <HelpInfo>距離を増やすと遠くの地面まで描画します。霧OFFでは遠景がくっきり見え、表示距離の端だけを目立たないように処理します。スマホでは遠方の地形を軽量なメッシュで描画します。</HelpInfo>
       </fieldset>}
       {hasTerrainRelief(sky.kind)&&<fieldset className="three-kind-fieldset">
         <legend>3D地形の起伏</legend>
@@ -118,7 +119,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
             onChange={e=>updateTerrain({flatCenter:e.target.checked})}/>
           中央を平坦にする（図形の周辺を保護）
         </label>
-        <p className="help">地面を本当に立体的に変形させます。0%は平面、100%は自然な起伏、200%は大きな砂丘・丘。中央を平坦にすると図形の近くは変形せず、遠くから丘になります。</p>
+        <HelpInfo>地面を本当に立体的に変形させます。0%は平面、100%は自然な起伏、200%は大きな砂丘・丘。中央を平坦にすると図形の近くは変形せず、遠くから丘になります。</HelpInfo>
       </fieldset>}
       <fieldset className="three-kind-fieldset"><legend>背景の色をカスタマイズ</legend>
         {([['base','背景の暗い色'],['accent','メインの発光色'],['highlight','ハイライト色']] as const).map(([key,label])=>
@@ -131,6 +132,6 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <button type="button" onClick={resetPalette} disabled={!sky.colors?.[sky.kind]}>この背景の標準色に戻す</button>
       </fieldset>
     </>}
-    <p className="help">23種類の3D背景に対応。時間帯・太陽光・天候・自然物・探索モードに対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</p>
+    <HelpInfo>23種類の3D背景に対応。時間帯・太陽光・天候・自然物・探索モードに対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</HelpInfo>
   </section>;
 }
