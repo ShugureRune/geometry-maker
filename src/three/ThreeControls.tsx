@@ -1,3 +1,4 @@
+import {HelpInfo} from '../HelpInfo';
 import type {ThreeSettings} from './settings';
 import {visibilityDefaults,type ThreeVisibilitySettings} from './visibility';
 import {entranceDefaults,threeEntranceStyle,type ThreeEntranceSettings} from './entrance';
@@ -25,10 +26,10 @@ export function ThreeShapeControls({settings, onChange}: Props) {
   const celestial = settings.celestial ?? celestialDefaults;
   return <section className="control-section three-controls">
     <h3>3D構図 · 3d-v1</h3>
-    <p className="help">13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</p>
+    <HelpInfo>13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</HelpInfo>
     <ThreeRange id="three-spacing" label="図形同士の距離" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
       min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
-    <p className="help">100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</p>
+    <HelpInfo>100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</HelpInfo>
     <fieldset className="three-kind-fieldset"><legend>生成する3D図形（${(settings.enabledKinds??THREE_KINDS).length}/13種類）</legend>
       <div className="three-kind-presets">
         <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_KINDS]})}>全種類</button>
@@ -69,13 +70,13 @@ export function ThreeShapeControls({settings, onChange}: Props) {
           <span>{CELESTIAL_LABELS[kind]}</span>
         </label>)}
       </div>
-      <p className="help">5種類の主要天体はほぼ同じ直径、衛星は惑星の約1/4です。ブラックホールには軽量な疑似重力レンズ、中性子星には高速回転する2方向のビームを付けます。天体は既存の13種類と独立して表示されます。</p>
+      <HelpInfo>5種類の主要天体はほぼ同じ直径、衛星は惑星の約1/4です。ブラックホールには軽量な疑似重力レンズ、中性子星には高速回転する2方向のビームを付けます。天体は既存の13種類と独立して表示されます。</HelpInfo>
     </fieldset>
     <label htmlFor="three-quality">3D描画品質</label>
     <select id="three-quality" value={settings.quality} onChange={event => onChange({...settings, quality: event.target.value as ThreeSettings['quality']})}>
       <option value="auto">自動（スマホは軽量）</option><option value="low">軽量</option><option value="high">高品質</option>
     </select>
-    <p className="help">軽量設定では解像度・曲面の分割数を抑え、影とブルームを省略します。図形の配置と色は維持します。</p>
+    <HelpInfo>軽量設定では解像度・曲面の分割数を抑え、影とブルームを省略します。図形の配置と色は維持します。</HelpInfo>
   </section>;
 }
 export function ThreeMaterialControls({settings, onChange}: Props) {
@@ -88,7 +89,7 @@ export function ThreeMaterialControls({settings, onChange}: Props) {
     <ThreeRange id="three-roughness" label="表面の粗さ" value={settings.roughness} min={0} max={1} onChange={roughness => onChange({...settings, roughness})}/>
     <ThreeRange id="three-metalness" label="金属感" value={settings.metalness} min={0} max={1} onChange={metalness => onChange({...settings, metalness})}/>
     <ThreeRange id="three-light" label="ライトの強さ" value={settings.lightIntensity} min={.1} max={3} step={.1} unit="倍" onChange={lightIntensity => onChange({...settings, lightIntensity})}/>
-    <p className="help">上の発光強度を共用します。高品質では主役を中心にブルームを適用し、軽量ではマテリアルの自己発光で表現します。</p>
+    <HelpInfo>上の発光強度を共用します。高品質では主役を中心にブルームを適用し、軽量ではマテリアルの自己発光で表現します。</HelpInfo>
   </section>;
 }
 export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Props&{seed:string;onReplay:()=>void}) {
@@ -124,7 +125,7 @@ export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Pro
           主役 → 補助 → 装飾の順に登場</label>
         <button type="button" onClick={onReplay}>3D登場演出を最初から再生</button>
       </>}
-      <p className="help">2Dと同様に最初の1回だけ登場し、完成後は消えません。ランダムシードを押すと再生し直します。3Dアニメーション停止時は現在の場面で静止します。既存の周期的な出現・消失とは別機能です。</p>
+      <HelpInfo>2Dと同様に最初の1回だけ登場し、完成後は消えません。ランダムシードを押すと再生し直します。3Dアニメーション停止時は現在の場面で静止します。既存の周期的な出現・消失とは別機能です。</HelpInfo>
     </fieldset>
     <fieldset className="three-kind-fieldset"><legend>3D出現・消失アニメーション</legend>
       <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).enabled}
@@ -143,9 +144,9 @@ export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Pro
           onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),stagger:event.target.checked}})}/> 図形ごとにタイミングをずらす</label>
         <label className="three-checkbox"><input type="checkbox" checked={(settings.visibilityAnimation??visibilityDefaults).keepPrimaryVisible}
           onChange={event=>onChange({...settings,visibilityAnimation:{...(settings.visibilityAnimation??visibilityDefaults),keepPrimaryVisible:event.target.checked}})}/> 主役図形は常に表示</label>
-        <p className="help">回転・浮遊と同じ再生時計でループします。ネオン輪郭と接続線も図形に合わせて消えます。再生停止中は現在の状態で静止します。</p>
+        <HelpInfo>回転・浮遊と同じ再生時計でループします。ネオン輪郭と接続線も図形に合わせて消えます。再生停止中は現在の状態で静止します。</HelpInfo>
       </>}
     </fieldset>
-    <p className="help">再生成すると同じ構図の初期姿勢へ戻ります。色・密度・マテリアルの変更では再生時刻をリセットしません。非表示タブでは休止します。</p>
+    <HelpInfo>再生成すると同じ構図の初期姿勢へ戻ります。色・密度・マテリアルの変更では再生時刻をリセットしません。非表示タブでは休止します。</HelpInfo>
   </section>;
 }
