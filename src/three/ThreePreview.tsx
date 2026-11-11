@@ -283,7 +283,10 @@ export default function ThreePreview(props: Props) {
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
   const touchActions=useRef(new Set<string>());
-  const exploring=!!(props.settings.sky?.world??worldDefaults).explore;
+  const world=props.settings.sky?.world??worldDefaults;
+  const exploring=!!world.explore;
+  const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
+  const sunlight=sunlightAtHour(world.timeOfDay);
   const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
@@ -312,8 +315,12 @@ export default function ThreePreview(props: Props) {
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
       <SkyRenderer sky={props.settings.sky} seed={props.skySeed} seconds={seconds} low={low}
         sceneHeight={props.composition.height} floorGridEnabled={(props.settings.floorGrid??floorGridDefaults).enabled} view={props.view}/>
-      <ambientLight intensity={props.settings.lightIntensity * .5}/>
-      <directionalLight position={[5, 6, 7]} intensity={props.settings.lightIntensity * 2} castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
+      <ambientLight intensity={props.settings.lightIntensity*.5*(outdoor?.24+.76*sunlight.strength:1)}/>
+      <directionalLight position={outdoor?
+        [Math.cos(sunlight.azimuth)*12,Math.max(1,sunlight.altitude*18),Math.sin(sunlight.azimuth)*12]:
+        [5,6,7]} intensity={props.settings.lightIntensity*2*(outdoor?sunlight.strength*world.sunStrength/100:1)}
+        color={outdoor&&(world.timeOfDay<8||world.timeOfDay>17)?'#ffb47a':'#ffffff'}
+        castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view}/>
