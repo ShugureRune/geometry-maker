@@ -7,6 +7,7 @@ import {celestialSpin, type CelestialBody} from './celestial';
 import type {ThreeSettings} from './settings';
 import {threeVisibility, visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
+import {easeInOut,splitExitEnter,type ThreeStandbyTransition} from './standby';
 
 function glowTexture(): CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -182,8 +183,9 @@ function NeutronStar({low, seconds, settings}: {low: boolean; seconds: RefObject
   </>;
 }
 
-export function CelestialObjectMesh({body, low, seconds, settings, seed}: {
+export function CelestialObjectMesh({body, low, seconds, settings, seed, standby}: {
   body: CelestialBody; low: boolean; seconds: RefObject<number>; settings: ThreeSettings; seed:string;
+  standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};
 }) {
   const root = useRef<Group>(null);
   const appearance = settings.visibilityAnimation ?? visibilityDefaults;
@@ -193,10 +195,15 @@ export function CelestialObjectMesh({body, low, seconds, settings, seed}: {
     const entrance=settings.entrance??entranceDefaults;
     const arriving=entrance.enabled&&(settings.animation||seconds.current>0)
       ?threeEntrancePose(body,seconds.current,entrance,seed):null;
-    const alpha=arriving?.opacity??1;
+    const p=standby?seconds.current/standby.transition.duration:0;
+    const transitionAlpha=standby?(standby.transition.mode==='morph'?
+      (standby.layer==='old'?1-easeInOut(p):easeInOut(p)):
+      (standby.layer==='old'?1-splitExitEnter(seconds.current,standby.transition.duration).exit:
+        splitExitEnter(seconds.current,standby.transition.duration).enter)):1;
+    const alpha=(arriving?.opacity??1)*transitionAlpha;
     root.current.visible = visible*alpha > .001;
     // Scale the entire celestial subtree, including halos and special effects.
-    root.current.scale.setScalar(body.radius * Math.max(.001, visible) * (arriving?.scale??1));
+    root.current.scale.setScalar(body.radius * Math.max(.001, visible) * (arriving?.scale??1)*Math.max(.001,transitionAlpha));
     root.current.position.set(body.position[0]+(arriving?.offset[0]??0),body.position[1]+(arriving?.offset[1]??0),body.position[2]+(arriving?.offset[2]??0));
     root.current.rotation.z=arriving?.rotationZ??0;
     root.current.rotation.y = body.kind === 'neutron-star' ? 0 :
