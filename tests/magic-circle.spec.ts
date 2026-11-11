@@ -73,7 +73,7 @@ test('magic colors are independent of ordinary 2D; reroll, preset and custom wor
   expect(await page.getByTestId('magic-auto-palette').textContent()).not.toBe(first);
   expect(await page.getByTestId('preview').locator('[data-shape-id="ward-outer"]').getAttribute('stroke')).not.toBe(strokeBefore);
   await page.getByLabel('魔法陣の配色モード').selectOption('preset');
-  await page.getByLabel('魔法陣パレット').selectOption('golden-sigil');
+  await page.getByLabel('魔法陣パレット',{exact:true}).selectOption('golden-sigil');
   await expect(page.getByTestId('preview').locator('[data-shape-id="ward-outer"]')).toHaveAttribute('stroke','#fff4cf');
   await page.getByLabel('魔法陣の配色モード').selectOption('custom');
   await page.getByLabel('魔法陣主線').fill('#ff00ff');
