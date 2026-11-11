@@ -6,7 +6,7 @@ import {
 } from 'three';
 import {seededRandom} from '../scene';
 import {floorGridPlacement} from './floor-grid';
-import {skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
+import {outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
 import type {ThreeView} from './settings';
 import {
   outdoorVertexShader,outdoorFragmentShader,
@@ -18,15 +18,6 @@ type Props={
   sky:SkySettings;seed:string;seconds:RefObject<number>;low:boolean;
   sceneHeight:number;floorGridEnabled:boolean;view:RefObject<ThreeView|undefined>;
 };
-export function outdoorGrassCount(density:number,low:boolean):number{
-  return Math.max(0,Math.round((low?260:1150)*density/100));
-}
-export function outdoorSnowCount(density:number,low:boolean):number{
-  return Math.max(0,Math.round((low?140:440)*density/100));
-}
-export function outdoorFogDistance(kind:SkySettings['kind']):number{
-  return kind==='whiteout-snow'?38:kind==='foggy-grassland'?62:115;
-}
 function OutdoorSurface({sky,seed,seconds,sceneHeight,floorGridEnabled,view}:Props){
   const material=useRef<ShaderMaterial>(null);
   const mesh=useRef<Mesh>(null);
