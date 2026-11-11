@@ -1,3 +1,5 @@
+import {validateTerrain,type TerrainSettings} from './terrain';
+
 /** Optional 3D-only procedural environments; legacy backgrounds stay untouched. */
 export const SKY_KINDS = [
   'classic','starfield','galaxy','aurora','deep-sea','nebula',
@@ -79,6 +81,7 @@ export type SkySettings = {
   density:number;
   motion:number;
   colors?:SkyPaletteOverrides;
+  terrain?:TerrainSettings;
 };
 export const skyDefaults:SkySettings={
   kind:'classic',intensity:100,density:100,motion:100,
@@ -94,7 +97,8 @@ export function validateSky(value:unknown):SkySettings{
       throw new Error('3D背景の'+key+'が範囲外です。');
   }
   return {kind:v.kind as SkyKind,intensity:v.intensity as number,density:v.density as number,motion:v.motion as number,
-    ...(v.colors===undefined?{}:{colors:validateSkyPaletteOverrides(v.colors)})};
+    ...(v.colors===undefined?{}:{colors:validateSkyPaletteOverrides(v.colors)}),
+    ...(v.terrain===undefined?{}:{terrain:validateTerrain(v.terrain)})};
 }
 /** No frame-time random numbers. Repeated seed + kind produces the same universe. */
 export function skySeedNumber(seed:string,kind:SkyKind):number{

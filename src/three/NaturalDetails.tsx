@@ -3,7 +3,8 @@ import {useEffect,useMemo,useRef,type RefObject} from 'react';
 import {Color,DoubleSide,Group,InstancedMesh,Object3D,ShaderMaterial,Vector2} from 'three';
 import {seededRandom} from '../scene';
 import {floorGridPlacement} from './floor-grid';
-import {outdoorCloudCount,outdoorFlowerCount,outdoorTreeCount,SKY_PALETTES,type SkySettings} from './sky-settings';
+import {terrainDefaults,terrainHeightAt} from './terrain';
+import {outdoorCloudCount,outdoorFlowerCount,outdoorTreeCount,skySeedNumber,SKY_PALETTES,type SkySettings} from './sky-settings';
 import type {ThreeView} from './settings';
 import {flowerFragmentShader,flowerVertexShader} from './natural-detail-shaders';
 
@@ -68,6 +69,8 @@ function ForestEdge({sky,seed,seconds,low,sceneHeight,view}:Props){
   const trunks=useRef<InstancedMesh>(null);
   const {invalidate}=useThree();
   const count=outdoorTreeCount(sky.density,low);
+  const terrain=sky.terrain??terrainDefaults;
+  const heightSeed=skySeedNumber(seed,sky.kind);
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   useEffect(()=>{
     if(!crowns.current||!trunks.current)return;
@@ -77,13 +80,14 @@ function ForestEdge({sky,seed,seconds,low,sceneHeight,view}:Props){
       const a=rnd()*Math.PI*2;
       const r=20+Math.sqrt(rnd())*58;
       const x=Math.sin(a)*r,z=Math.cos(a)*r;
+      const elevation=terrainHeightAt(sky.kind,x,z,terrain,heightSeed);
       const height=.75+rnd()*1.35;
-      obj.position.set(x,1.0*height,z);
+      obj.position.set(x,elevation+1.0*height,z);
       obj.rotation.set(0,rnd()*Math.PI*2,0);
       obj.scale.set(.33*height,2.0*height,.33*height);
       obj.updateMatrix();
       trunks.current.setMatrixAt(i,obj.matrix);
-      obj.position.set(x,2.9*height,z);
+      obj.position.set(x,elevation+2.9*height,z);
       obj.scale.set((1.5+rnd()*.4)*height,(1.7+rnd()*.8)*height,(1.5+rnd()*.4)*height);
       obj.updateMatrix();
       crowns.current.setMatrixAt(i,obj.matrix);
@@ -91,7 +95,7 @@ function ForestEdge({sky,seed,seconds,low,sceneHeight,view}:Props){
     crowns.current.instanceMatrix.needsUpdate=true;
     trunks.current.instanceMatrix.needsUpdate=true;
     invalidate();
-  },[seed,count,invalidate]);
+  },[seed,count,invalidate,sky.kind,terrain.relief,terrain.detail,terrain.flatCenter,heightSeed]);
   useFrame(()=>{
     if(group.current){
       const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);

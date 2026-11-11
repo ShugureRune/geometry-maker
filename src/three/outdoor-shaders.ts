@@ -5,7 +5,11 @@
 export const outdoorVertexShader = `
 varying vec2 vSurface;
 varying vec3 vWorld;
+varying float vTerrainLight;
 void main(){
+  // Vertex normals are recomputed from the actual CPU-raised terrain mesh.
+  vec3 worldNormal=normalize(mat3(modelMatrix)*normal);
+  vTerrainLight=clamp(dot(worldNormal,normalize(vec3(-.55,.84,.33))),0.0,1.0);
   vSurface=position.xy;
   vec4 world=modelMatrix*vec4(position,1.0);
   vWorld=world.xyz;
@@ -25,6 +29,7 @@ uniform vec3 uGroundAccent;
 uniform vec3 uGroundHighlight;
 varying vec2 vSurface;
 varying vec3 vWorld;
+varying float vTerrainLight;
 
 float hash21(vec2 p){
   p+=uSeed*83.1;
@@ -118,6 +123,10 @@ void main(){
     float glint=pow(max(0.0,.5+.5*wave*wake),12.0);
     color=mix(uGroundBase,uGroundAccent,.15+.17*wave);
     color=mix(color,uGroundHighlight,glint*.38*intensity);
+  }
+  if(uMode==11||uMode==12||uMode==15){
+    // Sloped sides are visibly darker than the sun-facing dune / hillside.
+    color*=.61+.46*vTerrainLight;
   }
   float alpha=clamp(fog*boundary*min(1.0,intensity),0.0,1.0);
   if(alpha<.003)discard;
