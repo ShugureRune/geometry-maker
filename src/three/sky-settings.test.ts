@@ -1,21 +1,25 @@
 import {describe,expect,it} from 'vitest';
-import {cyberTunnelFrameCount,outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {cyberTunnelFrameCount,outdoorCloudCount,outdoorFlowerCount,outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,outdoorTreeCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
 import {skyFragmentShader,retroFloorFragmentShader} from './sky-shaders';
 import {outdoorFragmentShader,outdoorGrassVertexShader,outdoorSnowVertexShader} from './outdoor-shaders';
 import {SKY_DIGITAL_GLYPHS,SKY_GLYPH_COLUMNS} from './sky-glyphs';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
-describe('eleven procedural 3D sky presets',()=>{
-  it('contains eleven requested kinds and a backward-compatible classic option',()=>{
-    expect(SKY_KINDS).toEqual(['classic','starfield','galaxy','aurora','deep-sea','nebula','cyber-tunnel','retrowave','digital','shallow-water','whiteout-snow','foggy-grassland']);
-    expect(new Set(SKY_KINDS).size).toBe(12);
+describe('eighteen procedural 3D sky presets',()=>{
+  it('contains eighteen requested kinds and a backward-compatible classic option',()=>{
+    expect(SKY_KINDS).toEqual(['classic','starfield','galaxy','aurora','deep-sea','nebula','cyber-tunnel','retrowave','digital','shallow-water','whiteout-snow','foggy-grassland','endless-desert','salt-flat','moonlit-flowers','forest-edge','twilight-plain','cloud-sea','dark-mirror']);
+    expect(new Set(SKY_KINDS).size).toBe(19);
     expect(SKY_LABELS).toMatchObject({
       starfield:'無限の星空',galaxy:'銀河',aurora:'オーロラ',
       'deep-sea':'深海',nebula:'星雲','cyber-tunnel':'サイバートンネル',
       retrowave:'レトロウェーブ',digital:'デジタル空間',
       'shallow-water':'無限の浅瀬','whiteout-snow':'雪原ホワイトアウト',
       'foggy-grassland':'白い霧の草原',
+      'endless-desert':'無限の砂漠','salt-flat':'鏡の塩湖',
+      'moonlit-flowers':'夜の無限花畑','forest-edge':'薄暗い森の縁',
+      'twilight-plain':'星のない薄明の平原','cloud-sea':'雲海の上',
+      'dark-mirror':'黒い水面と霧',
     });
     expect(threeDefaults.sky).toEqual(skyDefaults);
     expect(skyDefaults.kind).toBe('classic');
@@ -130,6 +134,33 @@ describe('eleven procedural 3D sky presets',()=>{
     expect(outdoorSnowCount(100,false)).toBe(440);
     expect(outdoorGrassCount(200,true)).toBe(520);
     expect(outdoorSnowCount(200,false)).toBe(880);
+  });
+  it('adds seven distinct nature-only 3D skies with ground shaders',()=>{
+    for(const mode of [12,13,14,15,16,17,18]){
+      expect(skyFragmentShader).toContain('uMode=='+mode);
+      expect(outdoorFragmentShader).toContain('uMode=='+mode);
+    }
+    expect(outdoorFragmentShader).toContain('Desert sand');
+    expect(outdoorFragmentShader).toContain('Salt flats');
+    expect(outdoorFragmentShader).toContain('Moonlit flower field');
+    expect(outdoorFragmentShader).toContain('Forest edge');
+    expect(outdoorFragmentShader).toContain('twilight plain');
+    expect(outdoorFragmentShader).toContain('Floating cloud surface');
+    expect(outdoorFragmentShader).toContain('Black mirror');
+  });
+  it('keeps detail batches bounded on low and high hardware, and density 0 hides them',()=>{
+    for(const f of [outdoorFlowerCount,outdoorTreeCount,outdoorCloudCount]){
+      expect(f(0,true)).toBe(0);
+      expect(f(0,false)).toBe(0);
+      expect(f(100,true)).toBeGreaterThan(0);
+      expect(f(100,true)).toBeLessThan(f(100,false));
+      expect(f(200,false)).toBe(f(100,false)*2);
+    }
+    expect(outdoorFlowerCount(100,true)).toBe(240);
+    expect(outdoorTreeCount(100,true)).toBe(40);
+    expect(outdoorCloudCount(100,true)).toBe(28);
+    expect(outdoorFogDistance('cloud-sea')).toBeGreaterThan(outdoorFogDistance('forest-edge'));
+    expect(outdoorFogDistance('dark-mirror')).toBeLessThan(outdoorFogDistance('shallow-water'));
   });
   it('saves/restores every sky preset with existing 3D settings, preserving legacy projects',()=>{
     const base:ThreeProject={

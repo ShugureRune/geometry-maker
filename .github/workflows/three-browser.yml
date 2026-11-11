@@ -12,6 +12,7 @@ on:
       - 'tests/three-spacing.spec.ts'
       - 'tests/three-sky.spec.ts'
       - 'tests/three-liminal.spec.ts'
+      - 'tests/three-seven-liminal.spec.ts'
       - 'tests/celestial.spec.ts'
       - 'tests/neon-network.spec.ts'
       - 'package*.json'
@@ -35,7 +36,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Check 3D interaction, output, mobile touch and 2D compatibility
-        run: npx playwright test tests/three.spec.ts tests/neon-network.spec.ts tests/celestial.spec.ts tests/three-spacing.spec.ts tests/three-sky.spec.ts tests/three-liminal.spec.ts
+        run: npx playwright test tests/three.spec.ts tests/neon-network.spec.ts tests/celestial.spec.ts tests/three-spacing.spec.ts tests/three-sky.spec.ts tests/three-liminal.spec.ts tests/three-seven-liminal.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
