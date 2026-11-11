@@ -1,14 +1,17 @@
-import {useRef,useState, type RefObject} from 'react';
+import {useEffect,useRef,useState, type RefObject} from 'react';
 import {downloadBlob} from '../export';
 import {EXPORT_PRESETS, fileStem} from '../settings';
 import {THREE_ALGORITHM_VERSION} from './model';
 import {threeResolutionError, type ThreePreviewHandle} from './settings';
 import {MAX_THREE_PROJECT_BYTES,parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
-export function ThreeExportPanel({api, seed, ready,project,onRestore}: {api: RefObject<ThreePreviewHandle | null>; seed: string; ready: boolean;
-  project:()=>Omit<ThreeProject,'exportWidth'|'exportHeight'|'elapsedSeconds'>;onRestore:(project:ThreeProject)=>void}) {
+export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChange}: {api: RefObject<ThreePreviewHandle | null>; seed: string; ready: boolean;
+  project:()=>Omit<ThreeProject,'exportWidth'|'exportHeight'|'elapsedSeconds'>;onRestore:(project:ThreeProject)=>void;
+  onBusyChange?:(busy:boolean)=>void}) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
+  useEffect(()=>{onBusyChange?.(busy);},[busy,onBusyChange]);
+  useEffect(()=>()=>{onBusyChange?.(false);},[onBusyChange]);
   const w = Number(width), h = Number(height), invalid = threeResolutionError(w, h);
   const file=useRef<HTMLInputElement>(null);
   function saveSettings(){
