@@ -1,5 +1,6 @@
 import type {VisualTheme} from '../themes';
 import {entranceDefaults,validateThreeEntrance,type ThreeEntranceSettings} from './entrance';
+import {standbyDefaults,validateThreeStandby,type ThreeStandbySettings} from './standby';
 import {THREE_KINDS,THREE_SPACING_DEFAULT,type ThreeKind,type Vector3Tuple} from './model';
 import {visibilityDefaults,validateThreeVisibility,type ThreeVisibilitySettings} from './visibility';
 import {floorGridDefaults,validateFloorGrid,type FloorGridSettings} from './floor-grid';
@@ -8,14 +9,14 @@ import {CELESTIAL_KINDS, celestialDefaults, validateCelestialSettings, type Cele
 import {networkDefaults, neonDefaults, record, enumField, numberField, booleanField, validateNetwork, validateNeon, type NetworkSettings, type NeonSettings} from './style-settings';
 
 export type ThreeSettings = {
-  network?: NetworkSettings; neon?: NeonSettings; enabledKinds?: ThreeKind[]; visibilityAnimation?:ThreeVisibilitySettings; entrance?:ThreeEntranceSettings;
+  network?: NetworkSettings; neon?: NeonSettings; enabledKinds?: ThreeKind[]; visibilityAnimation?:ThreeVisibilitySettings; entrance?:ThreeEntranceSettings; standby?:ThreeStandbySettings;
   floorGrid?:FloorGridSettings; celestial?:CelestialSettings; spacingPercent?: number; sky?:SkySettings;
   quality: 'auto' | 'low' | 'high'; material: 'theme' | 'matte' | 'metal' | 'glass' | 'wireframe';
   roughness: number; metalness: number; lightIntensity: number;
   animation: boolean; speed: number; floatAmount: number; rotationAmount: number;
 };
 export const threeDefaults: ThreeSettings = {
-  network: {...networkDefaults}, neon: {...neonDefaults}, enabledKinds: [...THREE_KINDS], visibilityAnimation:{...visibilityDefaults}, entrance:{...entranceDefaults},
+  network: {...networkDefaults}, neon: {...neonDefaults}, enabledKinds: [...THREE_KINDS], visibilityAnimation:{...visibilityDefaults}, entrance:{...entranceDefaults}, standby:{...standbyDefaults},
   floorGrid:{...floorGridDefaults}, celestial:{...celestialDefaults,kinds:[...CELESTIAL_KINDS]}, sky:{...skyDefaults},
   spacingPercent:THREE_SPACING_DEFAULT,
   quality: 'auto', material: 'theme', roughness: .32, metalness: .45, lightIntensity: 1,
@@ -34,6 +35,7 @@ export function validateThreeSettings(value: unknown): ThreeSettings {
     rotationAmount:numberField(d.rotationAmount,0,2,'回転量'), visibilityAnimation:validateThreeVisibility(d.visibilityAnimation),
     // Legacy project files did not have a one-shot entrance setting. Keep their old visuals.
     entrance:source.entrance===undefined?{...entranceDefaults,enabled:false}:validateThreeEntrance(d.entrance),
+    standby:source.standby===undefined?{...standbyDefaults}:validateThreeStandby(d.standby),
     floorGrid:validateFloorGrid(d.floorGrid??floorGridDefaults), celestial:validateCelestialSettings(d.celestial??celestialDefaults),
     sky:validateSky(d.sky??skyDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
 }
