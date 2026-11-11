@@ -1,18 +1,21 @@
 import {describe,expect,it} from 'vitest';
-import {cyberTunnelFrameCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
+import {cyberTunnelFrameCount,outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,skyDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyIsAnimated,skySeedNumber,validateSky} from './sky-settings';
 import {skyFragmentShader,retroFloorFragmentShader} from './sky-shaders';
+import {outdoorFragmentShader,outdoorGrassVertexShader,outdoorSnowVertexShader} from './outdoor-shaders';
 import {SKY_DIGITAL_GLYPHS,SKY_GLYPH_COLUMNS} from './sky-glyphs';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
-describe('eight procedural 3D sky presets',()=>{
-  it('contains all eight requested kinds and a backward-compatible classic option',()=>{
-    expect(SKY_KINDS).toEqual(['classic','starfield','galaxy','aurora','deep-sea','nebula','cyber-tunnel','retrowave','digital']);
-    expect(new Set(SKY_KINDS).size).toBe(9);
+describe('eleven procedural 3D sky presets',()=>{
+  it('contains eleven requested kinds and a backward-compatible classic option',()=>{
+    expect(SKY_KINDS).toEqual(['classic','starfield','galaxy','aurora','deep-sea','nebula','cyber-tunnel','retrowave','digital','shallow-water','whiteout-snow','foggy-grassland']);
+    expect(new Set(SKY_KINDS).size).toBe(12);
     expect(SKY_LABELS).toMatchObject({
       starfield:'無限の星空',galaxy:'銀河',aurora:'オーロラ',
       'deep-sea':'深海',nebula:'星雲','cyber-tunnel':'サイバートンネル',
       retrowave:'レトロウェーブ',digital:'デジタル空間',
+      'shallow-water':'無限の浅瀬','whiteout-snow':'雪原ホワイトアウト',
+      'foggy-grassland':'白い霧の草原',
     });
     expect(threeDefaults.sky).toEqual(skyDefaults);
     expect(skyDefaults.kind).toBe('classic');
@@ -106,6 +109,27 @@ describe('eight procedural 3D sky presets',()=>{
     expect(retroFloorFragmentShader).toContain('uniform vec3 uRetroColor;');
     expect(skyFragmentShader).toContain('uCustomColor');
     expect(skyFragmentShader).toContain('uSkyHighlight');
+  });
+  it('renders 3 distinct, seam-free liminal skies and actual ground with fog',()=>{
+    for(const mode of [9,10,11])expect(skyFragmentShader).toContain('uMode=='+mode);
+    for(const mode of [9,10,11])expect(outdoorFragmentShader).toContain('uMode=='+mode);
+    expect(outdoorFragmentShader).toContain('smoothstep(uFogDistance*.26,uFogDistance,distanceXZ)');
+    expect(outdoorFragmentShader).toContain('vec3 color=uGroundBase;');
+    expect(outdoorGrassVertexShader).toContain('instanceMatrix');
+    expect(outdoorGrassVertexShader).toContain('sin(uTime*1.4');
+    expect(outdoorSnowVertexShader).toContain('mod(p.y-uTime*');
+    expect(outdoorFogDistance('whiteout-snow')).toBeLessThan(outdoorFogDistance('foggy-grassland'));
+    expect(outdoorFogDistance('foggy-grassland')).toBeLessThan(outdoorFogDistance('shallow-water'));
+  });
+  it('changes grass and snow density while limiting mobile scene work',()=>{
+    expect(outdoorGrassCount(0,false)).toBe(0);
+    expect(outdoorSnowCount(0,false)).toBe(0);
+    expect(outdoorGrassCount(100,true)).toBe(260);
+    expect(outdoorGrassCount(100,false)).toBe(1150);
+    expect(outdoorSnowCount(100,true)).toBe(140);
+    expect(outdoorSnowCount(100,false)).toBe(440);
+    expect(outdoorGrassCount(200,true)).toBe(520);
+    expect(outdoorSnowCount(200,false)).toBe(880);
   });
   it('saves/restores every sky preset with existing 3D settings, preserving legacy projects',()=>{
     const base:ThreeProject={
