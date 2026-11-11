@@ -218,7 +218,7 @@ export default function App() {
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
   function replayOnRegenerate(){if(renderMode==='2d'&&animation.animationEnabled)playback.restart(true);}
   function switchRenderMode(next:'2d'|'3d'){
-    if(next===renderMode)return;
+    if(threeExportBusy||next===renderMode)return;
     if(next==='2d'){setStandbyTransition(null);setStandbyFinishedSeed(null);}
     if(next==='3d'){
       resume2D.current={growth:playback.playing,ambient:ambientClock.playing};
@@ -281,8 +281,9 @@ export default function App() {
     standby.mode,threeReady,threeSettings.animation,standbyTransition,threeExportBusy,seed,
     threeComposition,threeBaseComposition,threeBackground,visualTheme,colorSettings]);
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
-  function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
+  function randomizeSeed(){if(threeExportBusy)return;const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
   function goToSettings(next:Category){
+    if(threeExportBusy&&next!=='export')return;
     if(next==='text'&&(renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION))return;
     (renderMode==='2d'?setCategory:setThreeCategory)(next);
     setStudioFocus(false);setSidebarCollapsed(false);
@@ -324,13 +325,14 @@ export default function App() {
     {id:'3d',title:'3Dモードに切り替える',description:'WebGLキャンバスを表示',run:()=>switchRenderMode('3d')},
   ];
   const workspaceStyle={'--studio-sidebar-width':sidebarWidth+'px'} as CSSProperties;
-  return <div className={'app studio-app'+(studioFocus?' studio-focus':'')+
+  return <div className={'app studio-app'+(threeExportBusy?' three-video-exporting':'')+
+    (studioFocus?' studio-focus':'')+
     (sidebarCollapsed?' studio-sidebar-collapsed':'')}>
     <header className="topbar studio-topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
       <div className="render-mode-switch segmented" role="group" aria-label="描画モード">
-        <button type="button" aria-pressed={renderMode==='2d'} onClick={()=>switchRenderMode('2d')}>2Dモード</button>
-        <button type="button" aria-pressed={renderMode==='3d'} onClick={()=>switchRenderMode('3d')}>3Dモード</button>
+        <button type="button" aria-pressed={renderMode==='2d'} disabled={threeExportBusy} onClick={()=>switchRenderMode('2d')}>2Dモード</button>
+        <button type="button" aria-pressed={renderMode==='3d'} disabled={threeExportBusy} onClick={()=>switchRenderMode('3d')}>3Dモード</button>
       </div>
       <div className="studio-topbar-tools">
         <button type="button" className="studio-command-launch" aria-label="コマンド検索"
@@ -359,7 +361,10 @@ export default function App() {
         </div>
         <div className="panel-intro"><span className="eyebrow">MAKE IT YOURS</span><h2>ひとつのシードから、<br />あなただけの幾何学を。</h2><p>文字や数字を変えて、新しい構図に出会う。</p></div>
 
-        <SettingsCategories active={activeCategory} onChange={renderMode==='2d'?setCategory:setThreeCategory} disabled={renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION?['text']:[]}/>
+        <SettingsCategories active={activeCategory}
+          onChange={value=>{if(!threeExportBusy)(renderMode==='2d'?setCategory:setThreeCategory)(value);}}
+          disabled={threeExportBusy?categories.map(item=>item.id):
+            renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION?['text']:[]}/>
         <div className="studio-sidebar-resize">
           <label htmlFor="studio-sidebar-width">パネル幅</label>
           <input id="studio-sidebar-width" type="range" min={280} max={480} step={20}
@@ -573,16 +578,16 @@ export default function App() {
           <div className="studio-quickbar-caption"><span className="studio-quickbar-symbol" aria-hidden="true">✳</span>
             <span><strong>QUICK TUNE</strong><small>今のシーンを調整</small></span></div>
           <label className="studio-quick-field">比率
-            <select aria-label="クイック比率" value={ratio} onChange={event=>setRatio(event.target.value as Ratio)}>
+            <select aria-label="クイック比率" disabled={threeExportBusy} value={ratio} onChange={event=>setRatio(event.target.value as Ratio)}>
               {Object.keys(RATIOS).map(value=><option key={value} value={value}>{value}</option>)}
             </select>
           </label>
           <label className="studio-quick-field studio-quick-density">密度 <span>{density}%</span>
-            <input type="range" aria-label="クイック密度" min={0} max={100} step={5} value={density}
+            <input type="range" aria-label="クイック密度" disabled={threeExportBusy} min={0} max={100} step={5} value={density}
               onChange={event=>setDensity(Number(event.target.value))}/>
           </label>
           <div className="studio-quick-actions">
-            <button type="button" onClick={randomizeSeed} title="新しいシードを生成">
+            <button type="button" onClick={randomizeSeed} disabled={threeExportBusy} title="新しいシードを生成">
               <span aria-hidden="true">↻</span> 新しいシード</button>
             <button type="button" className="studio-quick-export" onClick={()=>goToSettings('export')}>
               <span aria-hidden="true">↥</span> 書き出しへ</button>
@@ -598,7 +603,7 @@ export default function App() {
     <nav className="studio-mobile-dock" aria-label="モバイルクイック操作">
       <button type="button" onClick={()=>goToSettings('shapes')}>
         <span aria-hidden="true">◈</span><small>設定</small></button>
-      <button type="button" onClick={randomizeSeed}>
+      <button type="button" onClick={randomizeSeed} disabled={threeExportBusy}>
         <span aria-hidden="true">↻</span><small>新規</small></button>
       <button type="button" onClick={()=>goToSettings('export')}>
         <span aria-hidden="true">↥</span><small>保存</small></button>
