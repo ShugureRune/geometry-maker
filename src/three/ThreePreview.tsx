@@ -169,6 +169,11 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
+  const exportingVideo=useRef(false);
+  const beforeVideoTime=useRef(0);
+  type PendingVideoFrame={time:number;width:number;height:number;canvas:HTMLCanvasElement;
+    resolve:()=>void;reject:(error:Error)=>void};
+  const pendingVideoFrame=useRef<PendingVideoFrame|null>(null);
   const lastRestart=useRef(restartKey),ready=useRef(false);
   const lastTransitionId=useRef<number|null>(transition?.id??null);
   const finishedTransition=useRef<number|null>(null);
@@ -279,7 +284,9 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   // Demand rendering must still refresh colors/pulses/poses while paused.
   useEffect(() => {invalidate();}, [settings, background, invalidate]);
   useFrame((_, delta) => {
-    if (settings.animation && !document.hidden && !skipDelta.current){
+    if(exportingVideo.current){
+      if(pendingVideoFrame.current)seconds.current=pendingVideoFrame.current.time;
+    }else if (settings.animation && !document.hidden && !skipDelta.current){
       seconds.current=transition?
         advanceStandbyClock(seconds.current,delta,settings.speed,transition.duration):
         seconds.current+delta*settings.speed;
@@ -300,8 +307,8 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
         invalidate();
       }else orbit?.update();
     }
-    if (settings.animation && !document.hidden) invalidate();
-    if(transition && seconds.current>=transition.duration&&finishedTransition.current!==transition.id){
+    if (settings.animation && !document.hidden && !exportingVideo.current) invalidate();
+    if(!exportingVideo.current&&transition && seconds.current>=transition.duration&&finishedTransition.current!==transition.id){
       finishedTransition.current=transition.id;
       onTransitionComplete?.(transition.id);
     }
@@ -373,9 +380,91 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     } else gl.render(scene, camera);
   }
   useFrame(() => {if (!gl.getContext().isContextLost()) {render();if(!ready.current){ready.current=true;onReady(true);}}}, 1);
+  // All geometry, materials, particles and sky shaders have already updated
+  // using the requested exact timestamp by this later callback. Capture in the
+  // SAME WebGL frame before the drawing buffer is discarded by Safari/WebGL.
+  useFrame(()=>{
+    const frame=pendingVideoFrame.current;
+    if(!frame)return;
+    pendingVideoFrame.current=null;
+    try{
+      if(gl.getContext().isContextLost())throw new Error('3D描画が中断されました。');
+      const context=frame.canvas.getContext('2d');
+      if(!context)throw new Error('動画フレーム用メモリを確保できません。');
+      context.clearRect(0,0,frame.width,frame.height);
+      drawBackground(context,frame.width,frame.height,background);
+      const scale=Math.min(frame.width/size.width,frame.height/size.height);
+      const renderWidth=Math.max(1,Math.round(size.width*scale));
+      const renderHeight=Math.max(1,Math.round(size.height*scale));
+      context.drawImage(gl.domElement,Math.round((frame.width-renderWidth)/2),
+        Math.round((frame.height-renderHeight)/2),renderWidth,renderHeight);
+      frame.resolve();
+    }catch(error){
+      frame.reject(error instanceof Error?error:new Error('3Dのフレームを保存できませんでした。'));
+    }
+  }, 2);
   useEffect(() => () => onReady(false), [onReady]);
 
-  useImperativeHandle(api, () => ({resetView,smoothResetView,getElapsedSeconds:()=>seconds.current, async savePNG(width, height) {
+  useImperativeHandle(api, () => ({
+    resetView,smoothResetView,getElapsedSeconds:()=>seconds.current,
+    beginVideoExport(){
+      if(exportingVideo.current)throw new Error('3D動画はすでに書き出し中です。');
+      beforeVideoTime.current=seconds.current;
+      exportingVideo.current=true;
+      skipDelta.current=true;
+    },
+    async captureVideoFrame(time,width,height,canvas,signal){
+      if(!exportingVideo.current)throw new Error('3D動画の書き出しが開始されていません。');
+      if(pendingVideoFrame.current)throw new Error('前の動画フレームを処理中です。');
+      if(signal.aborted)throw new DOMException('動画の保存をキャンセルしました。','AbortError');
+      const error=threeResolutionError(width,height);
+      if(error)throw new Error(error);
+      const glContext=gl.getContext();
+      const maxSize=Math.min(gl.capabilities.maxTextureSize,
+        glContext.getParameter(glContext.MAX_RENDERBUFFER_SIZE));
+      if(width>maxSize||height>maxSize||(low&&width*height>2_073_600))
+        throw new Error('この端末では動画の解像度が高すぎます。720p以下を試してください。');
+      canvas.width=width;canvas.height=height;
+      const scale=Math.min(width/size.width,height/size.height);
+      const rw=Math.max(1,Math.round(size.width*scale));
+      const rh=Math.max(1,Math.round(size.height*scale));
+      const dpr=gl.getPixelRatio();
+      try{
+        gl.setPixelRatio(1);gl.setSize(rw,rh,false);
+        pipeline.current?.composer.setPixelRatio(1);
+        pipeline.current?.composer.setSize(rw,rh);
+        await new Promise<void>((resolve,reject)=>{
+          const onAbort=()=>{
+            pendingVideoFrame.current=null;
+            reject(new DOMException('動画の保存をキャンセルしました。','AbortError'));
+          };
+          const cleanup=()=>signal.removeEventListener('abort',onAbort);
+          signal.addEventListener('abort',onAbort,{once:true});
+          pendingVideoFrame.current={
+            time,width,height,canvas,
+            resolve:()=>{cleanup();resolve();},
+            reject:e=>{cleanup();reject(e);},
+          };
+          // React Three Fiber will render one deterministic frame through its
+          // normal useFrame hierarchy, rather than replaying stale GPU data.
+          invalidate();
+        });
+      }finally{
+        gl.setPixelRatio(dpr);gl.setSize(size.width,size.height,false);
+        pipeline.current?.composer.setPixelRatio(dpr);
+        pipeline.current?.composer.setSize(size.width,size.height);
+      }
+    },
+    endVideoExport(){
+      if(!exportingVideo.current)return;
+      exportingVideo.current=false;
+      seconds.current=beforeVideoTime.current;
+      pendingVideoFrame.current?.reject(new Error('動画書き出しが終了しました。'));
+      pendingVideoFrame.current=null;
+      skipDelta.current=true;
+      invalidate();
+    },
+    async savePNG(width, height) {
     const error = threeResolutionError(width, height); if (error) throw new Error(error);
     const maxSize = Math.min(gl.capabilities.maxTextureSize, gl.getContext().getParameter(gl.getContext().MAX_RENDERBUFFER_SIZE));
     if (width > maxSize || height > maxSize || (low && width * height > 4_194_304)) throw new Error('この描画設定では解像度が大きすぎます。軽量設定では合計4,194,304画素以内にしてください。');
