@@ -4,9 +4,9 @@ import {Color,DoubleSide,Group,InstancedMesh,Object3D,ShaderMaterial,Vector2} fr
 import {seededRandom} from '../scene';
 import {floorGridPlacement} from './floor-grid';
 import {terrainDefaults,terrainHeightAt} from './terrain';
-import {outdoorCloudCount,outdoorFlowerCount,outdoorTreeCount,skySeedNumber,SKY_PALETTES,type SkySettings} from './sky-settings';
+import {outdoorCloudCount,outdoorFlowerCount,outdoorTreeCount,outdoorVisibilityDefaults,outdoorVisibleDistance,skySeedNumber,SKY_PALETTES,type SkySettings} from './sky-settings';
 import type {ThreeView} from './settings';
-import {flowerFragmentShader,flowerVertexShader} from './natural-detail-shaders';
+import {flowerFragmentShader,flowerVertexShader,forestVertexShader,forestFragmentShader} from './natural-detail-shaders';
 
 type Props={
   sky:SkySettings;seed:string;seconds:RefObject<number>;
@@ -67,18 +67,31 @@ function ForestEdge({sky,seed,seconds,low,sceneHeight,view}:Props){
   const group=useRef<Group>(null);
   const crowns=useRef<InstancedMesh>(null);
   const trunks=useRef<InstancedMesh>(null);
-  const {invalidate}=useThree();
-  const count=outdoorTreeCount(sky.density,low);
+  const {camera,invalidate}=useThree();
+  const baseCount=outdoorTreeCount(sky.density,low);
+  const visibility=sky.visibility??outdoorVisibilityDefaults;
+  const distance=outdoorVisibleDistance(sky.kind,visibility);
+  const rings=Math.max(1,Math.min(5,Math.round(distance/100)));
+  const count=baseCount*rings;
   const terrain=sky.terrain??terrainDefaults;
   const heightSeed=skySeedNumber(seed,sky.kind);
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
+  const cameraXZ=useMemo(()=>new Vector2(camera.position.x,camera.position.z),[camera]);
+  const treeUniforms=useMemo(()=>({
+    uCameraXZ:{value:cameraXZ},
+    uViewDistance:{value:distance},
+    uFogEnabled:{value:visibility.fogEnabled?1:0},
+    uIntensity:{value:sky.intensity/100},
+  }),[cameraXZ,distance,visibility.fogEnabled,sky.intensity]);
   useEffect(()=>{
     if(!crowns.current||!trunks.current)return;
     const rnd=seededRandom('liminal-forest-v1:'+seed);
     const obj=new Object3D();
     for(let i=0;i<count;i++){
       const a=rnd()*Math.PI*2;
-      const r=20+Math.sqrt(rnd())*58;
+      const r=i<baseCount
+        ? 20+Math.sqrt(rnd())*58
+        : 78+Math.sqrt(rnd())*Math.max(1,Math.min(900,distance*.87)-78);
       const x=Math.sin(a)*r,z=Math.cos(a)*r;
       const elevation=terrainHeightAt(sky.kind,x,z,terrain,heightSeed);
       const height=.75+rnd()*1.35;
@@ -95,8 +108,9 @@ function ForestEdge({sky,seed,seconds,low,sceneHeight,view}:Props){
     crowns.current.instanceMatrix.needsUpdate=true;
     trunks.current.instanceMatrix.needsUpdate=true;
     invalidate();
-  },[seed,count,invalidate,sky.kind,terrain.relief,terrain.detail,terrain.flatCenter,heightSeed]);
+  },[seed,count,baseCount,distance,invalidate,sky.kind,terrain.relief,terrain.detail,terrain.flatCenter,heightSeed]);
   useFrame(()=>{
+    cameraXZ.set(camera.position.x,camera.position.z);
     if(group.current){
       const [x,y,z]=floorGridPlacement(sceneHeight,view.current?.target);
       group.current.position.set(x,y+.02,z);
@@ -108,11 +122,15 @@ function ForestEdge({sky,seed,seconds,low,sceneHeight,view}:Props){
   return <group ref={group} name="liminal-forest-edge" position={[x,y+.02,z]}>
     <instancedMesh ref={trunks} args={[undefined,undefined,count]} frustumCulled={false} renderOrder={-3}>
       <cylinderGeometry args={[.45,.60,1,low?5:7]}/>
-      <meshBasicMaterial color={palette.base} transparent opacity={Math.min(.85,.69*sky.intensity/100)} depthWrite={false}/>
+      <shaderMaterial vertexShader={forestVertexShader} fragmentShader={forestFragmentShader}
+        uniforms={{...treeUniforms,uTreeColor:{value:new Color(palette.base)}}}
+        transparent depthWrite={false} depthTest toneMapped={false}/>
     </instancedMesh>
     <instancedMesh ref={crowns} args={[undefined,undefined,count]} frustumCulled={false} renderOrder={-2}>
       <icosahedronGeometry args={[1,low?0:1]}/>
-      <meshBasicMaterial color={palette.accent} transparent opacity={Math.min(.85,.73*sky.intensity/100)} depthWrite={false}/>
+      <shaderMaterial vertexShader={forestVertexShader} fragmentShader={forestFragmentShader}
+        uniforms={{...treeUniforms,uTreeColor:{value:new Color(palette.accent)}}}
+        transparent depthWrite={false} depthTest toneMapped={false}/>
     </instancedMesh>
   </group>;
 }
