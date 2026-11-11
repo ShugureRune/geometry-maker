@@ -1,4 +1,6 @@
 import {polar} from './geometry';
+import {buildMagicBlueprint} from './magic-blueprint';
+import {renderMagicBlueprint} from './magic-infinite';
 import {RATIOS,seededRandom,type Ratio,type Scene,type Shape,type Point} from './scene';
 import {MAGIC_COLOR_MODES,MAGIC_PALETTES,magicColorDefaults,validMagicColorSet,type MagicColorMode,type MagicColorSet,type MagicPaletteId} from './magic-colors';
 
@@ -7,6 +9,10 @@ export const MAGIC_STYLES = ['star','geometric','crest'] as const;
 export type MagicStyle = typeof MAGIC_STYLES[number];
 export type MagicCircleSettings = {
   style:MagicStyle;
+  generationMode:'classic'|'infinite';
+  chaos:number;
+  rareEffects:boolean;
+  variation:number;
   complexity:number;
   ringCount:number;
   symmetry:number;
@@ -22,7 +28,8 @@ export type MagicCircleSettings = {
   transparentExport:boolean;
 };
 export const magicDefaults:MagicCircleSettings={
-  style:'star',complexity:65,ringCount:5,symmetry:6,ornamentDensity:65,
+  style:'star',generationMode:'classic',chaos:75,rareEffects:true,variation:0,
+  complexity:65,ringCount:5,symmetry:6,ornamentDensity:65,
   strokeScale:100,runeStyle:'runes',rotationTurns:1,
   colorMode:'auto',colorPreset:'violet-ritual',paletteReroll:0,
   customColors:{...magicColorDefaults,gradient:[...magicColorDefaults.gradient]},
@@ -37,6 +44,9 @@ export function validateMagicSettings(value:unknown):MagicCircleSettings{
   const merged={...magicDefaults,...v};
   if(Object.keys(v).some(k=>!Object.hasOwn(magicDefaults,k))||
     !MAGIC_STYLES.includes(merged.style as MagicStyle)||
+    !['classic','infinite'].includes(merged.generationMode as string)||
+    !numberIn(merged.chaos,0,100)||typeof merged.rareEffects!=='boolean'||
+    !numberIn(merged.variation,0,999_999)||
     !numberIn(merged.complexity,0,100)||!numberIn(merged.ringCount,2,8)||
     !numberIn(merged.symmetry,3,12)||!numberIn(merged.ornamentDensity,0,100)||
     !numberIn(merged.strokeScale,50,200)||
@@ -84,6 +94,8 @@ function petals(count:number,inner:number,outer:number){
  * Motifs are repeated per rotational sector so every seed remains symmetric. */
 export function generateMagicCircleScene(seed:string,ratio:Ratio,options:MagicCircleSettings=magicDefaults):Scene{
   const settings=validateMagicSettings(options);
+  if(settings.generationMode==='infinite')
+    return renderMagicBlueprint(ratio,settings,buildMagicBlueprint(seed,settings));
   const [width,height]=RATIOS[ratio],unit=Math.min(width,height);
   const cx=width/2,cy=height/2;
   const rOuter=unit*.424,rInner=unit*.175;

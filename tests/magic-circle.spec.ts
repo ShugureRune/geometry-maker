@@ -128,3 +128,50 @@ test('background-on PNG, safe JSON roundtrip and v4/v5 selection',async({page})=
   await expect(page.getByLabel('同心円の数')).toHaveValue('7');
   await expect(page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す')).toBeChecked();
 });
+
+test('infinite generator changes the actual seed-derived geometry and keeps classic untouched',async({page})=>{
+  await magic(page);
+  const preview=page.getByTestId('preview');
+  await page.getByLabel('魔法陣の生成方式').selectOption('infinite');
+  await expect(page.getByTestId('magic-infinite-controls')).toBeVisible();
+  await expect(preview.locator('[data-shape-id^="infinite-core"]')).not.toHaveCount(0);
+  await page.getByLabel('構造のランダム度').fill('100');
+  const first=await page.getByTestId('shapes').innerHTML();
+  await page.getByRole('button',{name:'同じシードから別の魔法陣を生成'}).click();
+  await expect(page.getByTestId('magic-variation')).toContainText('派生番号：1');
+  const changed=await page.getByTestId('shapes').innerHTML();
+  expect(changed).not.toEqual(first);
+  await expect(page.getByTestId('magic-blueprint-summary')).toContainText('設計図');
+  await page.getByLabel('レアな特殊紋様を生成する').uncheck();
+  await page.getByLabel('魔法陣の生成方式').selectOption('classic');
+  await expect(preview.locator('[data-shape-id="ward-outer"]')).toHaveCount(1);
+  await expect(preview.locator('[data-shape-id^="infinite-core"]')).toHaveCount(0);
+  await page.getByLabel('魔法陣の生成方式').selectOption('infinite');
+  await expect(preview.locator('[data-shape-id^="infinite-core"]')).not.toHaveCount(0);
+});
+test('infinite mode JSON restores seed variations and alpha SVG export',async({page})=>{
+  await magic(page);
+  await page.getByLabel('魔法陣の生成方式').selectOption('infinite');
+  await page.getByLabel('構造のランダム度').fill('90');
+  await page.getByRole('button',{name:'同じシードから別の魔法陣を生成'}).click();
+  await page.getByRole('button',{name:'同じシードから別の魔法陣を生成'}).click();
+  await page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す').check();
+  const blueprint=await page.getByTestId('shapes').innerHTML();
+  await category(page,'書き出し');
+  const saved=await exportFile(page,'設定JSONを保存');
+  const json=JSON.parse(saved.toString('utf8'));
+  expect(json.magicCircle).toMatchObject({generationMode:'infinite',variation:2,chaos:90,rareEffects:true,transparentExport:true});
+  const svg=(await exportFile(page,'SVGを書き出す')).toString('utf8');
+  expect(svg).toContain('data-shape-id="infinite-outer"');
+  expect(svg).not.toContain('data-testid="background"');
+  await category(page,'図形');
+  await page.getByLabel('魔法陣の生成方式').selectOption('classic');
+  await category(page,'書き出し');
+  await page.locator('input[aria-label="設定JSONファイル"]').setInputFiles({
+    name:'infinite.json',mimeType:'application/json',buffer:saved
+  });
+  await category(page,'図形');
+  await expect(page.getByLabel('魔法陣の生成方式')).toHaveValue('infinite');
+  await expect(page.getByTestId('magic-variation')).toContainText('派生番号：2');
+  expect(await page.getByTestId('shapes').innerHTML()).toBe(blueprint);
+});
