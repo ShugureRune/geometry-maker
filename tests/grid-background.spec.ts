@@ -31,12 +31,12 @@ test('2D grid controls, SVG/PNG export, JSON round-trip, and 3D isolation',async
 
   await nav.getByRole('button',{name:'書き出し',exact:true}).click();
   const saved=page.waitForEvent('download');
-  await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
+  await page.getByRole('button',{name:'作品の設定を保存',exact:true}).click();
   const data=await readFile((await (await saved).path())!);
   const project=JSON.parse(data.toString());
   expect(project.gridBackground.type).toBe('dot');
   expect(project.gridBackground.spacing).toBe(80);
-  await page.getByLabel('設定JSONファイル').setInputFiles({name:'grid.json',mimeType:'application/json',buffer:data});
+  await page.getByLabel('保存した設定ファイル').setInputFiles({name:'grid.json',mimeType:'application/json',buffer:data});
   await nav.getByRole('button',{name:'背景',exact:true}).click();
   await expect(page.getByLabel('グリッド背景を有効化')).toBeChecked();
 
@@ -79,11 +79,11 @@ test('animated grid scrolls, rotates and pulses independently of shape growth',a
  await expect.poll(()=>opacity.getAttribute('opacity'),{timeout:4000}).not.toBe(before);
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const saved=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
+ await page.getByRole('button',{name:'作品の設定を保存',exact:true}).click();
  const bytes=await readFile((await(await saved).path())!);
  const settings=JSON.parse(bytes.toString());
  expect(settings.gridBackground.animation).toMatchObject({enabled:true,mode:'pulse',duration:4,speed:7.5,reverse:true});
- await page.getByLabel('設定JSONファイル').setInputFiles({name:'grid-animated.json',mimeType:'application/json',buffer:bytes});
+ await page.getByLabel('保存した設定ファイル').setInputFiles({name:'grid-animated.json',mimeType:'application/json',buffer:bytes});
  await nav.getByRole('button',{name:'背景',exact:true}).click();
  await expect(page.getByLabel('グリッドアニメーションを有効化')).toBeChecked();
  await expect(page.locator('#grid-animation-mode')).toHaveValue('pulse');
@@ -114,7 +114,7 @@ test('grid speed is independent and follows the 0–360 degree infinite figure s
  await expect(page.getByTestId('ambient-preview')).toHaveAttribute('data-scroll-world','v3');
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  const download=page.waitForEvent('download');
- await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
+ await page.getByRole('button',{name:'作品の設定を保存',exact:true}).click();
  const bytes=await readFile((await(await download).path())!);
  const settings=JSON.parse(bytes.toString());
  expect(settings.gridBackground.animation.speed).toBe(0.1);
