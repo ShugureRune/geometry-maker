@@ -14,7 +14,9 @@ import {networkPulse,radiance,styleColor} from './style-paint';
 import {visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress} from './entrance';
-import {easeInOut,splitExitEnter,type ThreeStandbyTransition} from './standby';
+import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {standbyWirePose} from './standby-wire';
+import {threePose} from './model';
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
   const geometries=useMemo(()=>enabled?new Map(THREE_KINDS.map(kind=>[kind,new LineSegmentsGeometry().setPositions(outlineSegments(kind,low))])):null,[enabled,low]);
@@ -56,12 +58,20 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};skipEntrance?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
     return edges.map(edge=>({a:byId.get(edge.a)!,b:byId.get(edge.b)!}));
   },[objects,edges]);
+  const matchesById=useMemo(()=>{
+    const byId=new Map<string,MorphMatch>();
+    for(const pair of standby?.matches??[]){
+      const object=standby?.layer==='old'?pair.from:pair.to;
+      if(object)byId.set(object.id,pair);
+    }
+    return byId;
+  },[standby?.matches,standby?.layer]);
   const geometry=useMemo(()=>new LineSegmentsGeometry().setPositions(new Float32Array(edges.length*6)).setColors(new Float32Array(edges.length*6)),[edges]);
   const material=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,depthTest:true,depthWrite:false,toneMapped:true}),[]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;return value;},[geometry,material]);
@@ -98,12 +108,32 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       if(!segment)continue;
       const entrance=settings.entrance??entranceDefaults;
       const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
+      let perEdgeAlpha=1;
       const ap=appearing?threeEntrancePose(a,seconds.current,entrance,seed):null;
       const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
       const reveal=appearing?Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
       if(reveal<=.001)continue;
-      if(!appearing||reveal>=1){
-        // Identical to the legacy line renderer once the one-shot entrance is complete.
+      if(standby){
+        // The old/new network connects moving mesh locations, not each seed's
+        // static endpoints. This is especially important in close-up morphs.
+        const pa=standbyWirePose(a,standby.layer,matchesById.get(a.id),standby.transition,
+          seconds.current,settings,seed);
+        const pb=standbyWirePose(b,standby.layer,matchesById.get(b.id),standby.transition,
+          seconds.current,settings,seed);
+        perEdgeAlpha=Math.min(pa.opacity,pb.opacity);
+        if(perEdgeAlpha<=.001)continue;
+        const poseA=threePose(a,clock,settings.floatAmount,settings.rotationAmount).position;
+        const poseB=threePose(b,clock,settings.floatAmount,settings.rotationAmount).position;
+        start.setXYZ(active,
+          segment.start[0]+pa.position[0]-poseA[0],
+          segment.start[1]+pa.position[1]-poseA[1],
+          segment.start[2]+pa.position[2]-poseA[2]);
+        end.setXYZ(active,
+          segment.end[0]+pb.position[0]-poseB[0],
+          segment.end[1]+pb.position[1]-poseB[1],
+          segment.end[2]+pb.position[2]-poseB[2]);
+      }else if(!appearing||reveal>=1){
+        // Identical to the legacy line renderer when standby is inactive.
         start.setXYZ(active,...segment.start);end.setXYZ(active,...segment.end);
       }else{
         const sx=segment.start[0]+(ap?.offset[0]??0),sy=segment.start[1]+(ap?.offset[1]??0),sz=segment.start[2]+(ap?.offset[2]??0);
@@ -114,8 +144,8 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       }
       const pulse=network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1;
       const [ca,cb]=colors[i];
-      colorStart.setXYZ(active,ca.r*pulse,ca.g*pulse,ca.b*pulse);
-      colorEnd.setXYZ(active,cb.r*pulse,cb.g*pulse,cb.b*pulse);
+      colorStart.setXYZ(active,ca.r*pulse*perEdgeAlpha,ca.g*pulse*perEdgeAlpha,ca.b*pulse*perEdgeAlpha);
+      colorEnd.setXYZ(active,cb.r*pulse*perEdgeAlpha,cb.g*pulse*perEdgeAlpha,cb.b*pulse*perEdgeAlpha);
       active++;
     }
     // Pack visible edges into the existing GPU buffers and skip hidden
