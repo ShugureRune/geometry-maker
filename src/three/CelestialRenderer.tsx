@@ -193,7 +193,7 @@ export function CelestialObjectMesh({body, low, seconds, settings, seed, standby
     if (!root.current) return;
     const visible = threeVisibility(body, seconds.current, appearance);
     const entrance=settings.entrance??entranceDefaults;
-    const arriving=entrance.enabled&&(settings.animation||seconds.current>0)
+    const arriving=!standby&&entrance.enabled&&(settings.animation||seconds.current>0)
       ?threeEntrancePose(body,seconds.current,entrance,seed):null;
     const p=standby?seconds.current/standby.transition.duration:0;
     const transitionAlpha=standby?(standby.transition.mode==='morph'?
