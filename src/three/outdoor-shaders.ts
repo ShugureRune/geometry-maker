@@ -22,7 +22,8 @@ uniform float uTime;
 uniform float uSeed;
 uniform float uDensity;
 uniform float uIntensity;
-uniform float uFogDistance;
+uniform float uViewDistance;
+uniform float uFogEnabled;
 uniform vec2 uCameraXZ;
 uniform vec3 uGroundBase;
 uniform vec3 uGroundAccent;
@@ -43,8 +44,12 @@ float noise2(vec2 p){
 }
 void main(){
   float distanceXZ=length(vWorld.xz-uCameraXZ);
-  float fog=1.0-smoothstep(uFogDistance*.26,uFogDistance,distanceXZ);
-  float boundary=1.0-smoothstep(260.0,345.0,length(vSurface));
+  // Fog ON: gradual atmospheric haze. Fog OFF: only an almost-invisible
+  // safety fade at the chosen draw-distance edge, not full-distance haze.
+  float fog=uFogEnabled>.5
+    ? 1.0-smoothstep(uViewDistance*.26,uViewDistance,distanceXZ)
+    : 1.0-smoothstep(uViewDistance*.97,uViewDistance*1.05,distanceXZ);
+  float boundary=1.0-smoothstep(925.0,1040.0,length(vSurface));
   float intensity=clamp(uIntensity,0.0,2.0);
   vec3 color=uGroundBase;
   float density=clamp(uDensity,0.0,2.0);
@@ -140,6 +145,8 @@ export const outdoorGrassVertexShader = `
 // Three.js provides instanceMatrix automatically for InstancedMesh.
 uniform float uTime;
 uniform vec2 uCameraXZ;
+uniform float uViewDistance;
+uniform float uFogEnabled;
 varying float vMist;
 varying float vHeight;
 void main(){
@@ -149,7 +156,10 @@ void main(){
   p.y+=.5;
   p.x+=height*height*sin(uTime*1.4+root.x*.52+root.z*.43)*.16;
   vec4 world=modelMatrix*instanceMatrix*vec4(p,1.0);
-  vMist=1.0-smoothstep(13.0,53.0,length(world.xz-uCameraXZ));
+  float dist=length(world.xz-uCameraXZ);
+  vMist=uFogEnabled>.5
+    ? 1.0-smoothstep(13.0,min(250.0,uViewDistance*.92),dist)
+    : 1.0-smoothstep(uViewDistance*.97,uViewDistance*1.05,dist);
   vHeight=height;
   gl_Position=projectionMatrix*viewMatrix*world;
 }`;
