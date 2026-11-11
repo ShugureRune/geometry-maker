@@ -93,11 +93,16 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
       const reveal=appearing?Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
       if(reveal<=.001)continue;
-      const sx=segment.start[0]+(ap?.offset[0]??0),sy=segment.start[1]+(ap?.offset[1]??0),sz=segment.start[2]+(ap?.offset[2]??0);
-      const ex=segment.end[0]+(bp?.offset[0]??0),ey=segment.end[1]+(bp?.offset[1]??0),ez=segment.end[2]+(bp?.offset[2]??0);
-      const mx=(sx+ex)/2,my=(sy+ey)/2,mz=(sz+ez)/2;
-      start.setXYZ(active,mx+(sx-mx)*reveal,my+(sy-my)*reveal,mz+(sz-mz)*reveal);
-      end.setXYZ(active,mx+(ex-mx)*reveal,my+(ey-my)*reveal,mz+(ez-mz)*reveal);
+      if(!appearing||reveal>=1){
+        // Identical to the legacy line renderer once the one-shot entrance is complete.
+        start.setXYZ(active,...segment.start);end.setXYZ(active,...segment.end);
+      }else{
+        const sx=segment.start[0]+(ap?.offset[0]??0),sy=segment.start[1]+(ap?.offset[1]??0),sz=segment.start[2]+(ap?.offset[2]??0);
+        const ex=segment.end[0]+(bp?.offset[0]??0),ey=segment.end[1]+(bp?.offset[1]??0),ez=segment.end[2]+(bp?.offset[2]??0);
+        const mx=(sx+ex)/2,my=(sy+ey)/2,mz=(sz+ez)/2;
+        start.setXYZ(active,mx+(sx-mx)*reveal,my+(sy-my)*reveal,mz+(sz-mz)*reveal);
+        end.setXYZ(active,mx+(ex-mx)*reveal,my+(ey-my)*reveal,mz+(ez-mz)*reveal);
+      }
       const pulse=network.animation==='pulse'?networkPulse(seconds.current,a.phase+b.phase):1;
       const [ca,cb]=colors[i];
       colorStart.setXYZ(active,ca.r*pulse,ca.g*pulse,ca.b*pulse);
