@@ -42,7 +42,24 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
       <ThreeRange id="floor-grid-extent" label="床パターンの直径" value={grid.extent*FLOOR_GRID_DIAMETER_MULTIPLIER}
         min={240} max={1200} step={20} unit="単位" onChange={diameter=>update({extent:diameter/FLOOR_GRID_DIAMETER_MULTIPLIER})}/>
       {grid.style==='circuit'&&<>
-        <p className="help">細い配線・ビア（貫通穴）・ICチップ・小型電子部品・基板の印刷を描画します。光は配線の方向に流れます。</p>
+        <p className="help">遠景はシェーダーで細密配線、近景は本物の立体コア・IC・金属ピン・経路を伝わる信号で描きます。</p>
+        <fieldset className="three-kind-fieldset">
+          <legend>近景3Dマザーボード</legend>
+          <label className="three-checkbox"><input type="checkbox"
+            aria-label="中央演算コア・立体ICチップを表示" checked={grid.circuitWorldEnabled}
+            onChange={event=>update({circuitWorldEnabled:event.target.checked})}/>
+            中央演算コア・立体ICチップを表示
+          </label>
+          {grid.circuitWorldEnabled&&<>
+            <ThreeRange id="floor-circuit-chip-count" label="立体ICチップの数"
+              value={grid.circuitChipCount} min={0} max={24} step={1} unit="個"
+              onChange={circuitChipCount=>update({circuitChipCount})}/>
+            <ThreeRange id="floor-circuit-core-scale" label="中央演算コアの大きさ"
+              value={grid.circuitCoreScale} min={.5} max={2} step={.1} unit="倍"
+              onChange={circuitCoreScale=>update({circuitCoreScale})}/>
+          </>}
+          <p className="help">コア→太い幹線→分岐→ICの順に信号が走り、到達したICが発光します。軽量画質では立体チップ数を自動で抑えます。</p>
+        </fieldset>
         <div className="three-kind-presets" role="group" aria-label="回路の配色プリセット">
           <button type="button" onClick={()=>update({color:'#43cfff',circuitAccentColor:'#f0b56b',circuitBoardOpacity:.30})}>青いサイバー基板</button>
           <button type="button" onClick={()=>update({color:'#27db96',circuitAccentColor:'#f4c876',circuitBoardOpacity:.48})}>緑の電子基板</button>
@@ -64,6 +81,6 @@ export function FloorGridControls({value,onChange}:{value:FloorGridSettings;onCh
       <ThreeRange id="floor-grid-scroll" label="床パターン全体のスクロール速度" value={grid.scrollSpeed}
         min={0} max={8} step={.25} unit="単位/秒" onChange={scrollSpeed=>update({scrollSpeed})}/>
     </>}
-    <p className="help">3D図形の下に、本物の遠近感がある床を表示します。通常のグリッドと、直角に分岐する配線・発光端子・光が流れる電子回路を切り替えられます。図形やシードは変更されず、3D再生・一時停止、PNG、設定JSONに対応します。</p>
+    <p className="help">3D図形の下に遠近感のある床を表示します。平面回路を選ぶと中央コア、立体IC、幹線と枝線、信号伝播を重ねられます。3D再生・一時停止、PNG、設定JSONに対応し、図形のシードや配置は変えません。</p>
   </section>;
 }
