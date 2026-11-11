@@ -15,6 +15,8 @@ uniform float uCircuitDensity;
 uniform float uCircuitSpeed;
 uniform float uCircuitDetail;
 uniform float uCircuitBoardOpacity;
+uniform float uCircuitWorldEnabled;
+uniform float uCircuitWorldRadius;
 uniform float uTime;
 varying vec2 vLocal;
 
@@ -143,9 +145,18 @@ void main(){
   vec2 dotUv=fract(tile*7.0)-0.5;
   float microDot=1.0-smoothstep(0.09,0.17,length(dotUv));
   float detailFade=1.0-smoothstep(0.04,0.17,pixel);
-  float copperLine=copper.x*clamp((2.0*halfWidth)/max(pixel,0.00001),0.0,1.0);
-  float halo=copper.y*0.13*detailFade;
-  float packet=copper.z*detailFade;
+  // Keep the flat micro-circuit as distant supporting texture. Around the
+  // physical processor, the large 3D ICs and metallic trunks take priority.
+  // The smooth radius avoids a visible hard seam when zooming or panning.
+  float nearCore=clamp(uCircuitWorldEnabled,0.0,1.0)*
+    (1.0-smoothstep(uCircuitWorldRadius*.50,uCircuitWorldRadius*1.50,length(vLocal)));
+  float priority=1.0-nearCore*.75;
+  float copperLine=copper.x*clamp((2.0*halfWidth)/max(pixel,0.00001),0.0,1.0)*priority;
+  float halo=copper.y*0.13*detailFade*priority;
+  float packet=copper.z*detailFade*priority;
+  metal*=priority;
+  body*=priority;
+  silk*=priority;
   float horizonFade=1.0-smoothstep(0.31,0.80,pixel);
   float fog=1.0-smoothstep(uExtent*0.19,uExtent*0.49,length(vLocal));
   float board=clamp(uCircuitBoardOpacity,0.0,0.85);
