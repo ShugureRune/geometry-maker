@@ -6,6 +6,7 @@ import {seededRandom} from '../scene';
 import {celestialSpin, type CelestialBody} from './celestial';
 import type {ThreeSettings} from './settings';
 import {threeVisibility, visibilityDefaults} from './visibility';
+import {entranceDefaults,threeEntrancePose} from './entrance';
 
 function glowTexture(): CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -181,18 +182,23 @@ function NeutronStar({low, seconds, settings}: {low: boolean; seconds: RefObject
   </>;
 }
 
-export function CelestialObjectMesh({body, low, seconds, settings}: {
-  body: CelestialBody; low: boolean; seconds: RefObject<number>; settings: ThreeSettings;
+export function CelestialObjectMesh({body, low, seconds, settings, seed}: {
+  body: CelestialBody; low: boolean; seconds: RefObject<number>; settings: ThreeSettings; seed:string;
 }) {
   const root = useRef<Group>(null);
   const appearance = settings.visibilityAnimation ?? visibilityDefaults;
   useFrame(() => {
     if (!root.current) return;
     const visible = threeVisibility(body, seconds.current, appearance);
-    root.current.visible = visible > .001;
-    // A reversible scale envelope hides every child, including halo and beam,
-    // so fading never leaves black GPU transparency ghosts.
-    root.current.scale.setScalar(body.radius * Math.max(.001, visible));
+    const entrance=settings.entrance??entranceDefaults;
+    const arriving=entrance.enabled&&(settings.animation||seconds.current>0)
+      ?threeEntrancePose(body,seconds.current,entrance,seed):null;
+    const alpha=arriving?.opacity??1;
+    root.current.visible = visible*alpha > .001;
+    // Scale the entire celestial subtree, including halos and special effects.
+    root.current.scale.setScalar(body.radius * Math.max(.001, visible) * (arriving?.scale??1));
+    root.current.position.set(body.position[0]+(arriving?.offset[0]??0),body.position[1]+(arriving?.offset[1]??0),body.position[2]+(arriving?.offset[2]??0));
+    root.current.rotation.z=arriving?.rotationZ??0;
     root.current.rotation.y = body.kind === 'neutron-star' ? 0 :
       celestialSpin(body.kind, seconds.current, settings.rotationAmount) + body.phase * .12;
   });
