@@ -393,6 +393,19 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   expect(errors).toEqual([]); // Surface GLSL compilation errors before image comparisons.
   expect(digest(await png(page))).toBe(circuit); // Paused time must not jitter.
   await category(page,'背景');
+  await page.locator('#floor-circuit-detail').fill('0');
+  const withoutParts=digest(await png(page));
+  expect(withoutParts).not.toBe(circuit); // ICs and vias use different masks.
+  await category(page,'背景');
+  await page.locator('#floor-circuit-detail').fill('85');
+  await page.locator('#floor-circuit-board-opacity').fill('0.55');
+  const withBoard=digest(await png(page));
+  expect(withBoard).not.toBe(circuit);
+  await category(page,'背景');
+  await page.locator('#floor-circuit-accent').fill('#e6a65c');
+  const metal=digest(await png(page));
+  expect(metal).not.toBe(withBoard);
+  await category(page,'背景');
   await page.locator('#floor-circuit-density').fill('0');
   await expect(page.locator('#floor-circuit-density')).toHaveValue('0');
   const noWires=digest(await png(page));
@@ -418,6 +431,7 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   const projectBytes=await readFile((await (await pending).path())!);
   expect(JSON.parse(projectBytes.toString()).settings.floorGrid).toMatchObject({
     enabled:true,style:'circuit',circuitDensity:90,circuitSpeed:2,thickness:4,spacing:3.5,
+    circuitDetail:85,circuitBoardOpacity:.55,circuitAccentColor:'#e6a65c',
   });
   await category(page,'背景');
   await page.getByLabel('床のデザイン').selectOption('grid');
@@ -430,6 +444,9 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await category(page,'背景');
   await expect(page.locator('#floor-circuit-speed')).toHaveValue('2');
   await expect(page.locator('#floor-circuit-density')).toHaveValue('90');
+  await expect(page.locator('#floor-circuit-detail')).toHaveValue('85');
+  await expect(page.locator('#floor-circuit-board-opacity')).toHaveValue('0.55');
+  await expect(page.locator('#floor-circuit-accent')).toHaveValue('#e6a65c');
   expect(digest(await png(page))).toBe(savedFrame);
   expect(errors).toEqual([]);
 });
