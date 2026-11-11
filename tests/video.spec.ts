@@ -61,11 +61,11 @@ test('deterministic WebM frames, FPS, ratios, glow, playback and JSON', async ({
   // Compare decoded pixels, independently of container/codec metadata.
   const hashes=files.slice(0,2).map(path=>execFileSync('ffmpeg',['-v','error','-i',path,'-f','framemd5','-'],{encoding:'utf8'}).split('\n').filter(line=>!line.startsWith('#')).join('\n'));
   expect(hashes[0]).toBe(hashes[1]);
-  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'設定JSONを保存',exact:true}).click();
+  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'作品の設定を保存',exact:true}).click();
   const settings=JSON.parse(await readFile((await (await pending).path())!,'utf8'));
   expect(settings.exportVideoFps).toBe(60);expect(settings.exportVideoWidth).toBe(256);
   await page.getByLabel('動画FPS').selectOption('24');
-  await page.getByLabel('設定JSONファイル').setInputFiles({name:'video.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(settings))});
+  await page.getByLabel('保存した設定ファイル').setInputFiles({name:'video.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(settings))});
   await expect(page.getByLabel('動画FPS')).toHaveValue('60');
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
