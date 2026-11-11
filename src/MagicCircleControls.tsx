@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import type {MagicCircleSettings} from './magic-circle';
 import {buildMagicBlueprint} from './magic-blueprint';
 import {MAGIC_PALETTES,magicPaletteById,magicPaletteFromSeed} from './magic-colors';
@@ -13,7 +14,7 @@ export function MagicCircleControls({value,onChange,seed}:Props&{seed:string}){
     </div>;
   return <section className="control-section magic-controls" aria-labelledby="magic-controls-title" data-testid="magic-controls">
     <h3 id="magic-controls-title">魔法陣スタジオ <span aria-hidden="true">✧</span></h3>
-    <p className="help">中心対称の専用アルゴリズム。シードを変えても円環と紋様が整うように生成します。</p>
+    <HelpInfo>中心対称の専用アルゴリズム。シードを変えても円環と紋様が整うように生成します。</HelpInfo>
     <label htmlFor="magic-generation-mode">魔法陣の生成方式</label>
     <select id="magic-generation-mode" value={value.generationMode} onChange={e=>set('generationMode',e.target.value as MagicCircleSettings['generationMode'])}>
       <option value="classic">クラシック — 3種類のスタイル</option>
@@ -27,7 +28,7 @@ export function MagicCircleControls({value,onChange,seed}:Props&{seed:string}){
       <option value="crest">紋章・花弁陣</option>
     </select>
     </>:<div className="magic-infinite-options" data-testid="magic-infinite-controls">
-      <p className="help">シードごとに中心紋様・各円環の役割・装飾・対称性を組み替えます。必ず放射状の整った構図になる生成方式です。</p>
+      <HelpInfo>シードごとに中心紋様・各円環の役割・装飾・対称性を組み替えます。必ず放射状の整った構図になる生成方式です。</HelpInfo>
       {range('magic-chaos','構造のランダム度','chaos',0,100,5,'%')}
       <label className="glow-toggle"><input type="checkbox" checked={value.rareEffects}
         onChange={e=>set('rareEffects',e.target.checked)}/> レアな特殊紋様を生成する</label>
@@ -49,14 +50,14 @@ export function MagicCircleControls({value,onChange,seed}:Props&{seed:string}){
       <option value="arcs">曲線の刻印</option>
     </select>
     {range('magic-rotation','円環の回転速度','rotationTurns',0,3,1,'周/周期')}
-    <p className="help">召喚アニメが完成しても円環は回り続けます。隣接する円環は反対方向に回転。0なら停止します（端末の「視差効果を減らす」設定は尊重します）。</p>
+    <HelpInfo>召喚アニメが完成しても円環は回り続けます。隣接する円環は反対方向に回転。0なら停止します（端末の「視差効果を減らす」設定は尊重します）。</HelpInfo>
     <div className="magic-export-options">
       <label className="glow-toggle"><input type="checkbox" checked={!value.showBackground}
         onChange={e=>set('showBackground',!e.target.checked)}/> 背景なしでプレビュー</label>
       <label className="glow-toggle"><input type="checkbox" checked={value.transparentExport}
         onChange={e=>set('transparentExport',e.target.checked)}/> 魔法陣だけを透過PNG / SVGで書き出す</label>
     </div>
-    <p className="help">透過保存は背景・グリッド・文字を除外し、余白も透明になります。動画は従来どおり背景付きです。</p>
+    <HelpInfo>透過保存は背景・グリッド・文字を除外し、余白も透明になります。動画は従来どおり背景付きです。</HelpInfo>
   </section>;
 }
 
@@ -74,7 +75,7 @@ export function MagicColorControls({value,onChange,seed}:Props&{seed:string}){
   };
   return <section className="control-section magic-color-controls" aria-labelledby="magic-colors-title" data-testid="magic-colors">
     <h3 id="magic-colors-title">魔法陣専用カラー</h3>
-    <p className="help">普通の2Dの配色とは完全に独立。魔法陣をシードに合った8系統の光色と暗色背景で描きます。</p>
+    <HelpInfo>普通の2Dの配色とは完全に独立。魔法陣をシードに合った8系統の光色と暗色背景で描きます。</HelpInfo>
     <label htmlFor="magic-color-mode">魔法陣の配色モード</label>
     <select id="magic-color-mode" value={value.colorMode}
       onChange={e=>onChange({...value,colorMode:e.target.value as MagicCircleSettings['colorMode']})}>
@@ -87,7 +88,7 @@ export function MagicColorControls({value,onChange,seed}:Props&{seed:string}){
       <button type="button" onClick={()=>onChange({...value,paletteReroll:(value.paletteReroll+1)%1_000_001})}>
         ✧ 魔法の色を再抽選
       </button>
-      <p className="help">押すたび別の配色を選びます。シード・再抽選回数と一緒にJSONへ保存できます。</p>
+      <HelpInfo>押すたび別の配色を選びます。シード・再抽選回数と一緒にJSONへ保存できます。</HelpInfo>
     </>}
     {value.colorMode==='preset'&&<>
       <label htmlFor="magic-color-preset">魔法陣パレット</label>
@@ -114,6 +115,6 @@ export function MagicColorControls({value,onChange,seed}:Props&{seed:string}){
             onChange={e=>setGradient(i,e.target.value)}/>
         </label>)}
     </div>}
-    <p className="help">自動・プリセット・手動の設定は魔法陣だけに適用されます。透過書き出しでは背景だけが除去され、魔法陣の色はそのまま残ります。</p>
+    <HelpInfo>自動・プリセット・手動の設定は魔法陣だけに適用されます。透過書き出しでは背景だけが除去され、魔法陣の色はそのまま残ります。</HelpInfo>
   </section>;
 }
