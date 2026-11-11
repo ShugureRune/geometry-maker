@@ -1,4 +1,4 @@
-import {polar, type Contour} from './geometry';
+import {polar} from './geometry';
 import {RATIOS,seededRandom,type Ratio,type Scene,type Shape,type Point} from './scene';
 
 export const MAGIC_ALGORITHM_VERSION = '2d-magic-v1' as const;
@@ -43,7 +43,6 @@ export const magicIs=(value:string)=>value===MAGIC_ALGORITHM_VERSION;
 
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const CLOSED=(points:Point[])=>[...points,points[0]];
-const origin={x:0,y:0};
 const MOTIFS:readonly (readonly Point[])[]=[
   [{x:-.3,y:-.85},{x:.25,y:-.85},{x:-.22,y:0},{x:.33,y:.85}],
   [{x:-.38,y:-.8},{x:.35,y:0},{x:-.38,y:.8},{x:.18,y:.8}],
