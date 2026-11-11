@@ -79,7 +79,7 @@ test('terrain settings and flat-center checkbox survive JSON while the floor gri
   const before=digest(await png(page));
   await category(page,'書き出し');
   const download=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await download).path())!);
   const saved=JSON.parse(bytes.toString());
   expect(saved.settings.sky.terrain).toEqual({relief:180,detail:150,flatCenter:false});
@@ -89,7 +89,7 @@ test('terrain settings and flat-center checkbox survive JSON while the floor gri
   await page.locator('#three-terrain-relief').fill('0');
   expect(digest(await png(page))).not.toBe(before);
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'terrain.json',mimeType:'application/json',buffer:bytes,
   });
   await category(page,'背景');
