@@ -183,9 +183,9 @@ function NeutronStar({low, seconds, settings}: {low: boolean; seconds: RefObject
   </>;
 }
 
-export function CelestialObjectMesh({body, low, seconds, settings, seed, standby}: {
+export function CelestialObjectMesh({body, low, seconds, settings, seed, standby, skipEntrance=false}: {
   body: CelestialBody; low: boolean; seconds: RefObject<number>; settings: ThreeSettings; seed:string;
-  standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};
+  standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};skipEntrance?:boolean;
 }) {
   const root = useRef<Group>(null);
   const appearance = settings.visibilityAnimation ?? visibilityDefaults;
@@ -193,7 +193,7 @@ export function CelestialObjectMesh({body, low, seconds, settings, seed, standby
     if (!root.current) return;
     const visible = threeVisibility(body, seconds.current, appearance);
     const entrance=settings.entrance??entranceDefaults;
-    const arriving=!standby&&entrance.enabled&&(settings.animation||seconds.current>0)
+    const arriving=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0)
       ?threeEntrancePose(body,seconds.current,entrance,seed):null;
     const p=standby?seconds.current/standby.transition.duration:0;
     const transitionAlpha=standby?(standby.transition.mode==='morph'?
