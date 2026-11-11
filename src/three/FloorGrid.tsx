@@ -71,6 +71,8 @@ export function FloorGrid({grid,sceneHeight,seconds,view,low=false}:{
     uCircuitDetail:{value:grid.circuitDetail/100},
     uCircuitBoardOpacity:{value:grid.circuitBoardOpacity},
     uCircuitAccent:{value:new Color(grid.circuitAccentColor)},
+    uCircuitWorldEnabled:{value:grid.circuitWorldEnabled&&grid.style==='circuit'&&grid.circuitDensity>0?1:0},
+    uCircuitWorldRadius:{value:1.82*Math.max(.65,Math.min(1.8,grid.spacing/2.5))*grid.circuitCoreScale*2.4},
     uTime:{value:seconds.current},
   }),[grid,seconds,physicalWidth]);
   useFrame(()=>{
@@ -84,6 +86,10 @@ export function FloorGrid({grid,sceneHeight,seconds,view,low=false}:{
       material.current.uniforms.uCircuitDetail.value=grid.circuitDetail/100;
       material.current.uniforms.uCircuitBoardOpacity.value=grid.circuitBoardOpacity;
       material.current.uniforms.uCircuitAccent.value.set(grid.circuitAccentColor);
+      material.current.uniforms.uCircuitWorldEnabled.value=
+        grid.circuitWorldEnabled&&grid.style==='circuit'&&grid.circuitDensity>0?1:0;
+      material.current.uniforms.uCircuitWorldRadius.value=
+        1.82*Math.max(.65,Math.min(1.8,grid.spacing/2.5))*grid.circuitCoreScale*2.4;
     }
     // OrbitControls updates view.current when its target changes (including JSON restore).
     // Match its X/Z target without moving the floor upward into the shapes.
