@@ -5,6 +5,7 @@ import {
 } from './sky-settings';
 import {OUTDOOR_SURFACE_HALF_EXTENT,terrainStretchCoordinate} from './terrain';
 import {outdoorFragmentShader,outdoorGrassVertexShader} from './outdoor-shaders';
+import {skyFragmentShader} from './sky-shaders';
 import {forestVertexShader,forestFragmentShader} from './natural-detail-shaders';
 import {threeDefaults} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
@@ -38,6 +39,8 @@ describe('outdoor draw distance and fog toggle',()=>{
     expect(terrainStretchCoordinate(-350)).toBe(-1050);
     expect(terrainStretchCoordinate(150)).toBeGreaterThan(150);
     expect(outdoorFragmentShader).toContain('uniform float uFogEnabled;');
+    expect(skyFragmentShader).toContain('uniform float uOutdoorFog;');
+    expect(skyFragmentShader).toContain('horizon*atmosphere');
     expect(outdoorFragmentShader).toContain('uViewDistance*.97');
     expect(outdoorFragmentShader).toContain('smoothstep(925.0,1040.0,length(vSurface))');
     expect(outdoorGrassVertexShader).toContain('uniform float uFogEnabled;');
