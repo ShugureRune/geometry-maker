@@ -654,7 +654,9 @@
   flex:0 0 32px;position:static;margin:0;
 }
 .studio-app .studio-controls .studio-setting-label>.studio-info-disclosure[open]{
-  z-index:7;
+  /* The content is now portalled; never let the i trigger float above
+     the sticky navigation while the settings page scrolls. */
+  z-index:auto;
 }
 .studio-app .studio-controls .studio-setting-label .studio-info-content{
   position:absolute;z-index:9;left:0;top:calc(100% + 6px);
