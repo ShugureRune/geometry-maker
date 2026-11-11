@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import type {TextOverlaySettings} from './text-overlay';
 import {EASINGS} from './animation';
 type Props={settings:TextOverlaySettings;onChange:(next:TextOverlaySettings)=>void;onReplay?:()=>void;previewPlaying?:boolean};
@@ -20,7 +21,7 @@ export function TextControls({settings,onChange,onReplay,previewPlaying}:Props){
   <textarea id="overlay-text" rows={3} maxLength={2000} value={settings.text}
    onChange={e=>update('text',e.target.value.split('\n').slice(0,12).join('\n'))}
    placeholder="ここにタイトルを入力（改行OK）"/>
-  <p className="help">1つのテキストを配置します。最大2000文字・12行。文字は図形のシードを変更しません。</p>
+  <HelpInfo>1つのテキストを配置します。最大2000文字・12行。文字は図形のシードを変更しません。</HelpInfo>
   <label htmlFor="text-font-family">フォント</label>
   <select id="text-font-family" value={settings.fontFamily} onChange={e=>update('fontFamily',e.target.value as TextOverlaySettings['fontFamily'])}>
    <option value="sans-serif">ゴシック体</option><option value="serif">明朝体</option><option value="monospace">等幅フォント</option>
@@ -36,9 +37,9 @@ export function TextControls({settings,onChange,onReplay,previewPlaying}:Props){
    <option value="accent">アクセント色に連動</option>
    <option value="gradient">図形カラーのグラデーション</option>
   </select>
-  {settings.colorMode==='solid'?color('color','文字色'):<p className="help">
+  {settings.colorMode==='solid'?color('color','文字色'):<HelpInfo>
    図形のカラー・テーマ・画像から適用した色と連動します。グラデーションの向きは背景設定と合わせます。
-  </p>}
+  </HelpInfo>}
   <div className="text-hollow-controls">
    <label htmlFor="text-fill-mode">文字の塗り</label>
    <select id="text-fill-mode" value={settings.fillMode??'solid'} onChange={e=>{
@@ -54,7 +55,7 @@ export function TextControls({settings,onChange,onReplay,previewPlaying}:Props){
     glowEnabled:true,glowTarget:'outline',glowColorMode:'text',strokeWidth:Math.max(3,settings.strokeWidth),
     glowStrength:Math.max(100,settings.glowStrength),glowBlur:Math.max(8,settings.glowBlur),shadowEnabled:false
    })}>✨ 中抜きネオンを一発設定</button>
-   <p className="help">中抜きでは文字の内側を透明にします。図形の線が文字の中を透けて見えるデザインにできます。</p>
+   <HelpInfo>中抜きでは文字の内側を透明にします。図形の線が文字の中を透けて見えるデザインにできます。</HelpInfo>
   </div>
   {range('opacity','不透明度',0,100,1,'%')}
   <h3>位置と重なり順</h3>
@@ -94,7 +95,7 @@ export function TextControls({settings,onChange,onReplay,previewPlaying}:Props){
    <button type="button" className="text-entrance-replay" onClick={onReplay}>
     {previewPlaying?'↻ 最初から再生':'▶ 登場アニメをプレビュー'}
    </button>
-   <p className="help">文字だけの登場演出です。図形の成長アニメとは独立して再生できます。動画は設定した待ち時間と登場時間まで再生されます。静止画のPNG・SVGは完成状態で保存されます。</p>
+   <HelpInfo>文字だけの登場演出です。図形の成長アニメとは独立して再生できます。動画は設定した待ち時間と登場時間まで再生されます。静止画のPNG・SVGは完成状態で保存されます。</HelpInfo>
   </>}
   <h3>発光と装飾</h3>
   <label className="text-checkbox"><input type="checkbox" checked={settings.glowEnabled}
@@ -133,6 +134,6 @@ export function TextControls({settings,onChange,onReplay,previewPlaying}:Props){
   </>}
   <label className="text-checkbox"><input type="checkbox" checked={settings.shadowEnabled} onChange={e=>update('shadowEnabled',e.target.checked)}/> 影を有効化</label>
   {settings.shadowEnabled&&<>{color('shadowColor','影の色')}{range('shadowBlur','影のぼかし',0,40,1)}</>}
-  <p className="help">中抜き時は発光対象を「縁取りだけ」にすると内側も透明のまま光ります。文字の発光は図形と独立して設定できます。PNG・SVG・動画・設定JSONにも反映されます。</p>
+  <HelpInfo>中抜き時は発光対象を「縁取りだけ」にすると内側も透明のまま光ります。文字の発光は図形と独立して設定できます。PNG・SVG・動画・設定JSONにも反映されます。</HelpInfo>
  </section>;
 }
