@@ -39,6 +39,9 @@
 .three-quality-badge{position:absolute;right:10px;top:10px;background:#141426cc;border:1px solid #9a8bb366;color:#e8e1ff;font-size:10px;padding:5px 8px;border-radius:6px;pointer-events:none}
 .three-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#e8e5f4;background:#151823;text-align:center;font-size:13px;overflow:auto}
 .three-fallback h3{font-size:16px}.three-fallback p{line-height:1.8;max-width:460px}
+.three-fallback-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;width:100%;max-width:440px;margin:8px auto}
+.three-fallback-actions button{flex:1 1 185px}
+.three-fallback [data-testid=three-error-detail]{font-size:11px;line-height:1.6;max-width:100%;overflow-wrap:anywhere}
 .three-fallback button,.three-view-toolbar button{border:1px solid #75658e;border-radius:7px;background:#30293e;color:#e4dbfa;padding:10px 12px;min-height:44px;font-size:12px}
 .three-view-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
 .three-view-toolbar p{font-size:11px;color:#a7b0c4;line-height:1.8;margin:0}.three-view-toolbar button{flex-shrink:0}
