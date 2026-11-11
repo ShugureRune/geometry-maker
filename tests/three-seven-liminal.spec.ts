@@ -96,7 +96,7 @@ test('new sky colors survive JSON roundtrip and keep floor grid while returning 
   const image=digest(await png(page));
   await category(page,'書き出し');
   const download=page.waitForEvent('download');
-  await page.getByRole('button',{name:'3D設定JSONを保存'}).click();
+  await page.getByRole('button',{name:'3Dの設定を保存'}).click();
   const bytes=await readFile((await (await download).path())!);
   const project=JSON.parse(bytes.toString());
   expect(project.settings.sky.kind).toBe('salt-flat');
@@ -105,7 +105,7 @@ test('new sky colors survive JSON roundtrip and keep floor grid while returning 
   await category(page,'背景');
   await page.getByLabel('3D背景の種類').selectOption('forest-edge');
   await category(page,'書き出し');
-  await page.getByLabel('3D設定JSONファイル').setInputFiles({
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'all-natural-skies.json',mimeType:'application/json',buffer:bytes,
   });
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-sky-kind','salt-flat');
