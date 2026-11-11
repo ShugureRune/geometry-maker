@@ -89,11 +89,12 @@ test('Studio v2 advanced settings share one checkbox design and circled info tog
   const info=page.locator('#panel-background .studio-info-disclosure').first();
   await expect(info).toBeVisible();
   await expect(info.locator('.studio-info-icon')).toHaveText('i');
-  await expect(info.locator('.studio-info-content')).toBeHidden();
+  const popup=page.getByTestId('studio-info-popover');
+  await expect(popup).toHaveCount(0);
   await info.locator('summary').click();
-  await expect(info.locator('.studio-info-content')).toBeVisible();
+  await expect(popup).toBeVisible();
   await info.locator('summary').press('Enter');
-  await expect(info.locator('.studio-info-content')).toBeHidden();
+  await expect(popup).toHaveCount(0);
   await page.getByRole('navigation',{name:'設定カテゴリー'})
     .getByRole('button',{name:'アニメーション',exact:true}).click();
   const checkbox=page.locator('#panel-animation input[type="checkbox"]').first();
@@ -114,9 +115,9 @@ test('Studio v2 advanced settings share one checkbox design and circled info tog
   await expect(page.getByRole('heading',{name:'自動切り替え'})).toBeVisible();
   await expect(page.getByLabel('3D待機画面モードを有効化')).toBeVisible();
   const standbyInfo=page.locator('.three-standby-controls .studio-info-disclosure');
-  await expect(standbyInfo.locator('.studio-info-content')).toBeHidden();
+  await expect(popup).toHaveCount(0);
   await standbyInfo.locator('summary').click();
-  await expect(standbyInfo.locator('.studio-info-content')).toContainText('なめらか');
+  await expect(popup).toContainText('なめらか');
   expect(errors).toEqual([]);
 });
 
@@ -131,7 +132,8 @@ test('Compact seed help sits next to the label instead of beneath the seed input
   await expect(trigger).toBeVisible();
   await expect(trigger).toHaveAttribute('aria-label','シードの説明');
   await expect(trigger.locator('.studio-info-icon')).toHaveText('i');
-  await expect(row.locator('.studio-info-content')).toBeHidden();
+  const popup=page.getByTestId('studio-info-popover');
+  await expect(popup).toHaveCount(0);
   const labelBox=await label.boundingBox(),buttonBox=await trigger.boundingBox();
   expect(labelBox).not.toBeNull();expect(buttonBox).not.toBeNull();
   expect(buttonBox!.width).toBeLessThanOrEqual(34);
@@ -139,7 +141,23 @@ test('Compact seed help sits next to the label instead of beneath the seed input
   expect(Math.abs(buttonBox!.y+buttonBox!.height/2-(labelBox!.y+labelBox!.height/2)))
     .toBeLessThan(12);
   await trigger.click();
-  await expect(row.locator('.studio-info-content')).toContainText('同じ模様');
+  await expect(popup).toContainText('同じ模様');
+  await expect(popup).toBeVisible();
+  const rect=await popup.boundingBox();
+  expect(rect).not.toBeNull();
+  expect(rect!.width).toBeGreaterThan(280);
+  expect(rect!.width).toBeLessThanOrEqual(365);
+  expect(rect!.x).toBeGreaterThanOrEqual(8);
+  expect(rect!.x+rect!.width).toBeLessThanOrEqual(page.viewportSize()!.width-6);
+  // A tap elsewhere or on the explanation deselects the hint.
+  await page.locator('select#algorithm-version').click();
+  await expect(popup).toHaveCount(0);
   await trigger.click();
-  await expect(row.locator('.studio-info-content')).toBeHidden();
+  await expect(popup).toBeVisible();
+  await popup.click();
+  await expect(popup).toHaveCount(0);
+  await trigger.click();
+  await expect(popup).toBeVisible();
+  await trigger.click();
+  await expect(popup).toHaveCount(0);
 });
