@@ -72,6 +72,10 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
     if(material.current){
       material.current.uniforms.uOffset.value=floorGridOffset(seconds.current,grid);
       material.current.uniforms.uTime.value=seconds.current;
+      // A reused ShaderMaterial can keep an older uniforms object after
+      // sliders change. Feed the active circuit controls before every render.
+      material.current.uniforms.uCircuitDensity.value=grid.circuitDensity/100;
+      material.current.uniforms.uCircuitSpeed.value=grid.circuitSpeed;
     }
     // OrbitControls updates view.current when its target changes (including JSON restore).
     // Match its X/Z target without moving the floor upward into the shapes.
