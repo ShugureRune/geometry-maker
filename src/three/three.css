@@ -72,3 +72,31 @@
 .magic-custom-colors label{display:grid;gap:7px;font-size:12px}
 .magic-custom-colors input[type=color]{width:100%;min-height:44px;padding:3px;border-radius:8px;border:1px solid #8b83a4;background:transparent}
 [data-theme=light] .magic-color-controls>button{background:#e5dcff;color:#292044}
+
+/* Seed-driven magic blueprint controls: distinct from the classic generator. */
+.magic-infinite-options{
+  margin:14px 0 18px;
+  padding:13px;
+  border:1px solid rgba(164,133,242,.36);
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(110,61,166,.16),rgba(46,120,161,.09));
+}
+.magic-infinite-options>button{
+  display:block;
+  width:100%;
+  min-height:44px;
+  margin:14px 0 8px;
+  padding:9px 12px;
+  border:1px solid #ab91e8;
+  border-radius:9px;
+  background:#3b2860;
+  color:#f5efff;
+  font-weight:600;
+  cursor:pointer;
+}
+.magic-infinite-options>button:hover{background:#4e377a}
+.magic-infinite-options>button:focus-visible{outline:3px solid #b7d6ff;outline-offset:2px}
+.magic-infinite-options>.glow-toggle{display:flex;align-items:center;gap:9px;min-height:40px}
+.magic-infinite-options>.glow-toggle input{min-width:18px;min-height:18px}
+[data-theme=light] .magic-infinite-options{background:#f0ebff;border-color:#c3abe6}
+[data-theme=light] .magic-infinite-options>button{background:#675191}
