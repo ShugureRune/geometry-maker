@@ -67,6 +67,57 @@ void main(){
     float blades=noise2(vWorld.xz*(2.0+density*2.0));
     color=mix(uGroundBase,uGroundAccent,.28+.45*patches);
     color=mix(color,uGroundHighlight,.08*blades);
+  }else if(uMode==12){
+    // Desert sand: gently repeating dunes, wind-smoothed ripples and haze.
+    vec2 p=vWorld.xz;
+    float dune=noise2(p*.055+vec2(uTime*.003,.0));
+    float ripples=sin(p.x*(2.8+density*.8)+sin(p.y*.33)*1.5);
+    float shade=clamp(.37+.32*dune+.14*ripples*density,0.0,1.0);
+    color=mix(uGroundBase,uGroundAccent,shade);
+    color=mix(color,uGroundHighlight,.10+.10*dune);
+  }else if(uMode==13){
+    // Salt flats: diffuse mirror-bright puddles with faint dry polygon edges.
+    vec2 p=vWorld.xz;
+    float patch=noise2(p*.08+vec2(uTime*.003));
+    vec2 cell=abs(fract(p*(.22+.09*density))-.5);
+    float saltEdge=1.0-smoothstep(.43,.5,max(cell.x,cell.y));
+    float water=smoothstep(.40,.70,patch);
+    float glint=.5+.5*sin(p.x*1.4+uTime*.21+sin(p.y*.7));
+    color=mix(uGroundBase,uGroundAccent,.48+.30*patch);
+    color=mix(color,uGroundHighlight,.24*saltEdge*intensity+.20*glint*water);
+  }else if(uMode==14){
+    // Moonlit flower field: dark violet soil with patches of low foliage.
+    float moss=noise2(vWorld.xz*(.16+.10*density));
+    float veins=noise2(vWorld.xz*2.8);
+    color=mix(uGroundBase,uGroundAccent,.21+.3*moss);
+    color=mix(color,uGroundHighlight,.045*veins);
+  }else if(uMode==15){
+    // Forest edge: green shadowy earth with foggy moss patches.
+    float moss=noise2(vWorld.xz*(.11+.12*density));
+    float leaves=noise2(vWorld.xz*1.7);
+    color=mix(uGroundBase,uGroundAccent,.21+.48*moss);
+    color=mix(color,uGroundHighlight,.075*leaves);
+  }else if(uMode==16){
+    // Starless twilight plain: matte lavender earth, almost no features.
+    float cloud=noise2(vWorld.xz*(.08+.1*density));
+    color=mix(uGroundBase,uGroundAccent,.31+.25*cloud);
+    color=mix(color,uGroundHighlight,.06*cloud);
+  }else if(uMode==17){
+    // Floating cloud surface: layered soft diffuse cloud-top billows.
+    vec2 p=vWorld.xz*.065+vec2(uTime*.007,-uTime*.005);
+    float n=noise2(p);
+    float fine=noise2(p*3.2+vec2(8.0,1.0));
+    float tops=smoothstep(.24,.82,n*.72+fine*.28);
+    color=mix(uGroundBase,uGroundAccent,.35+.5*tops);
+    color=mix(color,uGroundHighlight,.25+.35*tops);
+  }else if(uMode==18){
+    // Black mirror: almost still liquid with soft rippling cyan glints.
+    vec2 p=vWorld.xz;
+    float wave=sin(p.x*(1.1+density*.32)+uTime*.35+sin(p.y*.33));
+    float wake=sin(p.y*(1.5+density*.28)-uTime*.28+wave*.6);
+    float glint=pow(max(0.0,.5+.5*wave*wake),12.0);
+    color=mix(uGroundBase,uGroundAccent,.15+.17*wave);
+    color=mix(color,uGroundHighlight,glint*.38*intensity);
   }
   float alpha=clamp(fog*boundary*min(1.0,intensity),0.0,1.0);
   if(alpha<.003)discard;
