@@ -25,7 +25,7 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
-import {clamp01,easeInOut,matchThreeObjects,morphPose,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {easeInOut,matchThreeObjects,morphPose,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -172,6 +172,8 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const skipDelta = useRef(true);
   const lastRestart=useRef(restartKey),ready=useRef(false);
   const finishedTransition=useRef<number|null>(null);
+  const backdrop=useRef<{context:CanvasRenderingContext2D;texture:CanvasTexture;width:number;height:number}|null>(null);
+  const lastBackdropBlend=useRef(-1);
   const aspect = composition.width / composition.height;
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
   function resetView() {
@@ -263,11 +265,32 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     canvas.width = Math.round(512 * aspect); canvas.height = 512;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('背景の描画に失敗しました。');
-    drawBackground(context, canvas.width, canvas.height, background);
+    drawBackground(context, canvas.width, canvas.height, transition?.fromBackground??background);
     const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace;
+    backdrop.current={context,texture,width:canvas.width,height:canvas.height};
+    lastBackdropBlend.current=-1;
     scene.background = texture; invalidate();
-    return () => {if (scene.background === texture) scene.background = null; texture.dispose(); canvas.width = 0; canvas.height = 0;};
-  }, [scene, background.mode, background.solid, background.colors, background.angle, aspect, invalidate]);
+    return () => {if (scene.background === texture) scene.background = null;
+      if(backdrop.current?.texture===texture)backdrop.current=null;
+      texture.dispose(); canvas.width = 0; canvas.height = 0;};
+  }, [scene, background.mode, background.solid, background.colors, background.angle, aspect, invalidate,transition]);
+  // Blend the two seed backgrounds in ~24 smooth color steps, without a full-frame
+  // Canvas2D redraw on every WebGL frame. Static scenes retain the old path.
+  useFrame(()=>{
+    if(!transition)return;
+    const current=backdrop.current;
+    if(!current||scene.background!==current.texture)return;
+    const blend=easeInOut(seconds.current/transition.duration);
+    if(blend<1&&Math.abs(blend-lastBackdropBlend.current)<.04)return;
+    const {context,width,height,texture}=current;
+    context.clearRect(0,0,width,height);
+    drawBackground(context,width,height,transition.fromBackground);
+    context.globalAlpha=blend;
+    drawBackground(context,width,height,background);
+    context.globalAlpha=1;
+    texture.needsUpdate=true;
+    lastBackdropBlend.current=blend;
+  },-.5);
 
   useEffect(() => {
     if (low) return;
