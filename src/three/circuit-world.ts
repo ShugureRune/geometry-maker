@@ -96,7 +96,7 @@ export function makeCircuitLayout(settings:FloorGridSettings,low=false):CircuitL
       chips.push({id,position,size:chipSize,orientation:horizontal(arm)?0:Math.PI/2});
       routes.push({chipId:id,points,length:circuitRouteLength(points),offset:(id*1.37+arm*.4)*scale});
       junctions.push(junction,corner);
-      const size=chip.size;
+      const size=chipSize;
       // Passive devices and capacitors cluster beside the chips, rather than
       // appearing in an evenly spaced procedural grid.
       if((id*17+7)%29<detail*29){
