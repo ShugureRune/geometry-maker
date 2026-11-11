@@ -189,6 +189,12 @@ function OutdoorSnow({sky,seed,seconds,low,sceneHeight,view}:Props){
   </points>;
 }
 
+/** During first-person exploration, the natural landscape must stay in fixed
+ * world coordinates; the saved orbit look-at target keeps moving with yaw.
+ * Orbit mode retains its original camera-target-following ground behavior. */
+const EXPLORE_WORLD_VIEW:RefObject<ThreeView|undefined>={
+  current:{position:[0,1,18],target:[0,0,-.4]},
+};
 export function OutdoorRenderer(props:Props){
   const kind=props.sky.kind;
   if(![
@@ -197,11 +203,12 @@ export function OutdoorRenderer(props:Props){
     'twilight-plain','cloud-sea','dark-mirror',
     'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
   ].includes(kind))return null;
+  const stationaryView=props.sky.world?.explore?EXPLORE_WORLD_VIEW:props.view;
   return <>
-    <OutdoorSurface {...props}/>
-    <NaturalDetails {...props}/>
-    <WorldExtras {...props}/>
-    {kind==='whiteout-snow'&&<OutdoorSnow {...props}/>}
-    {kind==='foggy-grassland'&&<OutdoorGrass {...props}/>}
+    <OutdoorSurface {...props} view={stationaryView}/>
+    <NaturalDetails {...props} view={stationaryView}/>
+    <WorldExtras {...props} view={stationaryView}/>
+    {kind==='whiteout-snow'&&<OutdoorSnow {...props} view={stationaryView}/>}
+    {kind==='foggy-grassland'&&<OutdoorGrass {...props} view={stationaryView}/>}
   </>;
 }
