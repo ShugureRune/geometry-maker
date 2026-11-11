@@ -77,7 +77,7 @@ void main(){
 
 /** Instanced single-plane grass blades, with GPU wind and fog attenuation. */
 export const outdoorGrassVertexShader = `
-attribute mat4 instanceMatrix;
+// Three.js provides instanceMatrix automatically for InstancedMesh.
 uniform float uTime;
 uniform vec2 uCameraXZ;
 varying float vMist;
