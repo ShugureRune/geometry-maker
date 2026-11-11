@@ -153,7 +153,7 @@ export default function App() {
     const mark=()=>{standbyInteractionUntil.current=performance.now()+5000;};
     for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
       document.addEventListener(event,mark,{passive:true});
-    const dragging=(event:PointerEvent)=>{if(event.buttons!==0)mark();};
+    const dragging=(event:PointerEvent)=>{if(event.buttons!==0||document.pointerLockElement)mark();};
     document.addEventListener('pointermove',dragging,{passive:true});
     return()=>{
       for(const event of ['pointerdown','keydown','wheel','focusin'] as const)
