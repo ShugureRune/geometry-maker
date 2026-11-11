@@ -6,9 +6,9 @@ import {
 } from 'three';
 import {seededRandom} from '../scene';
 import {NaturalDetails} from './NaturalDetails';
-import {hasTerrainRelief,terrainDefaults,terrainHeightAt,terrainSegments} from './terrain';
+import {hasTerrainRelief,OUTDOOR_SURFACE_HALF_EXTENT,terrainDefaults,terrainHeightAt,terrainSegments,terrainStretchCoordinate} from './terrain';
 import {floorGridPlacement} from './floor-grid';
-import {outdoorFogDistance,outdoorGrassCount,outdoorSnowCount,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
+import {outdoorGrassCount,outdoorSnowCount,outdoorVisibilityDefaults,outdoorVisibleDistance,skySeedNumber,SKY_KINDS,SKY_PALETTES,type SkySettings} from './sky-settings';
 import type {ThreeView} from './settings';
 import {
   outdoorVertexShader,outdoorFragmentShader,
@@ -26,16 +26,19 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
   const {camera}=useThree();
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   const terrain=sky.terrain??terrainDefaults;
+  const visibility=sky.visibility??outdoorVisibilityDefaults;
   const geometry=useMemo(()=>{
     const raised=hasTerrainRelief(sky.kind)&&terrain.relief>0;
     const resolution=raised?terrainSegments(low):1;
-    const g=new PlaneGeometry(700,700,resolution,resolution);
+    const g=new PlaneGeometry(raised?700:OUTDOOR_SURFACE_HALF_EXTENT*2,
+      raised?700:OUTDOOR_SURFACE_HALF_EXTENT*2,resolution,resolution);
     if(raised){
       const positions=g.getAttribute('position');
       const seedValue=skySeedNumber(seed,sky.kind);
       for(let i=0;i<positions.count;i++){
-        const x=positions.getX(i),z=-positions.getY(i);
-        positions.setZ(i,terrainHeightAt(sky.kind,x,z,terrain,seedValue));
+        const x=terrainStretchCoordinate(positions.getX(i));
+        const y=terrainStretchCoordinate(positions.getY(i));
+        positions.setXYZ(i,x,y,terrainHeightAt(sky.kind,x,-y,terrain,seedValue));
       }
       positions.needsUpdate=true;
       g.computeVertexNormals();
@@ -49,7 +52,8 @@ function OutdoorSurface({sky,seed,seconds,low,sceneHeight,floorGridEnabled,view}
     uTime:{value:0},uSeed:{value:skySeedNumber(seed,sky.kind)},
     uDensity:{value:sky.density/100},
     uIntensity:{value:sky.intensity/100},
-    uFogDistance:{value:outdoorFogDistance(sky.kind)},
+    uViewDistance:{value:outdoorVisibleDistance(sky.kind,visibility)},
+    uFogEnabled:{value:visibility.fogEnabled?1:0},
     uCameraXZ:{value:new Vector2(camera.position.x,camera.position.z)},
     uGroundBase:{value:new Color(palette.base)},
     uGroundAccent:{value:new Color(palette.accent)},
@@ -81,6 +85,7 @@ function OutdoorGrass({sky,seed,seconds,low,sceneHeight,view}:Props){
   const {camera,invalidate}=useThree();
   const count=outdoorGrassCount(sky.density,low);
   const terrain=sky.terrain??terrainDefaults;
+  const visibility=sky.visibility??outdoorVisibilityDefaults;
   const heightSeed=skySeedNumber(seed,sky.kind);
   const palette=sky.colors?.[sky.kind]??SKY_PALETTES[sky.kind];
   const uniforms=useMemo(()=>({
@@ -89,7 +94,9 @@ function OutdoorGrass({sky,seed,seconds,low,sceneHeight,view}:Props){
     uBladeColor:{value:new Color(palette.accent)},
     uBladeTip:{value:new Color(palette.highlight)},
     uIntensity:{value:sky.intensity/100},
-  }),[camera,palette.accent,palette.highlight,sky.intensity]);
+    uViewDistance:{value:outdoorVisibleDistance(sky.kind,visibility)},
+    uFogEnabled:{value:visibility.fogEnabled?1:0},
+  }),[camera,palette.accent,palette.highlight,sky.intensity,sky.kind,visibility.distance,visibility.fogEnabled]);
   useEffect(()=>{
     if(!mesh.current)return;
     const rnd=seededRandom('liminal-meadow-v1:'+seed);
