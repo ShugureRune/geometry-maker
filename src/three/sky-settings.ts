@@ -3,6 +3,8 @@ export const SKY_KINDS = [
   'classic','starfield','galaxy','aurora','deep-sea','nebula',
   'cyber-tunnel','retrowave','digital',
   'shallow-water','whiteout-snow','foggy-grassland',
+  'endless-desert','salt-flat','moonlit-flowers','forest-edge',
+  'twilight-plain','cloud-sea','dark-mirror',
 ] as const;
 export type SkyKind = typeof SKY_KINDS[number];
 
@@ -19,6 +21,13 @@ export const SKY_LABELS: Record<SkyKind,string> = {
   'shallow-water':'無限の浅瀬',
   'whiteout-snow':'雪原ホワイトアウト',
   'foggy-grassland':'白い霧の草原',
+  'endless-desert':'無限の砂漠',
+  'salt-flat':'鏡の塩湖',
+  'moonlit-flowers':'夜の無限花畑',
+  'forest-edge':'薄暗い森の縁',
+  'twilight-plain':'星のない薄明の平原',
+  'cloud-sea':'雲海の上',
+  'dark-mirror':'黒い水面と霧',
 };
 
 /** Three editable colors per preset: dark atmosphere, luminous midtone, and highlights.
@@ -37,6 +46,13 @@ export const SKY_PALETTES:Record<SkyKind,SkyPalette>={
   'shallow-water':{base:'#91cbd3',accent:'#b9e3e5',highlight:'#f4f9f3'},
   'whiteout-snow':{base:'#dbe9f3',accent:'#eff5f8',highlight:'#ffffff'},
   'foggy-grassland':{base:'#b5c8b6',accent:'#8eae90',highlight:'#eef2e8'},
+  'endless-desert':{base:'#715540',accent:'#c8a27b',highlight:'#f6dcb2'},
+  'salt-flat':{base:'#9daeb5',accent:'#d9e4e8',highlight:'#ffffff'},
+  'moonlit-flowers':{base:'#090e26',accent:'#7d66bd',highlight:'#eed0fc'},
+  'forest-edge':{base:'#263a37',accent:'#587b69',highlight:'#adc5ad'},
+  'twilight-plain':{base:'#51445f',accent:'#a28da7',highlight:'#e8b5aa'},
+  'cloud-sea':{base:'#8ea9cb',accent:'#d2dced',highlight:'#fff6ea'},
+  'dark-mirror':{base:'#02070f',accent:'#162d39',highlight:'#8bb4c5'},
 };
 export type SkyPaletteOverrides=Partial<Record<SkyKind,SkyPalette>>;
 export function validateSkyPalette(value:unknown):SkyPalette{
@@ -103,7 +119,23 @@ export function outdoorSnowCount(density:number,low:boolean):number{
   return Math.max(0,Math.round((low?140:440)*density/100));
 }
 export function outdoorFogDistance(kind:SkyKind):number{
-  return kind==='whiteout-snow'?38:kind==='foggy-grassland'?62:115;
+  if(kind==='whiteout-snow')return 38;
+  if(kind==='foggy-grassland')return 62;
+  if(kind==='forest-edge')return 95;
+  if(kind==='moonlit-flowers')return 75;
+  if(kind==='cloud-sea')return 170;
+  if(kind==='dark-mirror')return 85;
+  return 115;
+}
+/** GPU instancing limits for the seven extra natural environments. */
+export function outdoorFlowerCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?240:950)*density/100));
+}
+export function outdoorTreeCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?40:130)*density/100));
+}
+export function outdoorCloudCount(density:number,low:boolean):number{
+  return Math.max(0,Math.round((low?28:85)*density/100));
 }
 
 export function skyIsAnimated(sky:SkySettings):boolean{
