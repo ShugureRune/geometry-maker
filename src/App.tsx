@@ -137,7 +137,9 @@ export default function App() {
   const standby=threeSettings.standby??standbyDefaults;
   function beginStandbyTransition(){
     if(renderMode!=='3d'||!threeComposition||!threeBaseComposition||standbyTransition||threeExportBusy||!threeReady)return;
-    const next=createRandomSeed();
+    let next=createRandomSeed();
+    if(next===seed)next=createRandomSeed();
+    if(!threeSettings.animation)setThreeSettings(current=>({...current,animation:true}));
     setStandbyTransition({id:++standbySerial.current,mode:standby.mode,duration:standby.transitionSeconds,
       fromSeed:seed,fromComposition:threeComposition,fromSourceComposition:threeBaseComposition,
       fromBackground:threeBackground,fromTheme:visualTheme,fromTime:threeApi.current?.getElapsedSeconds?.()??0});
@@ -169,7 +171,8 @@ export default function App() {
     },200);
     return()=>window.clearInterval(timer);
   },[renderMode,standby.enabled,standby.intervalSeconds,standby.transitionSeconds,standby.pauseOnInteraction,
-    standby.mode,threeReady,threeSettings.animation,standbyTransition,threeExportBusy,seed,threeComposition]);
+    standby.mode,threeReady,threeSettings.animation,standbyTransition,threeExportBusy,seed,
+    threeComposition,threeBaseComposition,threeBackground,visualTheme,colorSettings]);
   function commitSeed(){if(committedSeed.current!==seed){committedSeed.current=seed;replayOnRegenerate();}}
   function randomizeSeed(){const value=createRandomSeed();committedSeed.current=value;changeSeed(value);replayOnRegenerate();}
   function chooseVisualTheme(theme:VisualTheme){
