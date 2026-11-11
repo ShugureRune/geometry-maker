@@ -1,3 +1,4 @@
+import {HelpInfo} from '../HelpInfo';
 import {useEffect,useRef,useState, type RefObject} from 'react';
 import {downloadBlob} from '../export';
 import {EXPORT_PRESETS, fileStem} from '../settings';
@@ -44,7 +45,7 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
   }
   return <section className="control-section three-controls three-export" aria-labelledby="three-export-heading">
     <h3 id="three-export-heading">3DプレビューのPNG保存</h3>
-    <p className="help">現在の視点・姿勢・背景・発光を保存します。比率が異なる場合は構図を保って余白を追加します。高解像度はPC推奨です。</p>
+    <HelpInfo>現在の視点・姿勢・背景・発光を保存します。比率が異なる場合は構図を保って余白を追加します。高解像度はPC推奨です。</HelpInfo>
     <label htmlFor="three-export-preset">3D書き出し解像度</label>
     <select id="three-export-preset" disabled={busy} value={EXPORT_PRESETS.some(p => p.width === w && p.height === h) ? `${w}x${h}` : 'custom'} onChange={event => {
       const preset = EXPORT_PRESETS.find(p => `${p.width}x${p.height}` === event.target.value);
@@ -62,6 +63,6 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
     <input ref={file} type="file" accept=".json,application/json" aria-label="3D設定JSONファイル" hidden onChange={event=>restore(event.target.files?.[0])}/>
     {error && <p className="export-error" role="alert">{error}</p>}
     <p className="export-message" role="status">{message}</p>
-    <p className="help">3D設定JSONは3D専用形式です。2DのSVG・動画・設定JSONは2Dモードで利用できます。2Dの文字レイヤーは3D画像には含まれません。</p>
+    <HelpInfo>3D設定JSONは3D専用形式です。2DのSVG・動画・設定JSONは2Dモードで利用できます。2Dの文字レイヤーは3D画像には含まれません。</HelpInfo>
   </section>;
 }
