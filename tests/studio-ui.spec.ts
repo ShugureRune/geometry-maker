@@ -167,4 +167,13 @@ test('Compact seed help sits next to the label instead of beneath the seed input
   await expect(popup).toContainText('図形の形を保ったまま');
   await expect(trigger).toHaveAttribute('aria-expanded','false');
   expect(await popup.evaluate(el=>Number(getComputedStyle(el).zIndex))).toBeGreaterThan(50);
+  // Regression for the narrow shape-legend bubble reported on mobile.
+  const shapeHint=page.locator('.shape-kind-controls .studio-info-disclosure > summary');
+  await shapeHint.click();
+  await expect(popup).toContainText('OFFの図形');
+  const shapeBox=await popup.boundingBox();
+  expect(shapeBox).not.toBeNull();
+  expect(shapeBox!.width).toBeGreaterThan(280);
+  await page.locator('.shape-kind-presets button').first().click();
+  await expect(popup).toHaveCount(0);
 });
