@@ -5,11 +5,12 @@ import { backgroundVector, inkAt, paintFor } from './paint';
 import { GridBackground } from './GridBackground';
 import { TextOverlay } from './TextOverlay';
 import type {TextOverlaySettings} from './text-overlay';
+import {MAGIC_ALGORITHM_VERSION} from './magic-circle';
 
 // All strokes and glow radii use scene units. Pixel-fixed strokes become thinner
 // when a high-resolution export is displayed at the preview size.
-function GeometryImpl({ shape, finalFillOpacity, progress=1 }: { shape: Shape; finalFillOpacity:number; progress?:number }) {
-  const modern=(NEW_SHAPE_KINDS as readonly string[]).includes(shape.kind);
+function GeometryImpl({ shape, finalFillOpacity, progress=1, magic=false }: { shape: Shape; finalFillOpacity:number; progress?:number;magic?:boolean }) {
+  const modern=magic||(NEW_SHAPE_KINDS as readonly string[]).includes(shape.kind);
   const contours=useMemo(()=>contoursOf(shape),[shape]);
   return <>{contours.map((contour,i)=>{
     const start=contour.growthStart??0,end=contour.growthEnd??1;
@@ -18,7 +19,7 @@ function GeometryImpl({ shape, finalFillOpacity, progress=1 }: { shape: Shape; f
     const c=contour.dashed&&t<1?trimContour(contour,t):contour;
     const scale=shape.kind==='star'?t:undefined;
     if(c.circle) {
-      const expand=shape.kind!=='concentric';
+      const expand=shape.kind!=='concentric'&&!magic;
       const factor=Math.max(0,Math.min(1,progress*1.4-i*.025));
       return <circle key={i} cx={c.circle.x} cy={c.circle.y} r={c.circle.radius}
         pathLength={!expand&&t<1?1:undefined}
@@ -43,6 +44,7 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
   const gradientId = `background-${useId().replace(/:/g, '')}`;
   const { width, height } = scene;
   const unit = Math.min(width, height);
+  const isMagic=scene.version===MAGIC_ALGORITHM_VERSION;
   const roleColor=(shape:Shape)=>shapeColors?.[shape.id]??background.figureColors?.[shape.role==='hero'?'primary':shape.role==='accent'?'accent':'support'];
   const colorAt = (shape: Shape, point: Point) => roleColor(shape) ?? inkAt(shape.tone, background, point, width, height);
   const vector = backgroundVector(background, width, height);
@@ -50,10 +52,10 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
   // Static gradients and bounds do not need recomputing on every animation frame.
   const definitions=useMemo(()=>scene.shapes.map(shape => {
         const start = localPoint(shape, vector.start), end = localPoint(shape, vector.end);
-        const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
+        const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape),...(isMagic&&!shape.glow?{glow:false}:{})};
         const bounds = localBounds.get(shape.id)!;
         return <g key={shape.id}>
-          {background.mode === 'gradient' && !(transparent&&roleColor(shape)) && <linearGradient id={`${gradientId}-ink-${shape.id}`} gradientUnits="userSpaceOnUse"
+          {background.mode === 'gradient' && !(isMagic||(transparent&&roleColor(shape))) && <linearGradient id={`${gradientId}-ink-${shape.id}`} gradientUnits="userSpaceOnUse"
             x1={start.x} y1={start.y} x2={end.x} y2={end.y}>
             {[0, 0.25, 0.5, 0.75, 1].map(t => <stop key={t} offset={`${t * 100}%`}
               stopColor={colorAt(shape, { x: vector.start.x + (vector.end.x - vector.start.x) * t,
@@ -69,9 +71,9 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
             {background.glowIntensity!==undefined&&<feComponentTransfer><feFuncA type="linear" slope={1+background.glowIntensity/50}/></feComponentTransfer>}
           </filter>}
         </g>;
-      }),[scene,background,gradientId,localBounds,transparent,shapeColors]);
-  return <svg className="artwork" data-testid="preview" role="img" aria-label="生成した2D幾何学模様"
-    data-algorithm={scene.version} data-composition={scene.composition.type} viewBox={`0 0 ${width} ${height}`}
+      }),[scene,background,gradientId,localBounds,transparent,shapeColors,isMagic]);
+  return <svg className="artwork" data-testid="preview" role="img" aria-label={isMagic?'生成した2D魔法陣':'生成した2D幾何学模様'}
+    data-algorithm={scene.version} data-composition={scene.composition.type} data-transparent={transparent?'true':'false'} viewBox={`0 0 ${width} ${height}`}
     xmlns="http://www.w3.org/2000/svg" overflow={transparent?"visible":"hidden"}>
     {background.mode === 'gradient' && <defs>
       <linearGradient data-testid="background-gradient" id={gradientId} {...gradientEndpoints(background.angle)}>
@@ -93,18 +95,18 @@ export function Preview({ scene, background, growth, motion, transparent=false, 
     {textOverlay?.layer==='back'&&<TextOverlay settings={textOverlay} width={width} height={height} background={background} seconds={textSeconds}/>} 
     <g data-testid="shapes" strokeLinejoin="miter" strokeLinecap="round">
       {scene.shapes.filter(s=>!growth || growth[s.id]>0).map(shape => {
-        const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape)};
+        const paint = {...paintFor(shape, background, width, height), color: colorAt(shape, shape),...(isMagic&&!shape.glow?{glow:false}:{})};
         const solidFill = ['dot', 'dots', 'accent'].includes(shape.kind);
         const finalFillOpacity=solidFill || ['circuit','branch-circuit'].includes(shape.kind)?1:shape.fillOpacity;
-        const ink = background.mode === 'gradient' && !(transparent&&roleColor(shape)) ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
+        const ink = background.mode === 'gradient' && !(isMagic||(transparent&&roleColor(shape))) ? `url(#${gradientId}-ink-${shape.id})` : paint.color;
         return <g key={shape.id} data-shape-id={shape.id} data-layer={shape.layer} data-role={shape.role} data-kind={shape.kind}
           data-group={shape.group} data-parent={shape.parent} data-glow={paint.glow || undefined}
           transform={`${motion?.[shape.id]??''} translate(${shape.x} ${shape.y}) rotate(${shape.rotation})`}
           stroke={ink} strokeWidth={shape.strokeWidth * (background.lineWidth ?? 100) / 100} opacity={paint.opacity}
           fill={shape.filled || ['circuit','branch-circuit'].includes(shape.kind) ? solidFill || ['circuit','branch-circuit'].includes(shape.kind) ? ink : `url(#${gradientId}-fill-${shape.id})` : 'none'}
           fillOpacity={finalFillOpacity}>
-          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity={paint.glowOpacity} fill={background.glowIntensity===undefined?undefined:solidFill||['circuit','branch-circuit'].includes(shape.kind)?ink:"none"}><Geometry shape={shape} finalFillOpacity={finalFillOpacity} progress={growth?.[shape.id]} /></g>}
-          <Geometry shape={shape} finalFillOpacity={finalFillOpacity} progress={growth?.[shape.id]} />
+          {paint.glow && <g filter={`url(#${gradientId}-glow-${shape.id})`} opacity={paint.glowOpacity} fill={background.glowIntensity===undefined?undefined:solidFill||['circuit','branch-circuit'].includes(shape.kind)?ink:"none"}><Geometry shape={shape} finalFillOpacity={finalFillOpacity} progress={growth?.[shape.id]} magic={isMagic} /></g>}
+          <Geometry shape={shape} finalFillOpacity={finalFillOpacity} progress={growth?.[shape.id]} magic={isMagic} />
         </g>;
       })}
     </g>

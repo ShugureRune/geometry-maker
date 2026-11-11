@@ -14,6 +14,7 @@ export function ease(t:number,type:Easing):number {
 }
 export type Cue={start:number;duration:number};
 export function schedule(shapes:Shape[],seed:string,version:AlgorithmVersion='2d-v5'):Record<string,Cue>{
+ if(version==='2d-magic-v1')return Object.fromEntries(shapes.map(s=>[s.id,{start:s.role==='hero'?.02:s.role==='support'?.27:s.role==='accent'?.55:.67,duration:s.role==='hero'?.5:s.role==='support'?.38:.26}]));
  if(version==='2d-v5')return scheduleV2(shapes,seed);
  const byId=new Map(shapes.map(s=>[s.id,s]));const cues:Record<string,Cue>={};
  function cue(s:Shape):Cue {

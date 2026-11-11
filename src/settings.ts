@@ -8,6 +8,7 @@ import {validVisualTheme,type VisualTheme} from './themes';
 import {validateShapeKinds,type ShapeKind} from './shape-controls';
 import {validateTextOverlay,type TextOverlaySettings} from './text-overlay';
 import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, RATIOS, type Background, type Ratio } from './scene';
+import {MAGIC_ALGORITHM_VERSION,validateMagicSettings,type MagicCircleSettings} from './magic-circle';
 
 export const MIN_SIZE = 256;
 export const MAX_SIZE = 8192;
@@ -21,7 +22,7 @@ export const EXPORT_PRESETS = [
   { width: 2048, height: 2048, ratio: '1:1' },
 ] as const;
 export type ProjectSettings = Partial<AnimationSettings> & Partial<VideoSettings> & {
-  textOverlay?:TextOverlaySettings; gridBackground?:GridBackgroundSettings; ambient?:AmbientSettings; visualTheme?:VisualTheme; enabledShapeKinds?:ShapeKind[]; lineWidth?:number; glowIntensity?:number; density?:number; colorSettings?: ColorSettings; schemaVersion: 1; algorithmVersion: string; seed: string; aspectRatio: Ratio;
+  textOverlay?:TextOverlaySettings; magicCircle?:MagicCircleSettings; gridBackground?:GridBackgroundSettings; ambient?:AmbientSettings; visualTheme?:VisualTheme; enabledShapeKinds?:ShapeKind[]; lineWidth?:number; glowIntensity?:number; density?:number; colorSettings?: ColorSettings; schemaVersion: 1; algorithmVersion: string; seed: string; aspectRatio: Ratio;
   backgroundMode: Background['mode']; solidColor: string; gradientColors: Background['colors']; gradientAngle: number;
   exportWidth: number; exportHeight: number;
 };
@@ -36,7 +37,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('設定JSONはオブジェクトで指定してください。');
   const d = data as Record<string, unknown>;
   if (d.schemaVersion !== 1) throw new Error('未対応の設定スキーマです（schemaVersion: 1が必要）。');
-  if (d.algorithmVersion !== ALGORITHM_VERSION && d.algorithmVersion !== LEGACY_ALGORITHM_VERSION) throw new Error(`未対応のアルゴリズム版です。このアプリは${LEGACY_ALGORITHM_VERSION} / ${ALGORITHM_VERSION}に対応しています。`);
+  if (d.algorithmVersion !== ALGORITHM_VERSION && d.algorithmVersion !== LEGACY_ALGORITHM_VERSION && d.algorithmVersion !== MAGIC_ALGORITHM_VERSION) throw new Error(`未対応のアルゴリズム版です。このアプリは${LEGACY_ALGORITHM_VERSION} / ${ALGORITHM_VERSION}に対応しています。`);
   if (typeof d.seed !== 'string' || d.seed.length > 4096) throw new Error('seedは4096文字以下の文字列が必要です。');
   if (typeof d.aspectRatio !== 'string' || !Object.hasOwn(RATIOS, d.aspectRatio)) throw new Error('aspectRatioに対応する縦横比を指定してください。');
   if (d.backgroundMode !== 'solid' && d.backgroundMode !== 'gradient') throw new Error('backgroundModeはsolidまたはgradientが必要です。');
@@ -45,6 +46,7 @@ export function parseSettings(text: string): ProjectSettings {
   if (typeof d.gradientAngle !== 'number' || !Number.isFinite(d.gradientAngle) || d.gradientAngle < 0 || d.gradientAngle > 360) throw new Error('gradientAngleは0〜360の数値が必要です。');
   if (typeof d.exportWidth !== 'number' || typeof d.exportHeight !== 'number' || resolutionError(d.exportWidth, d.exportHeight)) throw new Error(resolutionError(NaN, NaN)!);
   if(d.enabledShapeKinds!==undefined)validateShapeKinds(d.enabledShapeKinds);
+   if(d.magicCircle!==undefined)validateMagicSettings(d.magicCircle);
   if(d.textOverlay!==undefined)validateTextOverlay(d.textOverlay);
   if(d.gridBackground!==undefined)validateGridBackground(d.gridBackground);
   if(d.visualTheme!==undefined&&!validVisualTheme(d.visualTheme))throw new Error('未対応のビジュアルテーマです。');
@@ -52,7 +54,7 @@ export function parseSettings(text: string): ProjectSettings {
   if(d.glowIntensity!==undefined&&!(typeof d.glowIntensity==='number'&&Number.isInteger(d.glowIntensity)&&d.glowIntensity>=0&&d.glowIntensity<=200))throw new Error('発光強度は0〜200%の整数で指定してください。');
   if(d.lineWidth!==undefined&&!(typeof d.lineWidth==='number'&&Number.isInteger(d.lineWidth)&&d.lineWidth>=50&&d.lineWidth<=300))throw new Error('線の太さは50〜300%の整数で指定してください。');
   // Rebuild the allowlisted object; never merge arbitrary JSON into application state.
-  return { ...(d.gridBackground===undefined?{}:{gridBackground:validateGridBackground(d.gridBackground)}), ...(d.textOverlay===undefined?{}:{textOverlay:validateTextOverlay(d.textOverlay)}), ...(d.ambient===undefined?{}:{ambient:ambientSettings(d.ambient)}), ...(d.visualTheme===undefined?{}:{visualTheme:d.visualTheme as VisualTheme}), ...(d.enabledShapeKinds===undefined?{}:{enabledShapeKinds:validateShapeKinds(d.enabledShapeKinds)}), ...(d.lineWidth===undefined?{}:{lineWidth:d.lineWidth as number}), ...(Object.keys(d).some(k=>k.startsWith('exportVideo'))?videoSettings(d):{}), ...(d.glowIntensity===undefined?{}:{glowIntensity:d.glowIntensity as number}), ...(Object.keys(d).some(k=>k.startsWith('animation')||k==='playbackSpeed'||k==='easingType')?animationSettings(d):{}), density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: d.algorithmVersion, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
+  return { ...(d.magicCircle===undefined?{}:{magicCircle:validateMagicSettings(d.magicCircle)}), ...(d.gridBackground===undefined?{}:{gridBackground:validateGridBackground(d.gridBackground)}), ...(d.textOverlay===undefined?{}:{textOverlay:validateTextOverlay(d.textOverlay)}), ...(d.ambient===undefined?{}:{ambient:ambientSettings(d.ambient)}), ...(d.visualTheme===undefined?{}:{visualTheme:d.visualTheme as VisualTheme}), ...(d.enabledShapeKinds===undefined?{}:{enabledShapeKinds:validateShapeKinds(d.enabledShapeKinds)}), ...(d.lineWidth===undefined?{}:{lineWidth:d.lineWidth as number}), ...(Object.keys(d).some(k=>k.startsWith('exportVideo'))?videoSettings(d):{}), ...(d.glowIntensity===undefined?{}:{glowIntensity:d.glowIntensity as number}), ...(Object.keys(d).some(k=>k.startsWith('animation')||k==='playbackSpeed'||k==='easingType')?animationSettings(d):{}), density:d.density===undefined?50:d.density as number, ...(d.colorSettings === undefined ? {} : {colorSettings: validateColors(d.colorSettings)}), schemaVersion: 1, algorithmVersion: d.algorithmVersion, seed: d.seed, aspectRatio: d.aspectRatio as Ratio,
     backgroundMode: d.backgroundMode, solidColor: d.solidColor, gradientColors: [...d.gradientColors] as Background['colors'],
     gradientAngle: d.gradientAngle, exportWidth: d.exportWidth, exportHeight: d.exportHeight };
 }

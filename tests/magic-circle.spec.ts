@@ -1,0 +1,90 @@
+import {test,expect,type Page} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
+
+test.setTimeout(180_000);
+async function category(page:Page,label:string){
+  const button=page.getByRole('navigation',{name:'設定カテゴリー'}).getByRole('button',{name:label,exact:true});
+  if(await button.getAttribute('aria-expanded')!=='true')await button.click();
+}
+async function magic(page:Page){
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('./');
+  await page.getByLabel('生成アルゴリズム').selectOption('2d-magic-v1');
+  await expect(page.getByTestId('magic-controls')).toBeVisible();
+  await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-magic-v1');
+}
+async function exportFile(page:Page,label:string){
+  const download=page.waitForEvent('download');
+  await page.getByRole('button',{name:label,exact:true}).click();
+  return readFile(await (await download).path() as string);
+}
+test('style, ring count, symmetry, rune families and preview alpha all respond',async({page})=>{
+  await magic(page);
+  const preview=page.getByTestId('preview');
+  const initial=await preview.locator('[data-shape-id]').count();
+  await page.getByLabel('魔法陣のスタイル').selectOption('geometric');
+  await expect(preview.locator('[data-shape-id="poly-main"]')).toHaveCount(1);
+  await page.getByLabel('魔法陣のスタイル').selectOption('crest');
+  await expect(preview.locator('[data-shape-id="petal-0"]')).toHaveCount(1);
+  await page.getByLabel('魔法陣のスタイル').selectOption('star');
+  await page.getByLabel('同心円の数').fill('8');
+  await page.getByLabel('対称数').fill('12');
+  await page.getByLabel('紋様の複雑さ').fill('100');
+  await page.getByLabel('装飾密度').fill('100');
+  await page.getByLabel('円環の装飾').selectOption('dots');
+  await expect(preview.locator('[data-shape-id^="stamp-dot"]')).not.toHaveCount(0);
+  expect(await preview.locator('[data-shape-id]').count()).toBeGreaterThan(initial);
+  await page.getByLabel('背景なしでプレビュー').check();
+  await expect(preview).toHaveAttribute('data-transparent','true');
+  await expect(preview.locator('[data-testid="background"]')).toHaveCount(0);
+});
+test('transparent PNG preserves zero-alpha padding and visible spell strokes',async({page})=>{
+  await magic(page);
+  await page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す').check();
+  await category(page,'書き出し');
+  await page.getByLabel('幅 (px)',{exact:true}).fill('600');
+  await page.getByLabel('高さ (px)',{exact:true}).fill('600');
+  const buf=await exportFile(page,'PNGを書き出す');
+  expect(buf.subarray(1,4).toString()).toBe('PNG');
+  const result=await page.evaluate(async(base64)=>{
+    const image=new Image(); image.src='data:image/png;base64,'+base64;await image.decode();
+    const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+    const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);
+    const pixels=ctx.getImageData(0,0,image.width,image.height).data;
+    let visible=0;
+    for(let i=3;i<pixels.length;i+=4)if(pixels[i]>40)visible++;
+    return {width:image.width,height:image.height,corner:pixels[3],visible};
+  },buf.toString('base64'));
+  expect(result).toMatchObject({width:600,height:600,corner:0});
+  expect(result.visible).toBeGreaterThan(250);
+  const svg=(await exportFile(page,'SVGを書き出す')).toString('utf8');
+  expect(svg).toContain('data-algorithm="2d-magic-v1"');
+  expect(svg).not.toMatch(/<rect\b[^>]*data-testid="background"/);
+  expect(svg).not.toMatch(/<rect\b[^>]*width="600"[^>]*fill=/);
+  expect(svg).toContain('data-shape-id="ward-outer"');
+});
+test('background-on PNG, safe JSON roundtrip and v4/v5 selection',async({page})=>{
+  await magic(page);
+  await page.getByLabel('魔法陣のスタイル').selectOption('crest');
+  await page.getByLabel('同心円の数').fill('7');
+  await page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す').check();
+  await category(page,'書き出し');
+  const json=await exportFile(page,'設定JSONを保存');
+  const settings=JSON.parse(json.toString('utf8'));
+  expect(settings.algorithmVersion).toBe('2d-magic-v1');
+  expect(settings.magicCircle.style).toBe('crest');
+  expect(settings.magicCircle.ringCount).toBe(7);
+  expect(settings.magicCircle.transparentExport).toBe(true);
+  await category(page,'図形');
+  await page.getByLabel('生成アルゴリズム').selectOption('2d-v4');
+  await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-v4');
+  await page.getByLabel('生成アルゴリズム').selectOption('2d-v5');
+  await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-v5');
+  await category(page,'書き出し');
+  await page.locator('input[aria-label="設定JSONファイル"]').setInputFiles({name:'magic.json',mimeType:'application/json',buffer:json});
+  await expect(page.getByTestId('preview')).toHaveAttribute('data-algorithm','2d-magic-v1');
+  await category(page,'図形');
+  await expect(page.getByLabel('魔法陣のスタイル')).toHaveValue('crest');
+  await expect(page.getByLabel('同心円の数')).toHaveValue('7');
+  await expect(page.getByLabel('魔法陣だけを透過PNG / SVGで書き出す')).toBeChecked();
+});

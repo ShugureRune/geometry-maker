@@ -5,7 +5,7 @@ export const validDensity = (value:unknown): value is number => typeof value==='
 /** Build once per seed/ratio, never per slider position. 50% is exactly v4. */
 export function densityCandidates(scene:Scene,seed:string):Candidate[] {
  // v5 already contains the bounded maximum set, with authored density priorities.
- if(scene.version==='2d-v5')return scene.shapes.map(s=>({...s,importance:s.importance!,startDensity:s.startDensity!}));
+ if(scene.version==='2d-v5'||scene.version==='2d-magic-v1')return scene.shapes.map(s=>({...s,importance:s.importance!,startDensity:s.startDensity!}));
  const random=seededRandom(`density-v1:${seed}:${scene.width}:${scene.height}`);
  const candidates:Candidate[]=scene.shapes.map(s=>({...s,importance:s.role==='hero'?100:s.role==='accent'?90:s.role==='support'?70:40,
   startDensity:s.role==='hero'?1:s.role==='accent'?20:s.role==='support'?30+Math.floor(random()*4)*5:40+Math.floor(random()*3)*5}));

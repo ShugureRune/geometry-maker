@@ -1,5 +1,7 @@
 import { SettingsCategories, type Category } from './SettingsCategories';
 import {ShapeKindControls} from './ShapeKindControls';
+import {MagicCircleControls} from './MagicCircleControls';
+import {MAGIC_ALGORITHM_VERSION,magicDefaults,magicCircleMotion,type MagicCircleSettings} from './magic-circle';
 import {ALL_SHAPE_KINDS,type ShapeKind} from './shape-controls';
 import { AmbientControls, AmbientStage, useAmbientClock, ambientDefaults } from './AmbientControls';
 import {figureScrollAngle} from './ambient';
@@ -58,13 +60,14 @@ export default function App() {
   const lastGlow=useRef(100);
   const [ratio, setRatio] = useState<Ratio>('16:9');
   const [ambient,setAmbient]=useState({...ambientDefaults});
-  const ambientClock=useAmbientClock(ambient.enabled,ambient.lowPower,ambient,ratio);
+  const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
+  const [magicSettings,setMagicSettings]=useState<MagicCircleSettings>({...magicDefaults});
+  const ambientClock=useAmbientClock(renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&ambient.enabled,ambient.lowPower,ambient,ratio);
   const artworkRef = useRef<HTMLDivElement>(null);
   const [seed, setSeed] = useState(createRandomSeed);
   const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
   const [uiTheme,setUiTheme]=useState(()=>{try{return localStorage.getItem('geometry-ui-theme')==='light'?'light':'dark';}catch{return 'dark';}});
   useEffect(()=>{document.documentElement.dataset.theme=uiTheme;try{localStorage.setItem('geometry-ui-theme',uiTheme);}catch{}},[uiTheme]);
-  const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
   const committedSeed=useRef(seed);
   const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
   const gridSeconds=useGridClock(renderMode==='2d'&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
@@ -73,6 +76,9 @@ export default function App() {
   // Old manual 2D settings may omit figureColors intentionally. In 3D the
   // visible color slots are always the material colors, including locked slots.
   const threeBackground=useMemo(()=>({...background,figureColors:{primary:activeColors.slots.primary.color,support:activeColors.slots.support.color,accent:activeColors.slots.accent.color}}),[background,activeColors]);
+  const twoDBackground=useMemo(()=>version===MAGIC_ALGORITHM_VERSION?{
+    ...background,figureColors:{primary:activeColors.slots.primary.color,support:activeColors.slots.support.color,accent:activeColors.slots.accent.color}
+  }:background,[version,background,activeColors]);
   function applyColors(c:ColorSettings) { setColorSettings(c);setBackground(bg=>coloredBackground(bg,c)); }
   function changeSeed(value:string) {setSeed(value);if(colorSettings)applyColors(reseedColors(colorSettings,value));}
   function editor(id:Slot,label:string) { const slot=activeColors.slots[id];return <ColorEditor label={label} value={slot.color} locked={slot.locked}
@@ -81,13 +87,16 @@ export default function App() {
    onLock={()=>applyColors({...activeColors,slots:{...activeColors.slots,[id]:{...slot,locked:!slot.locked}}})}/>; }
   const [regenerations, setRegenerations] = useState(0);
   const [density,setDensity] = useState(50);
-  const baseScene = useMemo(() => generateScene(seed, ratio, version,enabledShapeKinds), [seed, ratio, version,enabledShapeKinds]);
+  const baseScene = useMemo(() => generateScene(seed, ratio, version,enabledShapeKinds,magicSettings), [seed, ratio, version,enabledShapeKinds,magicSettings]);
   const candidates = useMemo(()=>densityCandidates(baseScene,seed),[baseScene,seed]);
-  const scene = useMemo(()=>themeScene(visibleScene(baseScene,candidates,density),visualTheme,seed),[baseScene,candidates,density,visualTheme,seed]);
+  const scene = useMemo(()=>{
+    const visible=visibleScene(baseScene,candidates,density);
+    return version===MAGIC_ALGORITHM_VERSION?visible:themeScene(visible,visualTheme,seed);
+  },[baseScene,candidates,density,visualTheme,seed,version]);
 
   const [animation,setAnimation]=useState<AnimationSettings>({...defaults,animationEnabled:true});
   const playback=usePlayback(animation);
-  useEffect(()=>{if(ambient.enabled)playback.setPlaying(false);},[ambient.enabled]);
+  useEffect(()=>{if(ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION)playback.setPlaying(false);},[ambient.enabled,version]);
   useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
   function replayOnRegenerate(){if(renderMode==='2d'&&animation.animationEnabled)playback.restart(true);}
@@ -124,7 +133,8 @@ export default function App() {
    replayOnRegenerate();
   }
   const growth=animation.animationEnabled?Object.fromEntries(scene.shapes.map(s=>[s.id,progressAt(cues[s.id],playback.position,animation.easingType)])):undefined;
-  function completedArtwork(){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={background} textOverlay={textOverlay} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
+  const magicMotion=version===MAGIC_ALGORITHM_VERSION&&animation.animationEnabled?magicCircleMotion(scene,magicSettings,playback.position):undefined;
+  function completedArtwork(transparentOnly=false){return new DOMParser().parseFromString(renderToStaticMarkup(<Preview scene={scene} background={twoDBackground} transparent={version===MAGIC_ALGORITHM_VERSION&&transparentOnly} textOverlay={version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>),'image/svg+xml').documentElement as unknown as SVGSVGElement;}
   return <div className="app">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true">◇</span><div><h1>幾何学メーカー</h1><span className="brand-sub">GEOMETRY / BACKGROUND STUDIO</span></div></div>
@@ -139,7 +149,7 @@ export default function App() {
       <aside className="controls" aria-label="生成設定">
         <div className="panel-intro"><span className="eyebrow">MAKE IT YOURS</span><h2>ひとつのシードから、<br />あなただけの幾何学を。</h2><p>文字や数字を変えて、新しい構図に出会う。</p></div>
 
-        <SettingsCategories active={activeCategory} onChange={renderMode==='2d'?setCategory:setThreeCategory} disabled={renderMode==='3d'?['text']:[]}/>
+        <SettingsCategories active={activeCategory} onChange={renderMode==='2d'?setCategory:setThreeCategory} disabled={renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION?['text']:[]}/>
         <div id="panel-shapes" className="category-panel" data-category="shapes" role="region" aria-labelledby="category-shapes" hidden={activeCategory!=='shapes'}>
           <h2 className="category-title">図形</h2>
         <section className="control-section" aria-labelledby="seed-heading">
@@ -148,12 +158,13 @@ export default function App() {
           <div className="seed-row"><input id="seed" value={seed} onChange={e => changeSeed(e.target.value)} onBlur={commitSeed} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing&&e.keyCode!==229)commitSeed();}} spellCheck={false} autoComplete="off" /><button className="dice-button" type="button" onClick={randomizeSeed} aria-label="ランダムシードを生成" title="ランダムシードを生成">⚄ <span>ランダム</span></button></div>
           <p className="help">文字列・数値に対応。同じ値で同じ模様を再現。Enterまたは入力欄を離れると確定します。</p>
           <div hidden={renderMode==='3d'}><label className="algorithm-label" htmlFor="algorithm-version">生成アルゴリズム</label>
-          <select id="algorithm-version" value={version} onChange={e=>setVersion(e.target.value as AlgorithmVersion)}>
-            <option value={ALGORITHM_VERSION}>v5 — 拡張モード</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — クラシックモード</option>
+          <select id="algorithm-version" value={version} onChange={e=>{const next=e.target.value as AlgorithmVersion;setVersion(next);if(next===MAGIC_ALGORITHM_VERSION){playback.setPosition(1);playback.setPlaying(false);}}}>
+            <option value={ALGORITHM_VERSION}>v5 — 拡張モード</option><option value={LEGACY_ALGORITHM_VERSION}>v4 — クラシックモード</option><option value={MAGIC_ALGORITHM_VERSION}>魔法陣 — Magic Circle</option>
           </select>
           {version===LEGACY_ALGORITHM_VERSION&&<p className="help">旧v4設定の構図を保持しています。v5を選ぶと新しい構図に変わります。図形の種類別設定はv5で有効です。</p>}</div>
         </section>
         {renderMode==='2d'&&version===ALGORITHM_VERSION&&<ShapeKindControls enabled={enabledShapeKinds} onChange={setEnabledShapeKinds}/>}
+        {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<MagicCircleControls value={magicSettings} onChange={setMagicSettings}/>}
         {renderMode==='3d'&&<ThreeShapeControls settings={threeSettings} onChange={setThreeSettings}/>}
 
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
@@ -168,7 +179,7 @@ export default function App() {
         <section className="control-section">
           <label className="range-label" htmlFor="density">図形密度 <output htmlFor="density">{density}%</output></label>
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
-          <p className="help">{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</p>
+          <p className="help">{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':version===MAGIC_ALGORITHM_VERSION?'0%は背景のみ。主線は保持し、装飾は密度を上げるほど増えます。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</p>
         </section>
         <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
@@ -227,7 +238,7 @@ export default function App() {
         </section>
 
         </div>
-        <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={renderMode==='3d'||activeCategory!=='text'}>
+        <div id="panel-text" className="category-panel" data-category="text" role="region" aria-labelledby="category-text" hidden={renderMode==='3d'||version===MAGIC_ALGORITHM_VERSION||activeCategory!=='text'}>
           <h2 className="category-title">文字</h2>
           <TextControls settings={textOverlay} onChange={setTextOverlay} onReplay={entrancePreview.replay} previewPlaying={entrancePreview.playing}/>
         </div>
@@ -246,7 +257,7 @@ export default function App() {
         <div id="panel-animation" className="category-panel" data-category="animation" role="region" aria-labelledby="category-animation" hidden={activeCategory!=='animation'}>
           <h2 className="category-title">アニメーション</h2>
         <div hidden={renderMode==='3d'}>
-        <AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>
+        {version!==MAGIC_ALGORITHM_VERSION&&<AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>}
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
         </div>
         {renderMode==='3d'&&<ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings}/>}
@@ -254,13 +265,14 @@ export default function App() {
         <div id="panel-export" className="category-panel" data-category="export" role="region" aria-labelledby="category-export" hidden={activeCategory!=='export'}>
           <h2 className="category-title">書き出し</h2>
       <div className="export-area" hidden={renderMode==='3d'}>
-        <ExportPanel textOverlay={textOverlay} videoArtwork={{scene,candidates,seed,background,animation,textOverlay,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}}} version={version} density={density} colorSettings={activeColors} visualTheme={visualTheme} enabledShapeKinds={enabledShapeKinds} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
+        <ExportPanel textOverlay={textOverlay} magicSettings={version===MAGIC_ALGORITHM_VERSION?magicSettings:undefined} videoArtwork={{scene,candidates,seed,background:twoDBackground,animation,magicSettings:version===MAGIC_ALGORITHM_VERSION?magicSettings:undefined,textOverlay:version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay,ambient:{scrollFigureState:ambientClock.scrollFigureState,scrollPaletteState:ambientClock.scrollPaletteState,scrollPath:ambientClock.scrollPath,seed,version,ratio,density,background:twoDBackground,colors:activeColors,animation,settings:{...ambient,enabled:version!==MAGIC_ALGORITHM_VERSION&&ambient.enabled},visualTheme,enabledShapeKinds,textOverlay}}} version={version} density={density} colorSettings={activeColors} visualTheme={visualTheme} enabledShapeKinds={enabledShapeKinds} seed={seed} ratio={ratio} background={background} animation={animation} artwork={completedArtwork}
           onRatio={setRatio} onRestore={settings => {
             ambientClock.stop();setAmbient({...ambientDefaults,...settings.ambient,enabled:false});
             setDensity(settings.density ?? 50);setVisualTheme(settings.visualTheme??'standard');setTextOverlay(settings.textOverlay??{...textOverlayDefaults});
             setEnabledShapeKinds(settings.enabledShapeKinds??[...ALL_SHAPE_KINDS]);
             setAnimation({animationEnabled:settings.animationEnabled??false,animationDuration:settings.animationDuration??8,playbackSpeed:settings.playbackSpeed??1,easingType:settings.easingType??'ease-in-out'});playback.setPlaying(false);playback.setPosition(0);
-            setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
+            setMagicSettings(settings.magicCircle??{...magicDefaults});
+             setVersion(settings.algorithmVersion as AlgorithmVersion);committedSeed.current=settings.seed;
             setSeed(settings.seed); setRatio(settings.aspectRatio);
             const bg:Background={grid:settings.gridBackground??gridBackgroundDefaults,lineWidth:settings.lineWidth??100,glowIntensity:settings.glowIntensity??0,mode:settings.backgroundMode,solid:settings.solidColor,colors:settings.gradientColors,angle:settings.gradientAngle};
             setColorSettings(settings.colorSettings);
@@ -284,7 +296,7 @@ export default function App() {
         <div className="canvas-stage">
           {renderMode==='2d'?<PreviewTextEditor settings={textOverlay} onChange={setTextOverlay} onAdvanced={()=>setCategory('text')}>
             <div ref={artworkRef} className="canvas-frame" style={{ aspectRatio: `${scene.width} / ${scene.height}`, width: `min(100%, calc(var(--preview-height, 70vh) * ${scene.width / scene.height}))` }}>
-              {ambient.enabled?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={background} growth={growth} textOverlay={textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>}
+              {ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION?<AmbientStage input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} clock={ambientClock}/>:<Preview scene={scene} background={twoDBackground} growth={growth} motion={magicMotion} transparent={version===MAGIC_ALGORITHM_VERSION&&!magicSettings.showBackground} textOverlay={version===MAGIC_ALGORITHM_VERSION?undefined:textOverlay} textSeconds={entrancePreview.seconds} gridSeconds={gridSeconds} gridFigureAngle={figureScrollAngle(ambient,ratio)}/>}
             </div>
           </PreviewTextEditor>:<div className="canvas-frame three-frame" style={{aspectRatio:`${scene.width} / ${scene.height}`,width:`min(100%, calc(var(--preview-height, 70vh) * ${scene.width/scene.height}))`}}>
             <ThreeBoundary onReturn={()=>switchRenderMode('2d')}>
