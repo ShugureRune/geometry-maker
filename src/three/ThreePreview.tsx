@@ -383,6 +383,14 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const context = output.getContext('2d'); if (!context) throw new Error('PNG用のメモリを確保できませんでした。');
     const scale = Math.min(width / size.width, height / size.height);
     const renderWidth = Math.max(1, Math.round(size.width * scale)), renderHeight = Math.max(1, Math.round(size.height * scale));
+    // The new 3D PCB uses instanced materials updated in useFrame. When
+    // toggling a hardware layer or restoring JSON, the PNG button can fire
+    // before that first demand-render frame. Give R3F one real frame to apply
+    // the exact paused route, chip and processor state before capture.
+    if(settings.floorGrid?.style==='circuit'&&settings.floorGrid.circuitWorldEnabled&&!document.hidden){
+      invalidate();
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+    }
     const dpr = gl.getPixelRatio();
     try {
       gl.setPixelRatio(1); gl.setSize(renderWidth, renderHeight, false);
