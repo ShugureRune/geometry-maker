@@ -39,6 +39,8 @@ import {FloorGridControls} from './three/FloorGridControls';
 import {SkyControls} from './three/SkyControls';
 import {floorGridDefaults} from './three/floor-grid';
 import type {ThreeProject} from './three/project';
+import {loadStudioAutosave,saveStudioAutosave,type StudioAutosave} from './studio-autosave';
+import type {ProjectSettings} from './settings';
 import './three/three.css';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
@@ -49,12 +51,17 @@ const ThreePreview = lazy(() => import('./three/ThreePreview'));
 
 
 export default function App() {
-  const [renderMode,setRenderMode]=useState<'2d'|'3d'>('2d');
-  const [category,setCategory]=useState<Category|null>('shapes');
-  const [threeCategory,setThreeCategory]=useState<Category|null>('shapes');
+  // Read once, synchronously, before any state initializer or effect can
+  // overwrite the last draft with a fresh random seed.
+  const saved=useMemo(loadStudioAutosave,[]);
+  const lastProject=saved?.twoD;
+  const [renderMode,setRenderMode]=useState<'2d'|'3d'>(saved?.mode??'2d');
+  const [category,setCategory]=useState<Category|null>(saved?.category??'shapes');
+  const [threeCategory,setThreeCategory]=useState<Category|null>(saved?.threeCategory??'shapes');
   const activeCategory=renderMode==='2d'?category:threeCategory;
-  const [studioFocus,setStudioFocus]=useState(false);
-  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+  const [studioFocus,setStudioFocus]=useState(saved?.focus??false);
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(saved?.collapsed??false);
+  const [autosaveStatus,setAutosaveStatus]=useState<'pending'|'saved'|'unavailable'>('pending');
   const [commandOpen,setCommandOpen]=useState(false);
   const closeCommands=useCallback(()=>setCommandOpen(false),[]);
   const [sidebarWidth,setSidebarWidth]=useState(()=>{
@@ -78,38 +85,51 @@ export default function App() {
     return()=>window.removeEventListener('keydown',handler);
   },[studioFocus,commandOpen]);
   const [threeSettings,setThreeSettings]=useState<ThreeSettings>(()=>{
+    if(saved)return saved.threeD.settings;
     const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
     return {...threeDefaults,animation:!reducedMotion,
       // Keep the new reveal opt-in on devices explicitly requesting fewer animations.
       entrance:{...threeDefaults.entrance!,enabled:!reducedMotion}};
   });
   const threeApi=useRef<ThreePreviewHandle|null>(null);
-  const threeView=useRef<ThreeView|undefined>(undefined);
+  const threeView=useRef<ThreeView|undefined>(saved?.threeD.view);
   const [threeReady,setThreeReady]=useState(false);
-  const [threeRestore,setThreeRestore]=useState({serial:0,time:0});
+  const [threeRestore,setThreeRestore]=useState({serial:0,time:saved?.threeD.elapsedSeconds??0});
   const [standbyTransition,setStandbyTransition]=useState<ThreeStandbyTransition|null>(null);
-  const [standbyFinishedSeed,setStandbyFinishedSeed]=useState<string|null>(null);
+  const [standbyFinishedSeed,setStandbyFinishedSeed]=useState<string|null>(saved?.threeD.standbyComplete?saved.threeD.seed:null);
   const [threeExportBusy,setThreeExportBusy]=useState(false);
   const standbyInteractionUntil=useRef(0);
   const standbySerial=useRef(0);
   const resume2D=useRef({growth:false,ambient:false});
-  const [visualTheme,setVisualTheme]=useState<VisualTheme>('standard');
-  const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>({...textOverlayDefaults});
+  const [visualTheme,setVisualTheme]=useState<VisualTheme>(lastProject?.visualTheme??'standard');
+  const [textOverlay,setTextOverlay]=useState<TextOverlaySettings>(()=>lastProject?.textOverlay??{...textOverlayDefaults});
   const entrancePreview=useTextEntrancePreview(textOverlay);
-  const [enabledShapeKinds,setEnabledShapeKinds]=useState<ShapeKind[]>(()=>[...ALL_SHAPE_KINDS]);
+  const [enabledShapeKinds,setEnabledShapeKinds]=useState<ShapeKind[]>(()=>lastProject?.enabledShapeKinds??[...ALL_SHAPE_KINDS]);
   const lastGlow=useRef(100);
-  const [ratio, setRatio] = useState<Ratio>('16:9');
-  const [ambient,setAmbient]=useState({...ambientDefaults});
-  const [version,setVersion]=useState<AlgorithmVersion>(ALGORITHM_VERSION);
-  const [magicSettings,setMagicSettings]=useState<MagicCircleSettings>({...magicDefaults});
+  const [ratio, setRatio] = useState<Ratio>(lastProject?.aspectRatio??'16:9');
+  const [ambient,setAmbient]=useState(()=>lastProject?.ambient??{...ambientDefaults});
+  const [version,setVersion]=useState<AlgorithmVersion>((lastProject?.algorithmVersion as AlgorithmVersion|undefined)??ALGORITHM_VERSION);
+  const [magicSettings,setMagicSettings]=useState<MagicCircleSettings>(()=>lastProject?.magicCircle??{...magicDefaults});
   const ambientClock=useAmbientClock(renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&ambient.enabled,ambient.lowPower,ambient,ratio);
   const artworkRef = useRef<HTMLDivElement>(null);
-  const [seed, setSeed] = useState(createRandomSeed);
-  const [initialColors]=useState(()=>reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
+  const [seed, setSeed] = useState(()=>lastProject?.seed??createRandomSeed());
+  const [initialColors]=useState(()=>lastProject?.colorSettings??saved?.threeD.colorSettings??
+    reseedColors({...legacyColors(initialBackground),mode:'seed'},seed));
   const [uiTheme,setUiTheme]=useState(()=>{try{return localStorage.getItem('geometry-ui-theme')==='light'?'light':'dark';}catch{return 'dark';}});
   useEffect(()=>{document.documentElement.dataset.theme=uiTheme;try{localStorage.setItem('geometry-ui-theme',uiTheme);}catch{}},[uiTheme]);
   const committedSeed=useRef(seed);
-  const [background, setBackground] = useState<Background>(()=>({...coloredBackground(initialBackground,initialColors),lineWidth:125}));
+  const [background, setBackground] = useState<Background>(()=>{
+    if(saved){
+      const p=saved.twoD;
+      const restored:Background=saved.mode==='3d'?
+        {...saved.threeD.background,grid:p.gridBackground}:
+        {mode:p.backgroundMode,solid:p.solidColor,colors:p.gradientColors,
+          angle:p.gradientAngle,grid:p.gridBackground,lineWidth:p.lineWidth??125,
+          glowIntensity:p.glowIntensity??100};
+      return coloredBackground(restored,initialColors);
+    }
+    return {...coloredBackground(initialBackground,initialColors),lineWidth:125};
+  });
   const gridSeconds=useGridClock(renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&!ambient.enabled&&!!background.grid?.enabled&&!!background.grid?.animation?.enabled);
   const [colorSettings,setColorSettings] = useState<ColorSettings | undefined>(initialColors);
   const activeColors = colorSettings ?? legacyColors(background);
@@ -129,7 +149,7 @@ export default function App() {
    onRoll={()=>applyColors(rerollColor(activeColors,seed,id))}
    onLock={()=>applyColors({...activeColors,slots:{...activeColors.slots,[id]:{...slot,locked:!slot.locked}}})}/>; }
   const [regenerations, setRegenerations] = useState(0);
-  const [density,setDensity] = useState(50);
+  const [density,setDensity] = useState(lastProject?.density??50);
   const baseScene = useMemo(() => generateScene(seed, ratio, version,enabledShapeKinds,magicSettings), [seed, ratio, version,enabledShapeKinds,magicSettings]);
   const candidates = useMemo(()=>densityCandidates(baseScene,seed),[baseScene,seed]);
   const scene = useMemo(()=>{
@@ -137,7 +157,7 @@ export default function App() {
     return version===MAGIC_ALGORITHM_VERSION?visible:themeScene(visible,visualTheme,seed);
   },[baseScene,candidates,density,visualTheme,seed,version]);
 
-  const [animation,setAnimation]=useState<AnimationSettings>({...defaults,animationEnabled:true});
+  const [animation,setAnimation]=useState<AnimationSettings>(()=>({...defaults,animationEnabled:true,...lastProject?.animationEnabled===undefined?{}:{animationEnabled:lastProject.animationEnabled},...lastProject?.animationDuration===undefined?{}:{animationDuration:lastProject.animationDuration},...lastProject?.playbackSpeed===undefined?{}:{playbackSpeed:lastProject.playbackSpeed},...lastProject?.easingType===undefined?{}:{easingType:lastProject.easingType}}));
   const playback=usePlayback(animation);
   useEffect(()=>{if(ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION)playback.setPlaying(false);},[ambient.enabled,version]);
   useEffect(()=>{playback.restart(true);},[]);
