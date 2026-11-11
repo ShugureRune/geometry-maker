@@ -40,6 +40,8 @@ export type ThreeStandbyTransition={
   fromBackground:Background;
   fromTheme:VisualTheme;
   fromTime:number;
+  /** Camera position at switch start: freeze the morph path while zooming. */
+  cameraPosition?:Vector3Tuple;
 };
 export type MorphMatch={id:string;from?:ThreeObject;to?:ThreeObject};
 const mix=(a:number,b:number,t:number)=>t<=0?a:t>=1?b:a+(b-a)*t;
@@ -73,6 +75,65 @@ export function matchThreeObjects(from:readonly ThreeObject[],to:readonly ThreeO
 }
 const vec=(a:Vector3Tuple,b:Vector3Tuple,t:number):Vector3Tuple=>
   [mix(a[0],b[0],t),mix(a[1],b[1],t),mix(a[2],b[2],t)];
+const dot=(a:Vector3Tuple,b:Vector3Tuple)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const norm=(v:Vector3Tuple)=>Math.hypot(...v);
+const unit=(v:Vector3Tuple):Vector3Tuple=>{
+  const length=norm(v)||1;
+  return [v[0]/length,v[1]/length,v[2]/length];
+};
+/** Prevent a close-up morph from flying straight through the camera.
+ * Keep object distance from the saved viewpoint continuous, then interpolate
+ * the viewing direction along the shorter spherical arc. Far-away morphs
+ * retain the original straight-line interpolation unchanged. */
+export function cameraSafeMorphPosition(a:Vector3Tuple,b:Vector3Tuple,t:number,
+  camera?:Vector3Tuple,guardRadius=1):Vector3Tuple{
+  const p=clamp01(t);
+  if(p<=0)return [...a];
+  if(p>=1)return [...b];
+  if(!camera)return vec(a,b,p);
+  const va:Vector3Tuple=[a[0]-camera[0],a[1]-camera[1],a[2]-camera[2]];
+  const vb:Vector3Tuple=[b[0]-camera[0],b[1]-camera[1],b[2]-camera[2]];
+  const la=norm(va),lb=norm(vb);
+  if(la<.001||lb<.001)return vec(a,b,p);
+  const delta:Vector3Tuple=[b[0]-a[0],b[1]-a[1],b[2]-a[2]];
+  const closest=clamp01(-dot(va,delta)/(dot(delta,delta)||1));
+  const candidate:Vector3Tuple=[
+    va[0]+delta[0]*closest,va[1]+delta[1]*closest,va[2]+delta[2]*closest
+  ];
+  // Only guard a path that would cross the near view, not every normal morph.
+  if(norm(candidate)>Math.max(guardRadius*1.35,1.25)||norm(delta)<.45)
+    return vec(a,b,p);
+  const na=unit(va),nb=unit(vb);
+  const cosine=Math.max(-1,Math.min(1,dot(na,nb)));
+  const theta=Math.acos(cosine);
+  let direction:Vector3Tuple;
+  if(theta<.0001)direction=unit(vec(na,nb,p));
+  else if(Math.PI-theta<.0001){
+    // Antipodal directions have no unique short arc. Use a deterministic
+    // perpendicular instead of letting nlerp collapse through the camera.
+    const basis:Vector3Tuple=Math.abs(na[1])<.9?[0,1,0]:[1,0,0];
+    const projection=dot(basis,na);
+    const ortho=unit([
+      basis[0]-na[0]*projection,basis[1]-na[1]*projection,basis[2]-na[2]*projection
+    ]);
+    direction=unit([
+      na[0]*Math.cos(Math.PI*p)+ortho[0]*Math.sin(Math.PI*p),
+      na[1]*Math.cos(Math.PI*p)+ortho[1]*Math.sin(Math.PI*p),
+      na[2]*Math.cos(Math.PI*p)+ortho[2]*Math.sin(Math.PI*p)
+    ]);
+  }else{
+    const sin=Math.sin(theta),left=Math.sin((1-p)*theta)/sin,right=Math.sin(p*theta)/sin;
+    direction=unit([
+      na[0]*left+nb[0]*right,na[1]*left+nb[1]*right,na[2]*left+nb[2]*right
+    ]);
+  }
+  const distance=mix(la,lb,p);
+  return [
+    camera[0]+direction[0]*distance,
+    camera[1]+direction[1]*distance,
+    camera[2]+direction[2]*distance
+  ];
+}
 /** Matched shapes interpolate their true transforms. For different mesh topologies,
  * the renderer draws two geometries with interleaved opacity, avoiding malformed vertices. */
 export type MorphPose={
@@ -80,11 +141,15 @@ export type MorphPose={
 };
 export function morphPose(from:ThreeObject|undefined,to:ThreeObject|undefined,
   fraction:number,layer:'shared'|'old'|'new',oldPose?:{position:Vector3Tuple;rotation:Vector3Tuple},
-  newPose?:{position:Vector3Tuple;rotation:Vector3Tuple}):MorphPose{
+  newPose?:{position:Vector3Tuple;rotation:Vector3Tuple},
+  cameraPosition?:Vector3Tuple):MorphPose{
   const p=easeInOut(fraction);
   if(!from&&!to)throw new Error('モーフには少なくとも1つの図形が必要です。');
   const a=from??to!,b=to??from!;
-  const position=vec(oldPose?.position??a.position,newPose?.position??b.position,p);
+  const position=from&&to?
+    cameraSafeMorphPosition(oldPose?.position??a.position,newPose?.position??b.position,p,
+      cameraPosition,Math.max(from.radius,to.radius)):
+    vec(oldPose?.position??a.position,newPose?.position??b.position,p);
   const rotation=vec(oldPose?.rotation??a.rotation,newPose?.rotation??b.rotation,p);
   if(layer==='shared')return {position,rotation,radius:mix(a.radius,b.radius,p),opacity:1,colorMix:p};
   if(from&&to){
