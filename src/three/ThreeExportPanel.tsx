@@ -20,13 +20,13 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
     try{
       const current={...project(),exportWidth:w,exportHeight:h,elapsedSeconds:api.current?.getElapsedSeconds?.()??0};
       downloadBlob(new Blob([threeProjectText(current)],{type:'application/json;charset=utf-8'}),`${fileStem(seed,THREE_ALGORITHM_VERSION)}_settings.json`);
-      setMessage('3D設定JSONの保存を開始しました。');
+      setMessage('3Dの設定ファイルの保存を開始しました。');
     }catch(cause){setError(cause instanceof Error?cause.message:'設定を保存できませんでした。');}
   }
   async function restore(selected?:File){
     if(!selected)return;setBusy(true);setError('');setMessage('');
     try{
-      if(selected.size>MAX_THREE_PROJECT_BYTES)throw new Error('3D設定JSONは64KB以下にしてください。');
+      if(selected.size>MAX_THREE_PROJECT_BYTES)throw new Error('3D設定ファイルは64KB以下にしてください。');
       const restored=parseThreeProject(await selected.text());
       onRestore(restored);setWidth(String(restored.exportWidth));setHeight(String(restored.exportHeight));setMessage('3D設定を読み込みました。');
     }catch(cause){setError(cause instanceof Error?cause.message:'設定を読み込めませんでした。');}
@@ -59,10 +59,12 @@ export function ThreeExportPanel({api, seed, ready,project,onRestore,onBusyChang
     </div>
     {invalid && <p className="export-error" role="alert">{invalid}</p>}
     <button className="generate-button" type="button" disabled={!ready || busy || !!invalid} onClick={save}>{busy ? '3D PNGを作成中…' : '3D PNGを書き出す'}</button>
-    <div className="export-actions"><button type="button" disabled={busy||!!invalid} onClick={saveSettings}>3D設定JSONを保存</button><button type="button" disabled={busy} onClick={()=>file.current?.click()}>3D設定JSONを読込</button></div>
-    <input ref={file} type="file" accept=".json,application/json" aria-label="3D設定JSONファイル" hidden onChange={event=>restore(event.target.files?.[0])}/>
+    <div className="export-actions"><button type="button" disabled={busy||!!invalid} onClick={saveSettings}>3Dの設定を保存</button><button type="button" disabled={busy} onClick={()=>file.current?.click()}>保存した3D設定を読み込む</button></div>
+    <input ref={file} type="file" accept=".json,application/json" aria-label="保存した3D設定ファイル" hidden onChange={event=>restore(event.target.files?.[0])}/>
     {error && <p className="export-error" role="alert">{error}</p>}
     <p className="export-message" role="status">{message}</p>
-    <HelpInfo>3D設定JSONは3D専用形式です。2DのSVG・動画・設定JSONは2Dモードで利用できます。2Dの文字レイヤーは3D画像には含まれません。</HelpInfo>
+    <div className="studio-setting-label"><span>設定ファイルについて</span>
+      <HelpInfo>図形・色・カメラの視点・アニメーションなど、3D作品を再現する設定を保存できます。画像そのものではなく、あとから読み込んで編集できるデータです。ファイル形式はJSONで、3D用と2D用の設定ファイルは別々です。2Dの文字レイヤーは3D画像には含まれません。</HelpInfo>
+    </div>
   </section>;
 }
