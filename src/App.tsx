@@ -349,9 +349,11 @@ export default function App() {
         {renderMode==='3d'&&<ThreeExportPanel api={threeApi} seed={seed} ready={threeReady}
            onBusyChange={setThreeExportBusy}
           project={()=>({kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed,aspectRatio:ratio,density,visualTheme,background,
-            colorSettings:activeColors,settings:threeSettings,...(threeView.current?{view:threeView.current}:{})})}
+            colorSettings:activeColors,settings:threeSettings,
+             ...(standbyFinishedSeed===seed?{standbyComplete:true}:{}),
+             ...(threeView.current?{view:threeView.current}:{})})}
           onRestore={(project:ThreeProject)=>{
-            setStandbyTransition(null);setStandbyFinishedSeed(null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
+            setStandbyTransition(null);setStandbyFinishedSeed(project.standbyComplete?project.seed:null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
             setVisualTheme(project.visualTheme);setColorSettings(project.colorSettings);setBackground(project.colorSettings?coloredBackground(project.background,project.colorSettings):project.background);
             setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds}));
           }}/>}
