@@ -2,7 +2,7 @@ import type {MagicCircleSettings} from './magic-circle';
 
 type Props={value:MagicCircleSettings;onChange:(settings:MagicCircleSettings)=>void};
 export function MagicCircleControls({value,onChange}:Props){
-  const set=<K extends keyof MagicCircleSettings>(key:K,next:MagicCircleSettings[K])=>
+  const set=<K extends keyof MagicCircleSettings,>(key:K,next:MagicCircleSettings[K])=>
     onChange({...value,[key]:next});
   const range=(id:string,label:string,key:'complexity'|'ringCount'|'symmetry'|'ornamentDensity'|'strokeScale'|'rotationTurns',min:number,max:number,step=1,suffix='')=>
     <div className="magic-range" key={id}>
