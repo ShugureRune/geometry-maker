@@ -260,7 +260,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     lastRestart.current=restartKey;
     lastTransitionId.current=transition?.id??null;
     skipDelta.current=true;
-    if(transition&&progressHost.current)propsElapsedHost.dataset.standbyElapsed='0.000';
+    if(transition&&progressHost?.current)progressHost.current.dataset.standbyElapsed='0.000';
     invalidate();
   },[restartKey,transition?.id,seconds,invalidate]);
   useEffect(() => {skipDelta.current = true; invalidate();}, [settings.animation, invalidate]);
@@ -273,7 +273,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
         advanceStandbyClock(seconds.current,delta,settings.speed,transition.duration):
         seconds.current+delta*settings.speed;
     }
-    if(transition&&progressHost.current)
+    if(transition&&progressHost?.current)
       progressHost.current.dataset.standbyElapsed=seconds.current.toFixed(3);
     skipDelta.current = false;
     if(!explore){
@@ -296,7 +296,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     }
   }, -1);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(512 * aspect); canvas.height = 512;
     const context = canvas.getContext('2d');
@@ -411,6 +411,7 @@ export default function ThreePreview(props: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
+  const progressHost=useRef<HTMLDivElement>(null);
   const touchActions=useRef(new Set<string>());
   const world=props.settings.sky?.world??worldDefaults;
   const exploring=!!world.explore;
@@ -444,7 +445,7 @@ export default function ThreePreview(props: Props) {
   const outlines=useOutlineGeometry(neon.enabled,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
-  return <div className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
+  return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
     data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
@@ -513,7 +514,7 @@ export default function ThreePreview(props: Props) {
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
-      <SceneRuntime {...props} low={low} seconds={seconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
     </Canvas>
