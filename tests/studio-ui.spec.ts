@@ -150,7 +150,7 @@ test('Compact seed help sits next to the label instead of beneath the seed input
   expect(rect!.x).toBeGreaterThanOrEqual(8);
   expect(rect!.x+rect!.width).toBeLessThanOrEqual(page.viewportSize()!.width-6);
   // A tap elsewhere or on the explanation deselects the hint.
-  await page.locator('select#algorithm-version').click();
+  await page.mouse.click(8,8); // Outside even if the popup covers nearby controls.
   await expect(popup).toHaveCount(0);
   await trigger.click();
   await expect(popup).toBeVisible();
@@ -160,4 +160,11 @@ test('Compact seed help sits next to the label instead of beneath the seed input
   await expect(popup).toBeVisible();
   await trigger.click();
   await expect(popup).toHaveCount(0);
+  // Selection is exclusive: opening another i replaces this explanation.
+  await trigger.click();
+  const ratioHint=page.locator('#panel-shapes .ratio-section .studio-info-disclosure > summary');
+  await ratioHint.click();
+  await expect(popup).toContainText('図形の形を保ったまま');
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+  expect(await popup.evaluate(el=>Number(getComputedStyle(el).zIndex))).toBeGreaterThan(50);
 });
