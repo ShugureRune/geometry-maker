@@ -1,7 +1,8 @@
 import type {ReactNode} from 'react';
 
-/** Collapsible, keyboard-accessible explanation for detailed settings.
- * Uses native details so touch, keyboard and screen readers work without JS.
+/** A compact, native disclosure for setting explanations.
+ * Keeping the summary as a real interactive element preserves touch and
+ * keyboard activation without nesting a button inside a <label>.
  */
 export function HelpInfo({children,label='説明を見る'}:{
   children:ReactNode;label?:string;
@@ -9,8 +10,6 @@ export function HelpInfo({children,label='説明を見る'}:{
   return <details className="studio-info-disclosure">
     <summary aria-label={label} title={label}>
       <span className="studio-info-icon" aria-hidden="true">i</span>
-      <span className="studio-info-label">説明</span>
-      <span className="studio-info-chevron" aria-hidden="true">⌄</span>
     </summary>
     <div className="studio-info-content">
       <p className="help">{children}</p>
