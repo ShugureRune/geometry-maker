@@ -36,7 +36,8 @@ export function makeCircuitLayout(settings:FloorGridSettings,low=false):CircuitL
   const scale=unit(settings.spacing);
   // The processor now occupies a recognizable landmark instead of one small tile.
   const coreHalf=1.82*scale*settings.circuitCoreScale;
-  const limit=Math.min(low?8:20,settings.circuitChipCount);
+  // Instancing keeps twelve near-field packages affordable on mobile GPUs.
+  const limit=Math.min(low?12:20,settings.circuitChipCount);
   const count=Math.max(0,Math.round(limit*Math.min(1,settings.circuitDensity/55)));
   const chips:CircuitChip[]=[],tracks:CircuitTrack[]=[],microTracks:CircuitTrack[]=[];
   const parts:CircuitPart[]=[],routes:CircuitRoute[]=[],junctions:CircuitPoint[]=[];
