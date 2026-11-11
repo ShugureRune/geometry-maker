@@ -64,3 +64,19 @@ test('iPhone-size WebKit Studio v2 dock, command search and focus navigation',as
   expect(noOverflow).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('iPhone-size Safari/WebKit restores the same scene after reload',async({page})=>{
+  await page.goto('./');
+  await page.getByLabel('シード値',{exact:true}).fill('safari-reload-keeps-work');
+  await page.getByLabel('クイック比率').selectOption('9:16');
+  await page.getByLabel('クイック密度').fill('70');
+  await expect.poll(async()=>page.evaluate(()=>{
+    try{return JSON.parse(localStorage.getItem('geometry-maker-studio-autosave-v1')??'null')?.twoD?.seed??null;}
+    catch{return null;}
+  })).toBe('safari-reload-keeps-work');
+  await page.reload();
+  await expect(page.getByLabel('シード値',{exact:true})).toHaveValue('safari-reload-keeps-work');
+  await expect(page.getByLabel('クイック比率')).toHaveValue('9:16');
+  await expect(page.getByLabel('クイック密度')).toHaveValue('70');
+  await expect(page.getByTestId('autosave-status')).toContainText('自動保存');
+});
