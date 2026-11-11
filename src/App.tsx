@@ -39,7 +39,6 @@ import {SkyControls} from './three/SkyControls';
 import {floorGridDefaults} from './three/floor-grid';
 import type {ThreeProject} from './three/project';
 import './three/three.css';
-import './studio-redesign.css';
 import { ExportPanel } from './ExportPanel';
 import { Preview } from './Preview';
 import { ALGORITHM_VERSION, LEGACY_ALGORITHM_VERSION, type AlgorithmVersion, createRandomSeed, generateScene, RATIOS, type Background, type Ratio } from './scene';
