@@ -75,3 +75,47 @@ test('Studio v2 mobile action dock and command navigation do not overflow',async
   expect(errors).toEqual([]);
   await context.close();
 });
+
+test('Studio v2 advanced settings share one checkbox design and circled info toggles',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('./');
+  // Keep the old accessible name while simplifying the visible seed label.
+  await expect(page.getByLabel('シード値',{exact:true})).toBeVisible();
+  await expect(page.getByText('模様の合言葉',{exact:true})).toBeVisible();
+  const background=page.getByRole('navigation',{name:'設定カテゴリー'})
+    .getByRole('button',{name:'背景',exact:true});
+  await background.click();
+  const info=page.locator('#panel-background .studio-info-disclosure').first();
+  await expect(info).toBeVisible();
+  await expect(info.locator('.studio-info-icon')).toHaveText('i');
+  await expect(info.locator('.studio-info-content')).toBeHidden();
+  await info.locator('summary').click();
+  await expect(info.locator('.studio-info-content')).toBeVisible();
+  await info.locator('summary').press('Enter');
+  await expect(info.locator('.studio-info-content')).toBeHidden();
+  await page.getByRole('navigation',{name:'設定カテゴリー'})
+    .getByRole('button',{name:'アニメーション',exact:true}).click();
+  const checkbox=page.locator('#panel-animation input[type="checkbox"]').first();
+  await expect(checkbox).toBeVisible();
+  const style=await checkbox.evaluate(element=>{
+    const computed=getComputedStyle(element);
+    return {appearance:computed.appearance,width:element.getBoundingClientRect().width,
+      radius:computed.borderRadius};
+  });
+  expect(style.appearance).toBe('none');
+  expect(style.width).toBeGreaterThanOrEqual(18);
+  expect(style.radius).toBe('6px');
+  await checkbox.check();
+  await expect(checkbox).toBeChecked();
+  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
+  await page.getByRole('navigation',{name:'設定カテゴリー'})
+    .getByRole('button',{name:'アニメーション',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'自動切り替え'})).toBeVisible();
+  await expect(page.getByLabel('3D待機画面モードを有効化')).toBeVisible();
+  const standbyInfo=page.locator('.three-standby-controls .studio-info-disclosure');
+  await expect(standbyInfo.locator('.studio-info-content')).toBeHidden();
+  await standbyInfo.locator('summary').click();
+  await expect(standbyInfo.locator('.studio-info-content')).toContainText('なめらか');
+  expect(errors).toEqual([]);
+});
