@@ -8,12 +8,13 @@ import type {VisualTheme} from './themes';
 import {isAllShapeKindsEnabled,type ShapeKind} from './shape-controls';
 import { useRef, useState } from 'react';
 import { RATIOS, type AlgorithmVersion, type Background, type Ratio } from './scene';
+import {MAGIC_ALGORITHM_VERSION,type MagicCircleSettings} from './magic-circle';
 import { downloadBlob, pngBlob, serializeArtwork } from './export';
 import { EXPORT_PRESETS, fileStem, MAX_PNG_PIXELS, MAX_SETTINGS_BYTES, parseSettings, resolutionError, settingsText, type ProjectSettings } from './settings';
 
-type Props = { textOverlay:TextOverlaySettings; videoArtwork: VideoArtwork; version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; visualTheme?:VisualTheme; enabledShapeKinds?:readonly ShapeKind[]; seed: string; ratio: Ratio; background: Background; artwork: () => SVGSVGElement | null;
+type Props = { textOverlay:TextOverlaySettings; magicSettings?:MagicCircleSettings; videoArtwork: VideoArtwork; version:AlgorithmVersion; animation:AnimationSettings; density:number; colorSettings?:ColorSettings; visualTheme?:VisualTheme; enabledShapeKinds?:readonly ShapeKind[]; seed: string; ratio: Ratio; background: Background; artwork: (transparentOnly?:boolean) => SVGSVGElement | null;
   onRatio: (ratio: Ratio) => void; onRestore: (settings: ProjectSettings) => void };
-export function ExportPanel({ textOverlay, videoArtwork, version, animation, density, colorSettings, visualTheme, enabledShapeKinds, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
+export function ExportPanel({ textOverlay, magicSettings, videoArtwork, version, animation, density, colorSettings, visualTheme, enabledShapeKinds, seed, ratio, background, artwork, onRatio, onRestore }: Props) {
   const [width, setWidth] = useState('1920'), [height, setHeight] = useState('1080');
   const [video, setVideo] = useState<VideoSettings>({...videoDefaults});
   const [custom, setCustom] = useState(false);
@@ -23,8 +24,9 @@ export function ExportPanel({ textOverlay, videoArtwork, version, animation, den
   const tooLarge = w * h > MAX_PNG_PIXELS;
   const [sceneWidth, sceneHeight] = RATIOS[ratio];
   const margins = !invalid && Math.abs(w / h - sceneWidth / sceneHeight) > 0.001;
+  const magicTransparent=version===MAGIC_ALGORITHM_VERSION&&!!magicSettings?.transparentExport;
   function snapshot(): ProjectSettings {
-    return { ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...(visualTheme&&visualTheme!=='standard'?{visualTheme}:{}), ...(enabledShapeKinds&&!isAllShapeKindsEnabled(enabledShapeKinds)?{enabledShapeKinds:[...enabledShapeKinds]}:{}), ...video, ...(background.grid?{gridBackground:background.grid}:{}), lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), textOverlay, schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
+    return { ...(magicSettings&&version===MAGIC_ALGORITHM_VERSION?{magicCircle:magicSettings}:{}), ...(videoArtwork.ambient?{ambient:videoArtwork.ambient.settings}:{}), ...(visualTheme&&visualTheme!=='standard'?{visualTheme}:{}), ...(enabledShapeKinds&&!isAllShapeKindsEnabled(enabledShapeKinds)?{enabledShapeKinds:[...enabledShapeKinds]}:{}), ...video, ...(background.grid?{gridBackground:background.grid}:{}), lineWidth:background.lineWidth, glowIntensity:background.glowIntensity, ...animation, density, ...(colorSettings ? {colorSettings} : {}), textOverlay, schemaVersion: 1, algorithmVersion: version, seed, aspectRatio: ratio,
       backgroundMode: background.mode, solidColor: background.solid, gradientColors: [...background.colors],
       gradientAngle: background.angle, exportWidth: w, exportHeight: h };
   }
@@ -37,11 +39,11 @@ export function ExportPanel({ textOverlay, videoArtwork, version, animation, den
       if (format === 'json') {
         downloadBlob(new Blob([settingsText(current)], { type: 'application/json;charset=utf-8' }), `${stem}_settings.json`);
       } else {
-        const source = artwork();
+        const source = artwork(magicTransparent);
         if (!source) throw new Error('プレビューの描画完了後に再度お試しください。');
-        const svg = serializeArtwork(source, w, h, background.mode === 'solid' ? background.solid : background.colors[0]);
+        const svg = serializeArtwork(source, w, h, background.mode === 'solid' ? background.solid : background.colors[0],magicTransparent);
         const blob = format === 'svg' ? new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }) : await pngBlob(svg, w, h);
-        downloadBlob(blob, `${stem}_${w}x${h}.${format}`);
+        downloadBlob(blob, `${stem}_${w}x${h}${magicTransparent?'_transparent':''}.${format}`);
       }
       setMessage(`${format.toUpperCase()}の保存を開始しました。`);
     } catch (e) { setError(e instanceof Error ? e.message : '保存に失敗しました。解像度を下げて再度お試しください。'); }
@@ -74,7 +76,8 @@ export function ExportPanel({ textOverlay, videoArtwork, version, animation, den
       <label htmlFor="export-height">高さ (px)<input id="export-height" type="number" min="256" max="8192" step="1" inputMode="numeric" value={height} disabled={busy} aria-invalid={!!invalid} aria-describedby="resolution-feedback" onChange={e => { setCustom(true); setHeight(e.target.value); }} /></label>
     </div>
     <p id="resolution-feedback" className={invalid ? 'export-error' : 'help'}>{invalid || (tooLarge ? 'PNGは合計16,777,216画素まで。SVG・JSONは保存できます。' : '256〜8192px。PNGは合計16,777,216画素まで。')}</p>
-    {margins && <p className="help">構図と書き出しの比率が異なるため、中央配置して背景色の余白を追加します。図形は変形・切り取りしません。</p>}
+    {margins && <p className="help">構図と書き出しの比率が異なるため、中央配置して{magicTransparent?'透明な':'背景色の'}余白を追加します。図形は変形・切り取りしません。</p>}
+    {version===MAGIC_ALGORITHM_VERSION&&<p className="help" data-testid="magic-export-info">{magicTransparent?'透過保存ON：魔法陣の線だけをアルファ付きPNG / 背景なしSVGで保存します。':'背景付き保存：魔法陣の設定から透過PNG / SVGに切り替えられます。'}</p>}
     <div className="export-actions">
       <button type="button" disabled={busy || !!invalid || tooLarge} onClick={() => void save('png')}>{busy ? '処理中…' : 'PNGを書き出す'}</button>
       <button type="button" disabled={busy || !!invalid} onClick={() => void save('svg')}>SVGを書き出す</button>
