@@ -169,9 +169,9 @@ function FloatingIslands({sky,seed,low,sceneHeight,view}:Props){
   </group>;
 }
 
-function FallingWeather({sky,seed,seconds,low,sceneHeight,view}:Props){
+function FallingWeather({sky,seed,seconds,low}:Props){
   const points=useRef<Points>(null),material=useRef<ShaderMaterial>(null);
-  const {invalidate}=useThree();
+  const {invalidate,camera}=useThree();
   const world=sky.world??worldDefaults;
   const type=world.weather;
   const count=weatherParticleCount(type,world.weatherStrength,low);
@@ -196,12 +196,14 @@ function FallingWeather({sky,seed,seconds,low,sceneHeight,view}:Props){
   }),[rain,world.weatherStrength]);
   useFrame(()=>{
     if(material.current)material.current.uniforms.uTime.value=seconds.current*sky.motion/100;
-    if(points.current)points.current.position.set(...floorGridPlacement(sceneHeight,view.current?.target));
+    // Atmospheric precipitation moves with the traveler; natural terrain
+    // stays fixed so mountain and tree positions never slide around the camera.
+    if(points.current)points.current.position.set(camera.position.x,camera.position.y-30,camera.position.z);
   });
   useEffect(()=>invalidate(),[count,invalidate]);
   if(count===0)return null;
   return <points ref={points} geometry={geometry} name="3d-rain-snow-storm"
-    position={floorGridPlacement(sceneHeight,view.current?.target)}
+    position={[camera.position.x,camera.position.y-30,camera.position.z]}
     renderOrder={-2} frustumCulled={false}>
     <shaderMaterial ref={material} uniforms={uniforms} transparent depthWrite={false}
       vertexShader={weatherVertexShader} fragmentShader={weatherFragmentShader}
