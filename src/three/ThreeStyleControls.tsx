@@ -22,7 +22,7 @@ function ColorControls({prefix, mode, color, contrast, onMode, onColor, onContra
         onBlur={()=>{if(invalid)setHex(color);}}/></label>
       {invalid&&<p className="export-error">#RRGGBBで指定してください。</p>}
     </div>}
-    <label className="three-checkbox"><input type="checkbox" checked={contrast} onChange={event=>onContrast(event.target.checked)}/> 背景とのコントラストを補正</label>
+    <label className="three-checkbox"><input type="checkbox" checked={contrast} onChange={event=>onContrast(event.target.checked)}/> 背景に合わせて見やすくする</label>
   </>;
 }
 export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;onChange:(settings:ThreeSettings)=>void}) {
@@ -30,7 +30,7 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
   const net=(patch:Partial<typeof network>)=>onChange({...settings,network:{...network,...patch}});
   const outline=(patch:Partial<typeof neon>)=>onChange({...settings,neon:{...neon,...patch}});
   return <section className="control-section three-controls three-style-controls" aria-labelledby="three-style-heading">
-    <h3 id="three-style-heading">ネオンネットワーク</h3>
+    <h3 id="three-style-heading">光る線とつながり</h3>
     <div className="three-style-presets" role="group" aria-label="3Dスタイルプリセット">
       {(['standard','network','cyber'] as StylePreset[]).map((preset,i)=>{
         const value=stylePreset(preset);
@@ -38,15 +38,15 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
       })}
     </div>
     <HelpInfo>プリセットは3Dスタイルだけを変更します。シード・配置・通常マテリアル・カメラは維持します。</HelpInfo>
-    <fieldset><legend>図形の自動接続</legend>
-      <label className="three-checkbox"><input type="checkbox" checked={network.enabled} onChange={event=>net({enabled:event.target.checked})}/> 図形の接続を有効化</label>
+    <fieldset><legend>図形を線でつなぐ</legend>
+      <label className="three-checkbox"><input type="checkbox" aria-label="図形の接続を有効化" checked={network.enabled} onChange={event=>net({enabled:event.target.checked})}/> 接続線を表示</label>
       {network.enabled&&<>
         <HelpInfo>接続方式：近い順。初期構図の中心間距離で判定し、浮遊中も接続を維持します。</HelpInfo>
         <ThreeRange id="network-count" label="最大接続数" min={1} max={6} step={1} value={network.maxConnections} unit="本" onChange={maxConnections=>net({maxConnections})}/>
         <ThreeRange id="network-distance" label="接続距離" min={.5} max={15} step={.25} value={network.distance} unit="単位" onChange={distance=>net({distance})}/>
         <ThreeRange id="network-width" label="接続線の太さ" min={.25} max={6} step={.25} value={network.width} unit="倍" onChange={width=>net({width})}/>
-        <ThreeRange id="network-opacity" label="接続線の不透明度" min={0} max={1} step={.05} value={network.opacity} onChange={opacity=>net({opacity})}/>
-        <ThreeRange id="network-glow" label="接続線の発光強度" min={0} max={200} step={5} value={network.glow} unit="%" onChange={glow=>net({glow})}/>
+        <ThreeRange id="network-opacity" label="接続線の濃さ" min={0} max={1} step={.05} value={network.opacity} onChange={opacity=>net({opacity})}/>
+        <ThreeRange id="network-glow" label="接続線の光り方" min={0} max={200} step={5} value={network.glow} unit="%" onChange={glow=>net({glow})}/>
         <ColorControls prefix="network" mode={network.colorMode} color={network.customColor} contrast={network.contrast}
           onMode={colorMode=>net({colorMode})} onColor={customColor=>net({customColor})} onContrast={contrast=>net({contrast})}/>
         <label htmlFor="network-animation">接続アニメーション</label>
@@ -55,18 +55,18 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         </select>
       </>}
     </fieldset>
-    <fieldset><legend>ネオン線画</legend>
-      <label className="three-checkbox"><input type="checkbox" checked={neon.enabled} onChange={event=>outline({enabled:event.target.checked})}/> ネオン線画を有効化</label>
+    <fieldset><legend>光る輪郭線</legend>
+      <label className="three-checkbox"><input type="checkbox" checked={neon.enabled} onChange={event=>outline({enabled:event.target.checked})}/> 光る輪郭を表示</label>
       {neon.enabled&&<>
-        <label htmlFor="neon-display">ネオン表示方式</label>
+        <label htmlFor="neon-display">輪郭の見せ方</label>
         <select id="neon-display" value={neon.display} onChange={event=>outline({display:event.target.value as typeof neon.display})}>
           <option value="lines">線のみ</option><option value="transparent">線＋半透明面</option><option value="surface">面＋輪郭強調</option>
         </select>
         <ThreeRange id="neon-width" label="輪郭線の太さ" min={.25} max={6} step={.25} value={neon.width} unit="倍" onChange={width=>outline({width})}/>
         <ColorControls prefix="neon" mode={neon.colorMode} color={neon.customColor} contrast={neon.contrast}
           onMode={colorMode=>outline({colorMode})} onColor={customColor=>outline({customColor})} onContrast={contrast=>outline({contrast})}/>
-        <ThreeRange id="neon-glow" label="輪郭線の発光強度" min={0} max={200} step={5} value={neon.glow} unit="%" onChange={glow=>outline({glow})}/>
-        {neon.display==='transparent'&&<ThreeRange id="neon-face-opacity" label="面の不透明度" min={0} max={1} step={.05} value={neon.faceOpacity} onChange={faceOpacity=>outline({faceOpacity})}/>}
+        <ThreeRange id="neon-glow" label="輪郭の光り方" min={0} max={200} step={5} value={neon.glow} unit="%" onChange={glow=>outline({glow})}/>
+        {neon.display==='transparent'&&<ThreeRange id="neon-face-opacity" label="面の濃さ" min={0} max={1} step={.05} value={neon.faceOpacity} onChange={faceOpacity=>outline({faceOpacity})}/>}
       </>}
     </fieldset>
     <HelpInfo>高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスは3Dの再生・一時停止と連動します。</HelpInfo>
