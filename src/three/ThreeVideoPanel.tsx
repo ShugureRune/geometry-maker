@@ -7,7 +7,15 @@ import {videoResolutionError} from '../video-settings';
 import {THREE_ALGORITHM_VERSION} from './model';
 import type {ThreePreviewHandle} from './settings';
 import {exportThreeVideo,threeVideoDefaults,threeVideoFrameCount,
-  type ThreeVideoOptions} from './video';
+  validateThreeVideoOptions,type ThreeVideoOptions} from './video';
+const VIDEO_OPTIONS_KEY='geometry-maker-3d-video-options-v1';
+function rememberedVideoOptions():ThreeVideoOptions{
+  try{
+    const text=localStorage.getItem(VIDEO_OPTIONS_KEY);
+    if(text&&text.length<1024)return validateThreeVideoOptions(JSON.parse(text) as ThreeVideoOptions);
+  }catch{/* Private mode or an obsolete preset: keep safe defaults. */}
+  return {...threeVideoDefaults};
+}
 
 const PRESETS=[
   {width:640,height:360,label:'640 × 360（軽量）'},
@@ -22,7 +30,11 @@ export function ThreeVideoPanel({api,seed,ready,disabled,onBusyChange}:{
   disabled?:boolean;onBusyChange?:(busy:boolean)=>void;
 }){
   const [open,setOpen]=useState(false);
-  const [options,setOptions]=useState<ThreeVideoOptions>(threeVideoDefaults);
+  const [options,setOptions]=useState<ThreeVideoOptions>(rememberedVideoOptions);
+  useEffect(()=>{
+    try{localStorage.setItem(VIDEO_OPTIONS_KEY,JSON.stringify(validateThreeVideoOptions(options)));}
+    catch{/* Browser storage can be disabled or full. */}
+  },[options]);
   const [busy,setBusy]=useState(false);
   const [progress,setProgress]=useState(0);
   const [supported,setSupported]=useState<boolean|null>(null);
