@@ -18,6 +18,17 @@ test('iPhone-size WebKit Studio v2 dock, command search and focus navigation',as
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('navigation',{name:'設定カテゴリー'})
     .getByRole('button',{name:'背景',exact:true})).toHaveAttribute('aria-expanded','true');
+  const info=page.locator('#panel-background .studio-info-disclosure').first();
+  await expect(info.locator('.studio-info-content')).toBeHidden();
+  await info.locator('summary').tap();
+  await expect(info.locator('.studio-info-content')).toBeVisible();
+  await info.locator('summary').tap();
+  await expect(info.locator('.studio-info-content')).toBeHidden();
+  const checkbox=page.getByLabel('グリッド背景を有効化');
+  await checkbox.check();
+  await expect(checkbox).toBeChecked();
+  await checkbox.uncheck();
+  await expect(checkbox).not.toBeChecked();
   await dock.getByRole('button',{name:'集中'}).tap();
   await expect(page.locator('.studio-app')).toHaveClass(/studio-focus/);
   await dock.getByRole('button',{name:'戻る'}).tap();
