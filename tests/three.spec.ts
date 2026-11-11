@@ -450,7 +450,10 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await expect(page.locator('#floor-circuit-detail')).toHaveValue('85');
   await expect(page.locator('#floor-circuit-board-opacity')).toHaveValue('0.55');
   await expect(page.locator('#floor-circuit-accent')).toHaveValue('#e6a65c');
-  expect(digest(await png(page))).toBe(savedFrame);
+  const restored=digest(await png(page));
+  const restoredTwice=digest(await png(page));
+  console.log('MB JSON',JSON.stringify({savedFrame,restored,restoredTwice}));
+  expect(restoredTwice).toBe(savedFrame);
   expect(errors).toEqual([]);
 });
 
@@ -480,7 +483,10 @@ test('3D floor motherboard central core, IC count and signals change PNG and sur
   expect(full).not.toBe(flat); // 3D hardware must actually be visible in the camera.
   await category(page,'背景');
   await page.getByLabel('中央演算コア・立体ICチップを表示').check();
-  expect(digest(await png(page))).toBe(full); // No frame-time random layout.
+  const afterToggle=digest(await png(page));
+  const afterToggleTwice=digest(await png(page));
+  console.log('MB TOGGLE',JSON.stringify({full,afterToggle,afterToggleTwice}));
+  expect(afterToggleTwice).toBe(full); // No frame-time random layout.
   await category(page,'背景');
   await page.locator('#floor-circuit-chip-count').fill('0');
   const processorOnly=digest(await png(page));
