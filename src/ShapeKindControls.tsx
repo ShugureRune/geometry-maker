@@ -1,3 +1,4 @@
+import {HelpInfo} from './HelpInfo';
 import {ALL_SHAPE_KINDS,BASIC_SHAPE_KINDS,EXTENDED_SHAPE_KINDS,
  RECOMMENDED_SHAPE_KINDS,SHAPE_FAMILIES,SHAPE_LABELS,type ShapeKind} from './shape-controls';
 
@@ -12,7 +13,7 @@ export function ShapeKindControls({enabled,onChange}:{enabled:readonly ShapeKind
    <h3 id="shape-kinds-heading">表示する図形</h3>
    <span className="tiny-label">{enabled.length} / {ALL_SHAPE_KINDS.length} 種類</span>
   </div>
-  <p className="help">OFFの図形は非表示で終わらず、近い種類のON図形に自動で置き換えます。同じシードと設定なら同じ結果です。</p>
+  <HelpInfo>OFFの図形は非表示で終わらず、近い種類のON図形に自動で置き換えます。同じシードと設定なら同じ結果です。</HelpInfo>
   <div className="shape-kind-presets" role="group" aria-label="図形の一括選択">
    <button type="button" onClick={()=>onChange([...ALL_SHAPE_KINDS])}>すべてON</button>
    <button type="button" onClick={()=>onChange(['circle'])}>すべてOFF（円のみ残す）</button>
