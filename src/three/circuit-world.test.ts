@@ -9,11 +9,17 @@ describe('living 3D motherboard',()=>{
   it('constructs a deterministic central processor with four shared trunks',()=>{
     const a=makeCircuitLayout(pcb,false),b=makeCircuitLayout(pcb,false);
     expect(a).toEqual(b);
-    expect(a.coreHalf).toBeGreaterThan(0);
+    expect(a.coreHalf).toBeGreaterThan(1.5);
     expect(a.chips).toHaveLength(12);
     expect(a.routes).toHaveLength(12);
     expect(a.tracks.filter(t=>t.kind==='trunk')).toHaveLength(4);
     expect(a.tracks.filter(t=>t.kind==='branch')).toHaveLength(24);
+    expect(a.microTracks.length).toBeGreaterThan(20);
+    expect(a.parts.filter(p=>p.kind==='memory')).toHaveLength(8);
+    expect(a.parts.filter(p=>p.kind==='smd').length).toBeGreaterThan(0);
+    expect(a.parts.some(p=>p.kind==='capacitor')).toBe(true);
+    expect(a.parts.every(p=>p.position.every(Number.isFinite))).toBe(true);
+    expect(a.microTracks.every(p=>p.kind==='micro')).toBe(true);
     for(const route of a.routes){
       expect(route.points).toHaveLength(4);
       expect(route.length).toBeCloseTo(circuitRouteLength(route.points));
@@ -54,9 +60,12 @@ describe('living 3D motherboard',()=>{
   });
   it('reduces chip count for low quality and allows hiding near-world hardware',()=>{
     expect(makeCircuitLayout({...pcb,circuitChipCount:24},false).chips.length).toBe(20);
-    expect(makeCircuitLayout({...pcb,circuitChipCount:24},true).chips.length).toBe(8);
+    expect(makeCircuitLayout({...pcb,circuitChipCount:24},true).chips.length).toBe(12);
     expect(makeCircuitLayout({...pcb,circuitWorldEnabled:false}).chips).toHaveLength(0);
     expect(makeCircuitLayout({...pcb,circuitDensity:0}).routes).toHaveLength(0);
+    expect(makeCircuitLayout({...pcb,circuitDetail:0}).parts).toHaveLength(0);
+    expect(makeCircuitLayout({...pcb,circuitDetail:0}).microTracks.length)
+      .toBeLessThan(makeCircuitLayout(pcb).microTracks.length);
     expect(makeCircuitLayout({...pcb,style:'grid'}).coreHalf).toBe(0);
     expect(makeCircuitLayout({...pcb,enabled:false}).coreHalf).toBe(0);
   });
