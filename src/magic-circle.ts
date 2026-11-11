@@ -78,6 +78,8 @@ export function generateMagicCircleScene(seed:string,ratio:Ratio,options:MagicCi
   const cx=width/2,cy=height/2;
   const rOuter=unit*.424,rInner=unit*.175;
   const random=seededRandom('magic-circle-v1:'+seed+':'+settings.style);
+  // Rotationally symmetric core designs still change with the seed even at zero decoration density.
+  const corePhase=random()*360/settings.symmetry;
   const shapes:Shape[]=[];
   const lineWidth=unit*.00185*settings.strokeScale/100;
   const push=(id:string,kind:Shape['kind'],role:Shape['role'],group:string,x:number,y:number,size:number,rotation=0,points?:Point[],extra:Partial<Shape>={})=>{
@@ -94,7 +96,7 @@ export function generateMagicCircleScene(seed:string,ratio:Ratio,options:MagicCi
   const ring=(id:string,r:number,role:Shape['role'],group:string,extra:Partial<Shape>={})=>
     push(id,'circle',role,group,cx,cy,r,0,undefined,extra);
   const line=(id:string,points:Point[],role:Shape['role'],group:string,extra:Partial<Shape>={})=>
-    push(id,'line',role,group,cx,cy,rOuter,0,points,extra);
+    push(id,'line',role,group,cx,cy,rOuter,group==='core'?corePhase:0,points,extra);
   const polygon=(id:string,sides:number,radius:number,role:Shape['role'],group:string,offset=0)=>{
     line(id,CLOSED(Array.from({length:sides},(_,i)=>v(radius,-90+offset+i*360/sides))),role,group);
   };
