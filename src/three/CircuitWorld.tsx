@@ -85,12 +85,16 @@ function Processor({half,seconds,grid}:{
     if(pins.current)pins.current.instanceMatrix.needsUpdate=true;
     if(leds.current)leds.current.instanceMatrix.needsUpdate=true;
   },[half,dummy]);
-  useFrame(()=>{
+  const syncGlow=()=>{
     const time=seconds.current*Math.max(0,grid.circuitSpeed);
     const pulse=grid.circuitSpeed>0?(Math.sin(time*2.6)*.5+.5):.3;
     neon.current?.color.copy(base).multiplyScalar(1.15+1.05*pulse+grid.glow*.004);
     face.current?.color.copy(accent).multiplyScalar(.32+.95*pulse);
-  });
+  };
+  // PNG export can render synchronously before the first useFrame, especially
+  // after the user toggles the 3D hardware layer. Avoid a brighter first frame.
+  useLayoutEffect(syncGlow,[seconds,grid.circuitSpeed,grid.glow,base,accent]);
+  useFrame(syncGlow);
   const opacity=Math.min(1,grid.opacity);
   return <group name="motherboard-main-processor">
     <mesh position={[0,0,.14]} castShadow receiveShadow name="processor-main-socket">
