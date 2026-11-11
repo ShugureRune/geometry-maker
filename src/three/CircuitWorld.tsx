@@ -229,6 +229,108 @@ function Chips({layout,seconds,grid}:{
   </group>;
 }
 
+/** Distinctive near-field clusters: pin-banked memory modules, ceramic SMD
+ * resistors and raised metallic capacitors. Instance batches keep mobile
+ * WebKit draw calls bounded even when the user increases detail.
+ */
+function PassiveParts({parts,grid}:{parts:readonly CircuitPart[];grid:FloorGridSettings}){
+  const memories=useMemo(()=>parts.filter(p=>p.kind==='memory'),[parts]);
+  const ceramics=useMemo(()=>parts.filter(p=>p.kind==='smd'),[parts]);
+  const caps=useMemo(()=>parts.filter(p=>p.kind==='capacitor'),[parts]);
+  const memoryBodies=useRef<InstancedMesh>(null),memoryLabels=useRef<InstancedMesh>(null);
+  const memoryPins=useRef<InstancedMesh>(null),smdBodies=useRef<InstancedMesh>(null);
+  const smdContacts=useRef<InstancedMesh>(null),capacitors=useRef<InstancedMesh>(null);
+  const dummy=useMemo(()=>new Object3D(),[]);
+  useLayoutEffect(()=>{
+    const place=(ref:InstancedMesh|null,i:number,x:number,y:number,z:number,
+      sx:number,sy:number,sz:number,angle=0)=>{
+      if(!ref)return;
+      dummy.position.set(x,y,z);
+      dummy.rotation.set(0,0,angle);
+      dummy.scale.set(sx,sy,sz);
+      dummy.updateMatrix();
+      ref.setMatrixAt(i,dummy.matrix);
+    };
+    const rotate=(p:CircuitPart,x:number,y:number):[number,number]=>{
+      const co=Math.cos(p.orientation),si=Math.sin(p.orientation);
+      return [p.position[0]+x*co-y*si,p.position[1]+x*si+y*co];
+    };
+    memories.forEach((p,i)=>{
+      place(memoryBodies.current,i,p.position[0],p.position[1],.161,
+        p.size*1.10,p.size*.32,.17,p.orientation);
+      place(memoryLabels.current,i,p.position[0],p.position[1],.254,
+        p.size*.72,p.size*.058,.013,p.orientation);
+      for(let side=0;side<2;side++)for(let n=0;n<9;n++){
+        const [x,y]=rotate(p,(n-4)*p.size*.114,(side===0?-1:1)*p.size*.183);
+        place(memoryPins.current,i*18+side*9+n,x,y,.094,
+          p.size*.048,p.size*.092,.022,p.orientation);
+      }
+    });
+    ceramics.forEach((p,i)=>{
+      place(smdBodies.current,i,p.position[0],p.position[1],.107,
+        p.size*1.12,p.size*.52,.12,p.orientation);
+      for(let end=0;end<2;end++){
+        const [x,y]=rotate(p,(end===0?-1:1)*p.size*.49,0);
+        place(smdContacts.current,i*2+end,x,y,.107,
+          p.size*.23,p.size*.60,.128,p.orientation);
+      }
+    });
+    caps.forEach((p,i)=>{
+      if(!capacitors.current)return;
+      dummy.position.set(p.position[0],p.position[1],.177);
+      dummy.rotation.set(Math.PI/2,0,0);
+      dummy.scale.set(p.size*.67,p.size*.95,p.size*.67);
+      dummy.updateMatrix();
+      capacitors.current.setMatrixAt(i,dummy.matrix);
+    });
+    for(const ref of [memoryBodies,memoryLabels,memoryPins,smdBodies,smdContacts,capacitors])
+      if(ref.current)ref.current.instanceMatrix.needsUpdate=true;
+  },[memories,ceramics,caps,dummy]);
+  const opacity=Math.min(1,grid.opacity);
+  return <group name="motherboard-component-clusters">
+    {memories.length>0&&<>
+      <instancedMesh ref={memoryBodies} args={[undefined,undefined,memories.length]}
+        name="motherboard-memory-banks" frustumCulled={false} castShadow>
+        <boxGeometry args={[1,1,1]}/>
+        <meshStandardMaterial color="#1a2a39" metalness={.38} roughness={.45}
+          transparent opacity={opacity}/>
+      </instancedMesh>
+      <instancedMesh ref={memoryLabels} args={[undefined,undefined,memories.length]}
+        name="memory-module-etched-labels" frustumCulled={false}>
+        <boxGeometry args={[1,1,1]}/>
+        <meshBasicMaterial color={grid.color} toneMapped={false}
+          transparent opacity={opacity*.75} depthWrite={false}/>
+      </instancedMesh>
+      <instancedMesh ref={memoryPins} args={[undefined,undefined,memories.length*18]}
+        name="memory-module-gold-pins" frustumCulled={false}>
+        <boxGeometry args={[1,1,1]}/>
+        <meshBasicMaterial color={grid.circuitAccentColor} toneMapped={false}
+          transparent opacity={opacity}/>
+      </instancedMesh>
+    </>}
+    {ceramics.length>0&&<>
+      <instancedMesh ref={smdBodies} args={[undefined,undefined,ceramics.length]}
+        name="ceramic-smd-components" frustumCulled={false}>
+        <boxGeometry args={[1,1,1]}/>
+        <meshStandardMaterial color="#8f9ca8" metalness={.23} roughness={.64}
+          transparent opacity={opacity}/>
+      </instancedMesh>
+      <instancedMesh ref={smdContacts} args={[undefined,undefined,ceramics.length*2]}
+        name="ceramic-smd-end-contacts" frustumCulled={false}>
+        <boxGeometry args={[1,1,1]}/>
+        <meshBasicMaterial color={grid.circuitAccentColor} transparent
+          opacity={opacity} toneMapped={false}/>
+      </instancedMesh>
+    </>}
+    {caps.length>0&&<instancedMesh ref={capacitors} args={[undefined,undefined,caps.length]}
+      name="metallic-surface-capacitors" frustumCulled={false}>
+      <cylinderGeometry args={[1,1,1,10]}/>
+      <meshStandardMaterial color="#869eac" roughness={.24} metalness={.72}
+        transparent opacity={opacity}/>
+    </instancedMesh>}
+  </group>;
+}
+
 function SignalPackets({layout,seconds,grid}:{
   layout:CircuitLayout;seconds:RefObject<number>;grid:FloorGridSettings;
 }){
@@ -267,7 +369,9 @@ export function CircuitWorld({grid,seconds,sceneHeight,view,low=false}:{
     [layout,grid.thickness]);
   const backing=useMemo(()=>trackGeometry(layout.tracks,Math.max(.08,grid.thickness*.135),.051),
     [layout,grid.thickness]);
-  useEffect(()=>()=>{copper.dispose();backing.dispose();},[copper,backing]);
+  const micro=useMemo(()=>trackGeometry(layout.microTracks,Math.max(.016,grid.thickness*.019),.075),
+    [layout,grid.thickness]);
+  useEffect(()=>()=>{copper.dispose();backing.dispose();micro.dispose();},[copper,backing,micro]);
   useFrame(()=>{
     if(group.current)group.current.position.set(...floorGridPlacement(sceneHeight,view.current?.target));
   });
@@ -282,8 +386,13 @@ export function CircuitWorld({grid,seconds,sceneHeight,view,low=false}:{
       <meshBasicMaterial color={grid.color} side={DoubleSide} toneMapped={false}
         transparent opacity={Math.min(1,grid.opacity*.85)} depthWrite={false}/>
     </mesh>
+    <mesh geometry={micro} renderOrder={-0.3} name="motherboard-parallel-micro-traces">
+      <meshBasicMaterial color={grid.circuitAccentColor} side={DoubleSide} toneMapped={false}
+        transparent opacity={Math.min(.72,grid.opacity*.58)} depthWrite={false}/>
+    </mesh>
     <Processor half={layout.coreHalf} seconds={seconds} grid={grid}/>
     <Chips layout={layout} seconds={seconds} grid={grid}/>
+    <PassiveParts parts={layout.parts} grid={grid}/>
     <SignalPackets layout={layout} seconds={seconds} grid={grid}/>
   </group>;
 }
