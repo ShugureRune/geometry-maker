@@ -33,7 +33,7 @@ void main(){
   float right=step(1.0-uCircuitDensity,pcbHash(cell+vec2(0.5,0.0)));
   float bottom=step(1.0-uCircuitDensity,pcbHash(cell+vec2(0.0,-0.5)));
   float top=step(1.0-uCircuitDensity,pcbHash(cell+vec2(0.0,0.5)));
-  float active=step(0.5,left+right+bottom+top);
+  float tracePresent=step(0.5,left+right+bottom+top);
   vec2 pad=vec2(
     (floor(pcbHash(cell+vec2(12.4,31.7))*3.0)-1.0)*0.19,
     (floor(pcbHash(cell+vec2(78.6,19.3))*3.0)-1.0)*0.19);
@@ -50,7 +50,7 @@ void main(){
   float radius=length(uv-pad);
   float pin=1.0-smoothstep(0.040-aa,0.040+aa,radius);
   float ring=1.0-smoothstep(halfWidth+aa,halfWidth+aa*2.0,abs(radius-0.092));
-  float line=max(track,active*max(pin*0.85,ring*0.72));
+  float line=max(track,tracePresent*max(pin*0.85,ring*0.72));
   // Thin out subpixel traces instead of creating a bright horizon band.
   line*=clamp(2.0*halfWidth/max(aa,0.00001),0.0,1.0);
   float horizonFade=1.0-smoothstep(0.35,0.85,max(footprint.x,footprint.y));
