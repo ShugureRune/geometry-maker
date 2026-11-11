@@ -66,6 +66,9 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
     uOffset:{value:floorGridOffset(seconds.current,grid)},
     uCircuitDensity:{value:grid.circuitDensity/100},
     uCircuitSpeed:{value:grid.circuitSpeed},
+    uCircuitDetail:{value:grid.circuitDetail/100},
+    uCircuitBoardOpacity:{value:grid.circuitBoardOpacity},
+    uCircuitAccent:{value:new Color(grid.circuitAccentColor)},
     uTime:{value:seconds.current},
   }),[grid,seconds,physicalWidth]);
   useFrame(()=>{
@@ -76,6 +79,9 @@ export function FloorGrid({grid,sceneHeight,seconds,view}:{
       // sliders change. Feed the active circuit controls before every render.
       material.current.uniforms.uCircuitDensity.value=grid.circuitDensity/100;
       material.current.uniforms.uCircuitSpeed.value=grid.circuitSpeed;
+      material.current.uniforms.uCircuitDetail.value=grid.circuitDetail/100;
+      material.current.uniforms.uCircuitBoardOpacity.value=grid.circuitBoardOpacity;
+      material.current.uniforms.uCircuitAccent.value.set(grid.circuitAccentColor);
     }
     // OrbitControls updates view.current when its target changes (including JSON restore).
     // Match its X/Z target without moving the floor upward into the shapes.
