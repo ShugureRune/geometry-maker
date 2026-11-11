@@ -125,3 +125,58 @@
 .three-standby-next:disabled{opacity:.55;cursor:default}
 [data-theme=light] .three-standby-controls{background:linear-gradient(150deg,#f0f2fd,#f7f0fd);border-color:#abb1d1}
 [data-theme=light] .three-standby-next{background:#e8dffb;color:#382550;border-color:#ad94d0}
+
+/* Frame-exact WebCodecs 3D video exports */
+.three-video-panel{
+  margin:22px 0 19px;padding:13px;
+  border:1px solid #796d9a;border-radius:12px;
+  background:linear-gradient(145deg,#241f37,#151c2a);
+  min-width:0;
+}
+.three-video-panel>summary{
+  min-height:44px;display:list-item;cursor:pointer;
+  color:#e8dcff;font-size:13px;font-weight:750;
+  padding:11px 8px;letter-spacing:.015em;
+}
+.three-video-panel[open]>summary{border-bottom:1px solid #635a7e;margin-bottom:12px}
+.three-video-panel>label{
+  display:flex;justify-content:space-between;gap:12px;
+  margin:12px 0 7px;font-size:12px;color:#d9d8ef;
+}
+.three-video-panel select,.three-video-panel input[type=number]{
+  width:100%;min-width:0;min-height:43px;
+  color:#eeeafc;background:#0d1422;border:1px solid #7b738e;
+  padding:9px 12px;border-radius:8px;font-size:12px;
+}
+.three-video-panel .export-dimensions{
+  display:flex;flex-wrap:wrap;gap:12px;margin:13px 0;
+}
+.three-video-panel .export-dimensions label{
+  flex:1 1 110px;display:grid;gap:7px;min-width:0;width:auto;
+  color:#b9bdd4;font-size:11px;
+}
+.three-video-panel input[type=range]{width:100%;margin:2px 0 4px}
+.three-video-stats{font-size:11px;color:#9daacc;margin:5px 0 12px}
+.three-video-actions{display:flex;align-items:stretch;gap:8px;margin-top:8px}
+.three-video-panel .three-video-actions .generate-button{
+  flex:1;min-width:0;min-height:46px;margin:0;
+}
+.three-video-actions .three-video-cancel{
+  flex:none;min-height:46px;padding:10px 13px;border-radius:8px;
+  border:1px solid #bd8f9e;color:#f2c1cb;background:#4b2937;
+  font-size:12px;
+}
+.three-video-progress{display:grid;gap:7px;margin:12px 0;color:#d7cef8;font-size:11px}
+.three-video-progress progress{
+  width:100%;height:11px;accent-color:#bea2fc;border-radius:8px;
+}
+[data-theme=light] .three-video-panel{
+  background:#f4f0ff;border-color:#a79ac6;color:#263049;
+}
+[data-theme=light] .three-video-panel>summary,
+[data-theme=light] .three-video-panel>label{color:#4a3a73}
+[data-theme=light] .three-video-panel select,
+[data-theme=light] .three-video-panel input[type=number]{
+  background:white;color:#2b3248;border-color:#c3b6dc;
+}
+[data-theme=light] .three-video-stats{color:#586176}
