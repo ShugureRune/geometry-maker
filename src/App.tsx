@@ -242,7 +242,7 @@ export default function App() {
           <input id="density" type="range" min="0" max="100" step="5" value={density} onChange={e=>setDensity(Number(e.target.value))}/>
           <p className="help">{renderMode==='3d'?'0%は背景のみ。主役の位置を保って3Dオブジェクトを段階的に追加します。':version===MAGIC_ALGORITHM_VERSION?'0%は背景のみ。主線は保持し、装飾は密度を上げるほど増えます。':'0%は背景のみ。50%が標準。主役の位置を保って図形量を調整します。'}</p>
         </section>
-        <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
+        <button type="button" className="generate-button" aria-label="同じ設定で再生成" onClick={() => {setStandbyFinishedSeed(null);setRegenerations(n => n + 1);committedSeed.current=seed;replayOnRegenerate();}}><span aria-hidden="true">↻</span> 同じ設定で再生成</button>
         <p className="local-note"><span aria-hidden="true">◉</span> ブラウザ内で生成・通信なし</p>
         </div>
         <div id="panel-background" className="category-panel" data-category="background" role="region" aria-labelledby="category-background" hidden={activeCategory!=='background'}>
@@ -324,7 +324,7 @@ export default function App() {
         {version!==MAGIC_ALGORITHM_VERSION&&<AmbientControls input={{seed,version,ratio,density,background,colors:activeColors,animation,settings:ambient,visualTheme,enabledShapeKinds,textOverlay}} settings={ambient} onChange={setAmbient} clock={ambientClock}/>}
         <AnimationControls settings={animation} onChange={setAnimation} playback={playback}/>
         </div>
-        {renderMode==='3d'&&<><ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>{setThreeSettings(current=>({...current,animation:true}));setRegenerations(n=>n+1);}}/>
+        {renderMode==='3d'&&<><ThreeAnimationControls settings={threeSettings} onChange={setThreeSettings} seed={seed} onReplay={()=>{setStandbyFinishedSeed(null);setThreeSettings(current=>({...current,animation:true}));setRegenerations(n=>n+1);}}/>
           <ThreeStandbyControls settings={threeSettings} onChange={setThreeSettings} onNext={beginStandbyTransition}
             transitioning={!!standbyTransition} exporting={threeExportBusy}/></>}
         </div>
