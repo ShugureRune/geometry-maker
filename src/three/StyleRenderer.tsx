@@ -11,9 +11,9 @@ import type {ThreeSettings} from './settings';
 import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
-import {MIN_NETWORK_ENDPOINT_VISIBILITY,visibleNetworkSegment,type networkConnections} from './network';
+import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
-import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireProgress} from './entrance';
+import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
 import {splitExitEnter,standbyMorphWireProgress,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketAt} from './neural-signals';
@@ -85,21 +85,8 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const byId=new Map(objects.map(object=>[object.id,object]));
     return edges.map(edge=>({a:byId.get(edge.a)!,b:byId.get(edge.b)!}));
   },[objects,edges]);
-  // Sort animation order by parent size rather than by arbitrary object ID.
-  // The largest junctions send out their branches first.
-  const wireOrder=useMemo(()=>{
-    const indexes=topology.map((_,i)=>i);
-    indexes.sort((left,right)=>{
-      const a=topology[left],b=topology[right];
-      return Math.max(b.a.radius,b.b.radius)-Math.max(a.a.radius,a.b.radius)||
-        Math.min(b.a.radius,b.b.radius)-Math.min(a.a.radius,a.b.radius)||
-        a.a.id.localeCompare(b.a.id)||a.b.id.localeCompare(b.b.id);
-    });
-    const rank=new Array<number>(topology.length);
-    indexes.forEach((index,i)=>{rank[index]=i;});
-    return rank;
-  },[topology]);
-  const matchesById=useMemo(()=>{
+  // Every wire shares the same main-figure-rooted propagation wave.
+  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges),[objects,edges]);  const matchesById=useMemo(()=>{
     const byId=new Map<string,MorphMatch>();
     for(const pair of standby?.matches??[]){
       const object=standby?.layer==='old'?pair.from:pair.to;
@@ -193,19 +180,27 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
           segment.end[2]+(bp?.offset[2]??0),
         ];
       }
+      const route=wireRoutes[i];
       let reverse=false;
+      let startMix=0,endMix=1;
       if(growWires||replayMorphWires){
+        const wirePhase=(growthTime/entrance.duration-NEURAL_WIRE_START_FRACTION)/
+          (1-NEURAL_WIRE_START_FRACTION);
         const progress=replayMorphWires?
           standbyMorphWireProgress(seconds.current,standby!.transition.duration,
-            standby!.layer,wireOrder[i],topology.length):
-          neuralWireProgress(growthTime,entrance,wireOrder[i],topology.length);
-        // Zero progress is a hidden connection (not an opaque dot at origin).
+            standby!.layer,0,1,route):
+          neuralWireWindowProgress(wirePhase,route.start,route.end);
+        // No ghost points at the source/target when a cable is absent.
         if(progress<=.001)continue;
+        const erasingFromHero=!!replayMorphWires&&standby!.layer==='old';
         const growing=neuralWireEndpoints(a,b,positionA as [number,number,number],
-          positionB as [number,number,number],progress);
+          positionB as [number,number,number],progress,route.source,erasingFromHero);
         reverse=growing.reverse;
         start.setXYZ(active,...growing.start);
         end.setXYZ(active,...growing.end);
+        // Colors follow the actual clipped cable, not an invisible endpoint.
+        startMix=erasingFromHero?1-progress:0;
+        endMix=erasingFromHero?1:progress;
         perEdgeAlpha*=Math.min(1,progress*4);
       }else{
         start.setXYZ(active,...positionA as [number,number,number]);
@@ -216,10 +211,15 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         ?neuralStartupFlash(seconds.current,entrance.duration):0;
       const pulse=(network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1)*(1+ignition*.65);
       const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
-      colorStart.setXYZ(active,ca.r*pulse*perEdgeAlpha,
-        ca.g*pulse*perEdgeAlpha,ca.b*pulse*perEdgeAlpha);
-      colorEnd.setXYZ(active,cb.r*pulse*perEdgeAlpha,
-        cb.g*pulse*perEdgeAlpha,cb.b*pulse*perEdgeAlpha);
+      const strength=pulse*perEdgeAlpha;
+      colorStart.setXYZ(active,
+        (ca.r+(cb.r-ca.r)*startMix)*strength,
+        (ca.g+(cb.g-ca.g)*startMix)*strength,
+        (ca.b+(cb.b-ca.b)*startMix)*strength);
+      colorEnd.setXYZ(active,
+        (ca.r+(cb.r-ca.r)*endMix)*strength,
+        (ca.g+(cb.g-ca.g)*endMix)*strength,
+        (ca.b+(cb.b-ca.b)*endMix)*strength);
       active++;
     }
     geometry.instanceCount=active;
