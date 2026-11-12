@@ -32,7 +32,7 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
   return <section className="control-section three-controls three-style-controls" aria-labelledby="three-style-heading">
     <div className="studio-setting-label studio-setting-heading">
       <h3 id="three-style-heading">光る線とつながり</h3>
-      <HelpInfo>高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスと電気信号は3Dの再生・一時停止と連動します。神経回路では登場演出の完了時に図形と線が一斉に発光し、その後で電気信号が流れます。</HelpInfo>
+      <HelpInfo>高解像度PNGでは線の太さも拡大します。軽量描画ではブルームを省略し、細線の見やすさを優先します。パルスと電気信号は3Dの再生・一時停止と連動します。神経回路では登場演出の完了時に図形と線が一斉に発光し、その後で電気信号が主役から中継へ流れ、末端へ分岐します。信号には残光がつき、中継・末端は到着時に短く発光します。自動切り替え時もワイヤー再接続に合わせて信号が再始動します。</HelpInfo>
     </div>
     <div className="three-style-presets" role="group" aria-label="3Dスタイルプリセット">
       {(['standard','network','cyber'] as StylePreset[]).map((preset,i)=>{
