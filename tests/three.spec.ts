@@ -462,12 +462,13 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await category(page,'書き出し');
   const diagnosticDownload=page.waitForEvent('download');
   await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const savedProject=JSON.parse(projectBytes.toString());
   const restoredProject=JSON.parse((await readFile((await (await diagnosticDownload).path())!)).toString());
   console.log('MB JSON',JSON.stringify({
     savedFrame,restored,restoredTwice,floorBefore,floorAfter,
-    before:{floorTime:project.floorElapsedSeconds,time:project.elapsedSeconds,view:project.view,background:project.background,colors:project.colorSettings},
+    before:{floorTime:savedProject.floorElapsedSeconds,time:savedProject.elapsedSeconds,view:savedProject.view,background:savedProject.background,colors:savedProject.colorSettings},
     after:{floorTime:restoredProject.floorElapsedSeconds,time:restoredProject.elapsedSeconds,view:restoredProject.view,background:restoredProject.background,colors:restoredProject.colorSettings},
-    settingsSame:JSON.stringify(restoredProject.settings)===JSON.stringify(project.settings),
+    settingsSame:JSON.stringify(restoredProject.settings)===JSON.stringify(savedProject.settings),
   }));
   expect(restoredTwice).toBe(savedFrame);
   expect(errors).toEqual([]);
