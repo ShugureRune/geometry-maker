@@ -48,7 +48,7 @@ function neuralTimings(object:EntranceObject):[number,number]{
   const phase=(((object.phase/(Math.PI*2))%1)+1)%1;
   if(tier==='big')return [.025+phase*.035,.18];
   if(tier==='medium')return [.25+phase*.045,.18];
-  return [.47+phase*.045,.18];
+  return [.50+phase*.025,.18];
 }
 function timings(object:EntranceObject,stagger:boolean):[number,number]{
   if(!stagger)return [0,.72];
