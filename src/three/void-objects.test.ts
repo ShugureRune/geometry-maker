@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {generateThreeComposition,spaceThreeComposition,THREE_KINDS} from './model';
-import {voidSceneObjects,voidSceneConnections} from './void-objects';
+import {voidSceneObjects,voidSceneConnections,voidConnectionReach} from './void-objects';
 import {VOID_EMPTY_CENTER,VOID_EMPTY_RADII,voidFigureCount} from './void-field';
 
 const comp=spaceThreeComposition(generateThreeComposition('native-void-web','16:9'));
