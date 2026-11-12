@@ -18,12 +18,16 @@ describe('safe 3D styles and standalone settings',()=>{
     expect(stylePreset('standard')).toEqual({network:networkDefaults,neon:neonDefaults});
     const fresh=stylePreset('network');fresh.network.enabled=false;expect(stylePreset('network').network.enabled).toBe(true);
     expect(networkDefaults.enabled).toBe(false);expect(neonDefaults.enabled).toBe(false);
+    expect(networkDefaults.mode).toBe('nearest');
   });
   it('validates settings and defaults omitted legacy styles without enabling effects',()=>{
     const {network:_,neon:__,...legacy}=threeDefaults;
     expect(validateThreeSettings(legacy)).toEqual(threeDefaults);
     expect(validateNetwork({})).toEqual(networkDefaults);expect(validateNeon({})).toEqual(neonDefaults);
-    for(const [key,value] of [['distance',NaN],['distance',16],['maxConnections',0],['maxConnections',7],['maxConnections',2.5],['width',0],['width',7],['opacity',-1],['glow',201],['enabled','yes'],['customColor','red'],['colorMode','rainbow'],['animation','flow'],['contrast',1]] as const)
+    expect(validateNetwork({...networkDefaults,mode:'neural'}).mode).toBe('neural');
+    const {mode:_legacyMode,...oldNetworkSettings}=networkDefaults;
+    expect(validateNetwork(oldNetworkSettings)).toEqual(networkDefaults);
+    for(const [key,value] of [['distance',NaN],['distance',16],['maxConnections',0],['maxConnections',7],['maxConnections',2.5],['width',0],['width',7],['opacity',-1],['glow',201],['enabled','yes'],['customColor','red'],['colorMode','rainbow'],['animation','flow'],['mode','invalid'],['mode',null],['contrast',1]] as const)
       expect(()=>validateNetwork({...networkDefaults,[key]:value})).toThrow();
     for(const [key,value] of [['display','wire'],['glow',-1],['faceOpacity',1.1],['faceOpacity','0.5'],['width',Infinity],['colorMode','invalid'],['customColor','#fff'],['enabled',null]] as const)
       expect(()=>validateNeon({...neonDefaults,[key]:value})).toThrow();
@@ -39,6 +43,22 @@ describe('safe 3D styles and standalone settings',()=>{
     for(const enabledKinds of [['fake'],['sphere','sphere'],[null],33,'sphere'])
       expect(()=>validateThreeSettings({...threeDefaults,enabledKinds})).toThrow();
     expect(validateThreeSettings({...threeDefaults,enabledKinds:[]}).enabledKinds).toEqual([]);
+  });
+  it('round-trips neural network mode and restores legacy projects to the nearest algorithm',()=>{
+    const configured={...project,settings:{...project.settings,
+      network:{...networkDefaults,enabled:true,mode:'neural' as const}}};
+    expect(parseThreeProject(threeProjectText(configured)).settings.network).toMatchObject({
+      mode:'neural',enabled:true,
+    });
+    const olderSettings={...configured.settings,
+      network:{...networkDefaults,enabled:true}};
+    const oldNetwork=olderSettings.network as unknown as Record<string,unknown>;
+    delete oldNetwork.mode;
+    expect(parseThreeProject(JSON.stringify({...project,settings:olderSettings}))
+      .settings.network?.mode).toBe('nearest');
+    expect(()=>parseThreeProject(JSON.stringify({...configured,
+      settings:{...configured.settings,network:{...configured.settings.network,mode:'other'}}})))
+      .toThrow();
   });
   it('round-trips 3D appearance settings and defaults older saved projects to disabled',()=>{
     const visibilityAnimation={enabled:true,mode:'fade-scale' as const,duration:16,visibleRatio:.4,stagger:false,keepPrimaryVisible:false};
