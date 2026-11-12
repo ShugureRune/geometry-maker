@@ -1,7 +1,8 @@
 import {describe,it,expect} from 'vitest';
 import {Color} from 'three';
 import type {Background} from '../scene';
-import {networkEndpointColor,networkReceiverColor,neuralWireColorAt} from './network-colors';
+import {networkEndpointColor,networkReceiverColor,networkArrivalGlowColor,
+  MIN_NEURAL_ARRIVAL_GLOW_PEAK,neuralWireColorAt} from './network-colors';
 import {networkDefaults} from './style-settings';
 
 const background:Background={
@@ -84,5 +85,74 @@ describe('neural signal color always matches the network wire underneath',()=>{
     expect(newReceiver.equals(new Color('#f2794c'))).toBe(true);
     const fallback={...background,figureColors:undefined} satisfies Background;
     expect(networkReceiverColor('support',fallback).equals(new Color('#76cfe8'))).toBe(true);
+  });
+});
+
+describe('dark neural arrival flashes stay recognizable and visible',()=>{
+  it('brightens dark purple, blue and green halos while preserving their RGB hue ratios',()=>{
+    const palettes=[
+      {primary:'#190a31',support:'#08182a',accent:'#092718'},
+      {primary:'#3d0a18',support:'#13172e',accent:'#0b3222'},
+    ];
+    for(const palette of palettes){
+      const scene={...background,figureColors:palette};
+      for(const role of roles){
+        const original=networkReceiverColor(role,scene);
+        const preserved=original.clone();
+        const glow=networkArrivalGlowColor(role,scene);
+        const peak=Math.max(glow.r,glow.g,glow.b);
+        const oldPeak=Math.max(original.r,original.g,original.b);
+        expect(oldPeak).toBeLessThan(MIN_NEURAL_ARRIVAL_GLOW_PEAK);
+        expect(peak).toBeCloseTo(MIN_NEURAL_ARRIVAL_GLOW_PEAK,10);
+        const multiplier=peak/oldPeak;
+        expect(multiplier).toBeGreaterThan(1);
+        for(const channel of ['r','g','b'] as const){
+          expect(glow[channel]).toBeCloseTo(original[channel]*multiplier,10);
+        }
+        // Do not modify the original material/gradient palette.
+        expect(original.equals(preserved)).toBe(true);
+        expect(networkReceiverColor(role,scene).equals(original)).toBe(true);
+      }
+    }
+  });
+
+  it('leaves already bright receivers unchanged and does not wash out their hue',()=>{
+    const scene={...background,figureColors:{
+      primary:'#ffffff',support:'#e9a8ff',accent:'#fff1cb',
+    }};
+    for(const role of roles){
+      const original=networkReceiverColor(role,scene);
+      expect(Math.max(original.r,original.g,original.b))
+        .toBeGreaterThanOrEqual(MIN_NEURAL_ARRIVAL_GLOW_PEAK);
+      expect(networkArrivalGlowColor(role,scene).equals(original)).toBe(true);
+    }
+  });
+
+  it('gives pure black a neutral visible flash, because black has no hue to amplify',()=>{
+    const scene={...background,figureColors:{
+      primary:'#000000',support:'#000000',accent:'#000000',
+    }};
+    for(const role of roles){
+      const surface=networkReceiverColor(role,scene);
+      const glow=networkArrivalGlowColor(role,scene);
+      expect(surface.equals(new Color('#000000'))).toBe(true);
+      expect(glow.r).toBeGreaterThan(.7);
+      expect(glow.r).toBeCloseTo(glow.g,10);
+      expect(glow.g).toBeCloseTo(glow.b,10);
+    }
+  });
+
+  it('does not change wire endpoint colors or packet gradients when receiver glow is boosted',()=>{
+    const scene={...background,figureColors:{
+      primary:'#251038',support:'#0c182c',accent:'#190c26',
+    }};
+    const net={...networkDefaults,colorMode:'custom' as const,customColor:'#42edc9'};
+    const hero=networkEndpointColor('primary',net,scene,false);
+    const relay=networkEndpointColor('support',net,scene,false);
+    const halfway=neuralWireColorAt(hero,relay,.5,new Color()).clone();
+    networkArrivalGlowColor('support',scene);
+    expect(networkEndpointColor('primary',net,scene,false).equals(hero)).toBe(true);
+    expect(networkEndpointColor('support',net,scene,false).equals(relay)).toBe(true);
+    expect(neuralWireColorAt(hero,relay,.5,new Color()).equals(halfway)).toBe(true);
   });
 });
