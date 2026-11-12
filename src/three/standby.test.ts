@@ -7,10 +7,22 @@ describe('3D standby transition grammar',()=>{
   it('defaults off and is backwards compatible with saved 3D project JSON',()=>{
     expect(threeDefaults.standby).toEqual(standbyDefaults);
     expect(validateThreeSettings({...threeDefaults,standby:undefined}).standby).toEqual(standbyDefaults);
+    expect(standbyDefaults.cameraAutoRotate).toBe(false);
+    expect(standbyDefaults.cameraRotateSpeed).toBe(1);
     expect(validateThreeStandby({enabled:true})).toEqual({...standbyDefaults,enabled:true});
+    expect(validateThreeStandby({...standbyDefaults,cameraAutoRotate:true,cameraRotateSpeed:2.5}))
+      .toMatchObject({cameraAutoRotate:true,cameraRotateSpeed:2.5});
+    // Imported older files without the new keys keep the camera stationary.
+    const legacy={enabled:true,intervalSeconds:30,transitionSeconds:3,
+      mode:'morph',preserveCamera:true,pauseOnInteraction:true};
+    expect(validateThreeStandby(legacy)).toMatchObject({
+      cameraAutoRotate:false,cameraRotateSpeed:1,
+    });
     for(const bad of [{enabled:'yes'},{intervalSeconds:4},{intervalSeconds:121},
       {transitionSeconds:0},{transitionSeconds:9},{mode:'warp'},{preserveCamera:1},
-      {pauseOnInteraction:null},{bogus:true}]){
+      {pauseOnInteraction:null},{cameraAutoRotate:'yes'},
+      {cameraRotateSpeed:0},{cameraRotateSpeed:3.5},{cameraRotateSpeed:Infinity},
+      {bogus:true}]){
       expect(()=>validateThreeStandby({...standbyDefaults,...bad})).toThrow();
     }
   });
