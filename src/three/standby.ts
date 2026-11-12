@@ -1,7 +1,7 @@
 import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
 import {threePose,type ThreeComposition,type ThreeObject,type Vector3Tuple} from './model';
-import {NEURAL_WIRE_START_FRACTION,neuralWireProgress,threeEntrancePose,type ThreeEntranceSettings} from './entrance';
+import {NEURAL_WIRE_START_FRACTION,neuralWireProgress,neuralWireWindowProgress,threeEntrancePose,type ThreeEntranceSettings} from './entrance';
 import {threeVisibility,type ThreeVisibilitySettings} from './visibility';
 
 export type StandbyTransitionMode='exit-enter'|'morph';
@@ -83,25 +83,25 @@ export function standbyMorphMotionProgress(seconds:number,duration:number,rewire
     clamp01((fraction-MORPH_WIRE_RELEASE_END)/(MORPH_WIRE_ATTACH_START-MORPH_WIRE_RELEASE_END)):
     fraction;
 }
-/** Replay the actual neural entrance wiring animation in both directions.
- * Retract edges in the REVERSE order of their original arrival (smallest
- * junctions first); after morphing, reconnect them from largest to smallest.
- * Each interval expands the original entrance's wire-only section [.72,1]
- * to fill the entire designated transition phase, not the preceding figure
- * entrance. This keeps the same size ranks, eased tip motion and endpoint
- * orientation as neuralWireProgress/neuralWireEndpoints without sudden jumps. */
+/** Both release and attachment launch at the main figure and travel
+ * OUTWARD along the SAME rooted network route. Removal leaves the untouched
+ * outer part of a cable visible until the advancing eraser reaches it.
+ * Optional routed time windows enforce parent-before-child propagation.
+ * Without a plan, retain the original rank stagger as a fallback. */
 export function standbyMorphWireProgress(
   seconds:number,duration:number,layer:'old'|'new',rank=0,count=1,
+  window?:{start:number;end:number},
 ):number{
   const fraction=clamp01(seconds/Math.max(.001,duration));
   const local=layer==='old'
     ?clamp01(fraction/MORPH_WIRE_RELEASE_END)
     :clamp01((fraction-MORPH_WIRE_ATTACH_START)/(1-MORPH_WIRE_ATTACH_START));
-  const forward=layer==='old'?1-local:local;
-  const neuralTime=NEURAL_WIRE_START_FRACTION+
-    (1-NEURAL_WIRE_START_FRACTION)*forward;
-  return neuralWireProgress(neuralTime,
-    {enabled:true,mode:'neural-grow',duration:1,stagger:true},rank,count);
+  const outward=window
+    ?neuralWireWindowProgress(local,window.start,window.end)
+    :neuralWireProgress(NEURAL_WIRE_START_FRACTION+
+      (1-NEURAL_WIRE_START_FRACTION)*local,
+      {enabled:true,mode:'neural-grow',duration:1,stagger:true},rank,count);
+  return layer==='old'?1-outward:outward;
 }
 
 /** One continuous visibility envelope for a seed change.
