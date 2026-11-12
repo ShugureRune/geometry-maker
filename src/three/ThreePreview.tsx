@@ -34,6 +34,7 @@ type Props = {
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
+  initialFloorTime?:number;
   transition?:ThreeStandbyTransition|null;
   onTransitionComplete?:(id:number)=>void;
   skipEntrance?:boolean;
@@ -452,6 +453,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
 
   useImperativeHandle(api, () => ({
     resetView,smoothResetView,getElapsedSeconds:()=>seconds.current,
+    getFloorElapsedSeconds:()=>floorSeconds.current,
     beginVideoExport(){
       if(exportingVideo.current)throw new Error('3D動画はすでに書き出し中です。');
       beforeVideoTime.current=seconds.current;
@@ -569,7 +571,7 @@ export default function ThreePreview(props: Props) {
   const seconds = useRef(props.initialTime??0);
   // Independent from the seed/entrance clock. Never reset it when a standby
   // morph begins, otherwise animated grid lines and PCB signals teleport.
-  const floorSeconds=useRef(props.initialTime??0);
+  const floorSeconds=useRef(props.initialFloorTime??props.initialTime??0);
   const progressHost=useRef<HTMLDivElement>(null);
   const touchActions=useRef(new Set<string>());
   const world=props.settings.sky?.world??worldDefaults;
