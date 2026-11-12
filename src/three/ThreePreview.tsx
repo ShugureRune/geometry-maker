@@ -26,7 +26,7 @@ import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {neuralStartupFlash} from './neural-signals';
-import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
 
@@ -110,7 +110,8 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
       const {transition,variant}=standby;
       const {position,rotation,radius,opacity:alpha,colorMix}=standbyObjectPose(
         standby.from,standby.to,seconds.current,transition,variant,
-        settings.floatAmount,settings.rotationAmount,entrance,seed
+        settings.floatAmount,settings.rotationAmount,entrance,seed,
+        (settings.network??networkDefaults).enabled
       );
       const visibility=standbyMeshVisibility(
         standby.from,standby.to,variant,seconds.current,transition,appearance);
@@ -329,6 +330,9 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     }
     if(progressHost?.current){
       if(transition)progressHost.current.dataset.standbyElapsed=seconds.current.toFixed(3);
+      progressHost.current.dataset.standbyWirePhase=
+        transition?.mode==='morph'&&(settings.network??networkDefaults).enabled
+          ?standbyMorphPhase(seconds.current,transition.duration):'off';
       const grid=settings.floorGrid??floorGridDefaults;
       progressHost.current.dataset.floorTime=floorSeconds.current.toFixed(6);
       progressHost.current.dataset.floorOffset=floorGridOffset(floorSeconds.current,grid).toFixed(6);
@@ -633,6 +637,7 @@ export default function ThreePreview(props: Props) {
      data-entrance-mode={(props.settings.entrance??entranceDefaults).mode}
     data-standby-active={props.transition?'true':'false'}
     data-standby-mode={props.transition?.mode??'off'}
+    data-standby-wire-phase={props.transition?.mode==='morph'&&network.enabled?'retract':'off'}
     data-standby-pairs={matches.length}
     data-standby-entrance-complete={props.skipEntrance?'true':'false'}
     data-camera-auto-rotate={(props.settings.standby??standbyDefaults).enabled&&

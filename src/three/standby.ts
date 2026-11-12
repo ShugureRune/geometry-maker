@@ -61,6 +61,39 @@ export type ThreeStandbyTransition={
 };
 export type MorphMatch={id:string;from?:ThreeObject;to?:ThreeObject};
 
+/** The neural network disconnects before nodes begin moving, then reconnects
+ * only once their new constellation has finished assembling.
+ * Keep these ratios shared between solids and line renderer. */
+export const MORPH_WIRE_RELEASE_END=.18;
+export const MORPH_WIRE_ATTACH_START=.80;
+
+export function standbyMorphPhase(seconds:number,duration:number):
+  'retract'|'move'|'reconnect'|'complete'{
+  const fraction=clamp01(seconds/Math.max(.001,duration));
+  return fraction>=1?'complete':
+    fraction<MORPH_WIRE_RELEASE_END?'retract':
+    fraction<MORPH_WIRE_ATTACH_START?'move':'reconnect';
+}
+
+/** The figure's actual move/resize/color transition, excluding wire phases.
+ * Without a visible network the original uninterrupted morph is retained. */
+export function standbyMorphMotionProgress(seconds:number,duration:number,rewire=true):number{
+  const fraction=clamp01(seconds/Math.max(.001,duration));
+  return rewire?
+    clamp01((fraction-MORPH_WIRE_RELEASE_END)/(MORPH_WIRE_ATTACH_START-MORPH_WIRE_RELEASE_END)):
+    fraction;
+}
+/** Normalized visible wire length: old cables retract towards their larger
+ * endpoint, the scene remains disconnected, and new cables grow afterwards. */
+export function standbyMorphWireProgress(
+  seconds:number,duration:number,layer:'old'|'new',
+):number{
+  const fraction=clamp01(seconds/Math.max(.001,duration));
+  return layer==='old'?
+    1-easeInOut(fraction/MORPH_WIRE_RELEASE_END):
+    easeInOut((fraction-MORPH_WIRE_ATTACH_START)/(1-MORPH_WIRE_ATTACH_START));
+}
+
 /** One continuous visibility envelope for a seed change.
  * A same-kind morph renders ONE shared mesh. At the first frame it must use
  * the OLD seed's visibility, not suddenly switch to the NEW object's random
@@ -225,12 +258,18 @@ export function standbyObjectPose(
   seconds:number,transition:ThreeStandbyTransition,
   variant:'shared'|'old'|'new',
   floatAmount:number,rotationAmount:number,entrance:ThreeEntranceSettings,
-  newSeed:string,
+  newSeed:string,rewire=false,
 ):MorphPose{
   if(transition.mode==='morph'){
-    const oldPose=from?threePose(from,transition.fromTime+seconds,floatAmount,rotationAmount):undefined;
-    const newPose=to?threePose(to,seconds,floatAmount,rotationAmount):undefined;
-    return morphPose(from,to,seconds/transition.duration,variant,oldPose,newPose,transition.cameraPosition);
+    // Hold the outgoing configuration while wires retract and the incoming
+    // configuration while wires reconnect. Float/rotation match the exact
+    // normal 3D frame at the beginning and end; no jump at transition removal.
+    const oldTime=rewire?transition.fromTime:transition.fromTime+seconds;
+    const newTime=rewire?transition.duration:seconds;
+    const oldPose=from?threePose(from,oldTime,floatAmount,rotationAmount):undefined;
+    const newPose=to?threePose(to,newTime,floatAmount,rotationAmount):undefined;
+    const motion=standbyMorphMotionProgress(seconds,transition.duration,rewire);
+    return morphPose(from,to,motion,variant,oldPose,newPose,transition.cameraPosition);
   }
   const source=variant==='old'?from:to;
   if(!source)throw new Error('退場・登場の対象図形がありません。');
