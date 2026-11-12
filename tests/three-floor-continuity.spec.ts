@@ -47,8 +47,12 @@ for(const style of ['grid','circuit'] as const){
         await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
         await expect(preview).toHaveAttribute('data-standby-active','true');
         expect(await page.getByTestId('current-seed').textContent()).not.toBe(oldSeed);
-        const after=await floorTime();
-        const offset=await floorOffset();
+        // Read both attributes atomically: WebGL may advance another frame
+        // between two separate browser/Playwright DOM round-trips.
+        const {time:after,offset}=await preview.evaluate(element=>({
+          time:Number(element.getAttribute('data-floor-time')),
+          offset:Number(element.getAttribute('data-floor-offset')),
+        }));
         const sceneElapsed=Number(await preview.getAttribute('data-standby-elapsed'));
         expect(sceneElapsed).toBeLessThan(.9);
         // Figures rewind to start their morph. The grid/PCB must not rewind.
