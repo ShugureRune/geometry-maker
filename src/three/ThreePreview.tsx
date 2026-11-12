@@ -595,11 +595,11 @@ export default function ThreePreview(props: Props) {
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
   const edges=useMemo(()=>network.enabled?
-    networkConnections(objects,network.distance*spacingFactor,network.maxConnections):[],
-    [objects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
+    networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
+    [objects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const previousEdges=useMemo(()=>props.transition&&network.enabled?
-    networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections):[],
-    [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,spacingFactor]);
+    networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
+    [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -614,7 +614,7 @@ export default function ThreePreview(props: Props) {
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
   return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
-    data-network-count={edges.length} data-neon-mode={neon.enabled?neon.display:'off'}
+    data-network-count={edges.length} data-network-mode={network.mode} data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
      data-entrance-enabled={(props.settings.entrance??entranceDefaults).enabled?'true':'false'}
