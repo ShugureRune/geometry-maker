@@ -38,7 +38,11 @@ test('size-aware neural topology produces branching connections and persists acr
   const total=Number(await preview.getAttribute('data-object-count'));
   expect(neural).toBeGreaterThan(0);
   expect(neural).toBeLessThanOrEqual(total-1); // branching forest, no cycles
-  expect(neural).toBeLessThan(nearest);
+  // One parent per visible support/accent node; unlike classic nearest mode,
+  // no maximum-degree/reach cutoff can leave dangling disconnected islands.
+  expect(neural).toBeGreaterThan(2);
+  await expect(page.locator('#network-count')).toHaveCount(0);
+  await expect(page.locator('#network-distance')).toHaveCount(0);
 
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
