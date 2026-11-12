@@ -21,7 +21,7 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
       <HelpInfo>
       入れ替えでは今の図形が消えてから次の図形が登場します。
       なめらか変化では似た図形同士が移動・変形・色変化し、余った図形は縮小して消え、
-      増えた図形は縮小状態から登場します。既存の3D登場・回転設定は保持します。
+      増えた図形は縮小状態から登場します。接続線がある場合は、古い線を先に収納し、図形が移動・変形してから新しい線を張り直します。既存の3D登場・回転設定は保持します。
     </HelpInfo>
     </div>
     <label className="three-checkbox">
