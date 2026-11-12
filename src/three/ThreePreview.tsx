@@ -22,7 +22,7 @@ import {worldDefaults,sunlightAtHour} from './world-settings';
 import {ExploreController} from './ExploreController';
 import {generateCelestialBodies,spaceCelestialBodies,celestialDefaults} from './celestial';
 import {CelestialObjectMesh} from './CelestialRenderer';
-import {floorGridDefaults} from './floor-grid';
+import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {standbyDefaults,easeInOut,matchThreeObjects,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
@@ -163,7 +163,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const cameraInteractionUntil=useRef(0);
@@ -173,6 +173,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const skipDelta = useRef(true);
   const exportingVideo=useRef(false);
   const beforeVideoTime=useRef(0);
+  const beforeVideoFloorTime=useRef(0);
   type PendingVideoFrame={time:number;width:number;height:number;canvas:HTMLCanvasElement;
     resolve:()=>void;reject:(error:Error)=>void};
   const pendingVideoFrame=useRef<PendingVideoFrame|null>(null);
@@ -293,14 +294,27 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   useEffect(() => {invalidate();}, [settings, background, invalidate]);
   useFrame((_, delta) => {
     if(exportingVideo.current){
-      if(pendingVideoFrame.current)seconds.current=pendingVideoFrame.current.time;
-    }else if (settings.animation && !document.hidden && !skipDelta.current){
+      if(pendingVideoFrame.current){
+        seconds.current=pendingVideoFrame.current.time;
+        // A video deliberately starts its frame clock at zero; do not reset
+        // the live PCB/floor phase, just replay it relative to export start.
+        floorSeconds.current=beforeVideoFloorTime.current+pendingVideoFrame.current.time;
+      }
+    }else if(settings.animation&&!document.hidden&&!skipDelta.current){
       seconds.current=transition?
         advanceStandbyClock(seconds.current,delta,settings.speed,transition.duration):
         seconds.current+delta*settings.speed;
+      // Scene/entrance time MUST restart at each seed switch. Environment time
+      // MUST NOT: it drives the moving grid, PCB shader and raised circuit
+      // signals, and always advances from the last visible floor frame.
+      floorSeconds.current+=Math.min(Math.max(0,delta*settings.speed),.12);
     }
-    if(transition&&progressHost?.current)
-      progressHost.current.dataset.standbyElapsed=seconds.current.toFixed(3);
+    if(progressHost?.current){
+      if(transition)progressHost.current.dataset.standbyElapsed=seconds.current.toFixed(3);
+      const grid=settings.floorGrid??floorGridDefaults;
+      progressHost.current.dataset.floorTime=floorSeconds.current.toFixed(6);
+      progressHost.current.dataset.floorOffset=floorGridOffset(floorSeconds.current,grid).toFixed(6);
+    }
     skipDelta.current = false;
     if(!explore){
       const journey=cameraReset.current,orbit=controls.current;
@@ -441,6 +455,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     beginVideoExport(){
       if(exportingVideo.current)throw new Error('3D動画はすでに書き出し中です。');
       beforeVideoTime.current=seconds.current;
+      beforeVideoFloorTime.current=floorSeconds.current;
       exportingVideo.current=true;
       skipDelta.current=true;
     },
@@ -490,6 +505,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       if(!exportingVideo.current)return;
       exportingVideo.current=false;
       seconds.current=beforeVideoTime.current;
+      floorSeconds.current=beforeVideoFloorTime.current;
       pendingVideoFrame.current?.reject(new Error('動画書き出しが終了しました。'));
       pendingVideoFrame.current=null;
       skipDelta.current=true;
@@ -551,6 +567,9 @@ export default function ThreePreview(props: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
+  // Independent from the seed/entrance clock. Never reset it when a standby
+  // morph begins, otherwise animated grid lines and PCB signals teleport.
+  const floorSeconds=useRef(props.initialTime??0);
   const progressHost=useRef<HTMLDivElement>(null);
   const touchActions=useRef(new Set<string>());
   const world=props.settings.sky?.world??worldDefaults;
@@ -614,7 +633,7 @@ export default function ThreePreview(props: Props) {
         castShadow={!low} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-bias={-.001}/>
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
-      <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={seconds} view={props.view} low={low}/>
+      <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={floorSeconds} view={props.view} low={low}/>
       {props.transition ? props.transition.mode==='morph'?
         matches.map(match=><group key={match.id}>
           {match.from&&match.to&&match.from.kind===match.to.kind?
@@ -658,7 +677,7 @@ export default function ThreePreview(props: Props) {
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
-      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
     </Canvas>
