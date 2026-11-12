@@ -178,16 +178,32 @@ describe('cosmic-web trunks and filament-shaped branching',()=>{
       const heroes=nodes.filter(n=>n.role==='primary');
       const medium=nodes.filter(n=>n.role==='support');
       const small=nodes.filter(n=>n.role==='accent');
-      const trunks=edges.filter(edge=>
-        byId.get(edge.a)?.role==='primary'&&byId.get(edge.b)?.role==='primary');
+      const trunks=heroes.flatMap(hero=>(hero.voidTrunkTargets??[]).map(id=>({
+        a:hero.id,b:id,
+      })));
       expect(heroes.length).toBeGreaterThan(5);
       expect(trunks.length).toBeGreaterThan(0);
       expect(trunks.length).toBeLessThanOrEqual(heroes.length-1);
+      expect(edges).toHaveLength(medium.length+small.length);
+      // Backbone corridors connect via two relays at the shared midpoint;
+      // never merge all hero subgraphs into one quadratic animation schedule.
+      expect(edges.every(edge=>byId.get(edge.b)?.role!=='primary')).toBe(true);
+      const supportByHero=new Map<string,typeof medium>();
+      for(const relay of medium){
+        const id=relay.voidParentId!;
+        const group=supportByHero.get(id)??[];
+        group.push(relay);supportByHero.set(id,group);
+      }
       for(const edge of trunks){
         const a=byId.get(edge.a)!,b=byId.get(edge.b)!;
-        expect(a.voidTrunkTargets).toContain(b.id);
         expect(voidBranchCrossesCenter(
           a.position.map(n=>n/.255),b.position.map(n=>n/.255))).toBe(false);
+        const midpoint=a.position.map((v,i)=>(v+b.position[i])*.5);
+        const aNear=supportByHero.get(a.id)!.some(n=>
+          Math.hypot(...n.position.map((v,i)=>v-midpoint[i]))<1.5);
+        const bNear=supportByHero.get(b.id)!.some(n=>
+          Math.hypot(...n.position.map((v,i)=>v-midpoint[i]))<1.5);
+        expect(aNear&&bNear).toBe(true);
       }
       const children=new Map<string,number>();
       for(const accent of small){
