@@ -2,6 +2,7 @@ import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
 import {threePose,type ThreeComposition,type ThreeObject,type Vector3Tuple} from './model';
 import {threeEntrancePose,type ThreeEntranceSettings} from './entrance';
+import {threeVisibility,type ThreeVisibilitySettings} from './visibility';
 
 export type StandbyTransitionMode='exit-enter'|'morph';
 export type ThreeStandbySettings={
@@ -59,6 +60,28 @@ export type ThreeStandbyTransition={
   cameraPosition?:Vector3Tuple;
 };
 export type MorphMatch={id:string;from?:ThreeObject;to?:ThreeObject};
+
+/** One continuous visibility envelope for a seed change.
+ * A same-kind morph renders ONE shared mesh. At the first frame it must use
+ * the OLD seed's visibility, not suddenly switch to the NEW object's random
+ * phase. As the morph progresses, blend the envelopes into the new phase.
+ * At t=0 and t=duration this exactly matches the non-transition meshes. */
+export function standbyMeshVisibility(
+  from:ThreeObject|undefined,to:ThreeObject|undefined,
+  variant:'shared'|'old'|'new',seconds:number,
+  transition:ThreeStandbyTransition,appearance:ThreeVisibilitySettings,
+):number{
+  if(variant==='shared'&&from&&to){
+    const old=threeVisibility(from,transition.fromTime+seconds,appearance);
+    const next=threeVisibility(to,seconds,appearance);
+    const progress=easeInOut(seconds/transition.duration);
+    return old+(next-old)*progress;
+  }
+  const object=variant==='old'?from:to;
+  if(!object)return 0;
+  return threeVisibility(object,variant==='old'?
+    transition.fromTime+seconds:seconds,appearance);
+}
 const mix=(a:number,b:number,t:number)=>t<=0?a:t>=1?b:a+(b-a)*t;
 export const clamp01=(t:number)=>Math.max(0,Math.min(1,Number.isFinite(t)?t:0));
 export const easeInOut=(t:number)=>{const p=clamp01(t);return p*p*(3-2*p);};
