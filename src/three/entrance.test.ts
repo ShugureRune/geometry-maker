@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition} from './model';
-import {entranceDefaults,THREE_ENTRANCE_MODES,threeEntranceStyle,threeEntranceProgress,threeEntrancePose,validateThreeEntrance} from './entrance';
+import {entranceDefaults,THREE_ENTRANCE_MODES,threeEntranceStyle,threeEntranceProgress,threeEntrancePose,neuralEntranceTier,neuralWireProgress,neuralWireEndpoints,validateThreeEntrance} from './entrance';
 import {threeDefaults,validateThreeSettings} from './settings';
 
 describe('3D seeded one-shot entrance',()=>{
@@ -72,4 +72,52 @@ describe('3D seeded one-shot entrance',()=>{
       expect(threeEntrancePose(object,settings.duration+100,settings,'unique-entrance')).toEqual(final);
     }
   });
+  it('stages genuine big → medium → small sizes before growing any wires',()=>{
+    const settings={...entranceDefaults,mode:'neural-grow' as const,duration:10,stagger:true};
+    const large={radius:1.3,phase:0,role:'support' as const};
+    const medium={radius:.5,phase:0,role:'accent' as const};
+    const small={radius:.18,phase:0,role:'primary' as const};
+    expect(neuralEntranceTier(large.radius)).toBe('big');
+    expect(neuralEntranceTier(medium.radius)).toBe('medium');
+    expect(neuralEntranceTier(small.radius)).toBe('small');
+    expect(neuralEntranceTier(.7)).toBe('big');
+    expect(neuralEntranceTier(.28)).toBe('medium');
+    expect(threeEntranceProgress(large,1.3,settings)).toBeGreaterThan(0);
+    expect(threeEntranceProgress(medium,1.3,settings)).toBe(0);
+    expect(threeEntranceProgress(small,1.3,settings)).toBe(0);
+    expect(threeEntranceProgress(large,2.4,settings)).toBe(1);
+    expect(threeEntranceProgress(medium,3.3,settings)).toBeGreaterThan(0);
+    expect(threeEntranceProgress(small,3.3,settings)).toBe(0);
+    expect(threeEntranceProgress(medium,4.8,settings)).toBe(1);
+    expect(threeEntranceProgress(small,5.8,settings)).toBeGreaterThan(0);
+    expect(threeEntranceProgress(small,7.05,settings)).toBe(1);
+    expect(neuralWireProgress(7.05,settings,0,8)).toBe(0);
+    expect(neuralWireProgress(7.5,settings,0,8)).toBeGreaterThan(0);
+    expect(neuralWireProgress(7.5,settings,7,8)).toBe(0);
+    expect(neuralWireProgress(10,settings,7,8)).toBe(1);
+    expect(threeEntrancePose(large,10,settings,'x').opacity).toBe(1);
+    expect(threeEntranceProgress(small,100,settings)).toBe(1);
+    // This mode deliberately keeps the size-based order even when the old
+    // "stagger" checkbox was off in a saved project.
+    const unstaggered={...settings,stagger:false};
+    expect(threeEntranceProgress(large,3,unstaggered))
+      .toBeGreaterThan(threeEntranceProgress(medium,3,unstaggered));
+    expect(threeEntranceProgress(medium,3,unstaggered))
+      .toBeGreaterThan(threeEntranceProgress(small,3,unstaggered));
+  });
+  it('grows wires from the larger moving mesh and preserves line colors/direction',()=>{
+    const big={radius:1.2},small={radius:.2};
+    const from:[number,number,number]=[3,-2,1];
+    const to:[number,number,number]=[-4,1,6];
+    for(const t of [0,.1,.25,.5,.75,1]){
+      const forward=neuralWireEndpoints(big,small,from,to,t);
+      const backwards=neuralWireEndpoints(small,big,to,from,t);
+      const actual:[number,number,number]=from.map((v,i)=>v+(to[i]-v)*t) as [number,number,number];
+      expect(forward).toEqual({start:from,end:actual,reverse:false});
+      expect(backwards).toEqual({start:from,end:actual,reverse:true});
+    }
+    expect(neuralWireEndpoints(big,small,from,to,-5).end).toEqual(from);
+    expect(neuralWireEndpoints(big,small,from,to,5).end).toEqual(to);
+  });
+
 });
