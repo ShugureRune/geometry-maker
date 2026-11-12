@@ -37,7 +37,6 @@ const outward=(p:Point):Point=>unit([
   (p[1]-VOID_CENTER[1])/(VOID_RADII[1]**2),
   (p[2]-VOID_CENTER[2])/(VOID_RADII[2]**2),
 ]);
-const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 const pointFromField=(figures:Float32Array,index:number):Point=>
   [figures[index*4],figures[index*4+1],figures[index*4+2]];
 const nearestIndex=(point:Point,candidates:readonly Point[]):number=>{
@@ -48,46 +47,99 @@ const nearestIndex=(point:Point,candidates:readonly Point[]):number=>{
   }
   return best;
 };
-/** Medium figures are planted outward from a hero toward seeded filament
- * samples; short bounded branches never pierce the central void.
+/** A sparse graph of safe, seeded large-node corridors. This describes
+ * where filaments run, but does NOT add primary-primary wires (that would
+ * change the existing network animation and merge its hero components).
+ * We connect near hubs first and add a few alternate routes for webbing.
  */
-function placeMedium(hero:Point,sample:Point,variation:number):Point{
-  let direction=diff(sample,hero);
-  if(length(direction)<.001)direction=outward(hero);
-  direction=unit(direction);
-  const distance=clamp(length(diff(sample,hero))*.40,7,35)*(0.86+variation*.28);
-  const proposed=add(hero,direction,distance);
-  return voidBranchCrossesCenter(hero,proposed)?
-    add(hero,outward(hero),distance):proposed;
+export type VoidCorridor={a:number;b:number};
+export function voidHubCorridors(points:readonly Point[]):VoidCorridor[]{
+  const candidates:{a:number;b:number;distance:number}[]=[];
+  for(let a=0;a<points.length;a++)for(let b=a+1;b<points.length;b++){
+    if(voidBranchCrossesCenter(points[a],points[b]))continue;
+    candidates.push({a,b,distance:squared(points[a],points[b])});
+  }
+  candidates.sort((x,y)=>x.distance-y.distance||x.a-y.a||x.b-y.b);
+  const parent=points.map((_,i)=>i);
+  const root=(i:number):number=>{
+    while(parent[i]!==i){parent[i]=parent[parent[i]];i=parent[i];}
+    return i;
+  };
+  const degree=points.map(()=>0);
+  const links:VoidCorridor[]=[];
+  const chosen=new Set<string>();
+  const addLink=({a,b}:{a:number;b:number})=>{
+    links.push({a,b});degree[a]++;degree[b]++;chosen.add(a+':'+b);
+  };
+  // A spanning forest outlines the main connected structure, with bounded
+  // branching so no single hero becomes a giant firework center.
+  for(const pair of candidates){
+    const ra=root(pair.a),rb=root(pair.b);
+    if(ra===rb||degree[pair.a]>=4||degree[pair.b]>=4)continue;
+    addLink(pair);parent[ra]=rb;
+  }
+  // Extra short, safe routes make cells and junctions rather than a tree
+  // of isolated spokes. Still only a handful of corridors per major node.
+  for(const pair of candidates){
+    if(degree[pair.a]>=3||degree[pair.b]>=3||
+      (degree[pair.a]>=2&&degree[pair.b]>=2)||
+      chosen.has(pair.a+':'+pair.b))continue;
+    addLink(pair);
+  }
+  return links;
 }
-/** Small figures extend BEYOND their medium parent along its hero-to-medium
- * direction, then bend sideways toward another seeded filament sample.
- * The outward projection always remains positive: big -> medium -> small.
+/** Slightly curved route between large nodes. The bend points OUTWARD from
+ * the reserved void and remains narrow compared with the hub separation.
  */
-function placeSmall(hero:Point,medium:Point,sample:Point,variation:number):Point{
+function pointOnCorridor(from:Point,to:Point,t:number):Point{
+  const tangent=unit(diff(to,from));
+  const center=add(from,diff(to,from),.5);
+  const normal=outward(center);
+  const transverse=diff(normal,tangent.map(v=>v*dot(normal,tangent)) as Point);
+  const bend=length(transverse)<.0001?[0,0,0] as Point:unit(transverse);
+  return add(add(from,diff(to,from),t),bend,
+    Math.sin(Math.PI*t)*Math.min(3.6,length(diff(to,from))*.065));
+}
+/** Medium relays occupy the SAME few curved corridors as their large parent
+ * instead of independently scattering along arbitrary sample directions.
+ * Thus repeated hero->relay wires overlap into visible filament bands.
+ */
+function placeMedium(hero:Point,other:Point,sample:Point,t:number,variation:number):Point{
+  const base=pointOnCorridor(hero,other,t);
+  const tangent=unit(diff(other,hero));
+  const offset=diff(sample,base);
+  const lateral=diff(offset,tangent.map(x=>x*dot(offset,tangent)) as Point);
+  const jitter=length(lateral)<.0001?[0,0,0] as Point:
+    unit(lateral).map(v=>v*(.20+variation*.90)) as Point;
+  const candidate=add(base,jitter);
+  if(!voidBranchCrossesCenter(hero,candidate))return candidate;
+  // The original safe straight corridor is always a valid fallback.
+  return add(hero,diff(other,hero),t);
+}
+/** Small figures continue ALONG the parent relay's filament, with occasional
+ * narrow side branches. They never fan out in arbitrary spherical directions
+ * or reverse the large -> medium -> small outward order.
+ */
+function placeSmall(hero:Point,medium:Point,sample:Point,
+  variation:number,offshoot:boolean):Point{
   const radial=unit(diff(medium,hero));
   const toward=diff(sample,medium);
-  const projected=dot(toward,radial);
-  const forward=clamp(projected*.36+3+variation*4,3,16);
-  const lateral=diff(toward,radial.map(x=>x*projected) as Point);
-  const lateralSize=length(lateral);
-  const side=length(lateral)>0?
-    lateral.map(v=>v*Math.min(.4,6/lateralSize)) as Point:[0,0,0] as Point;
-  const proposed=add(add(medium,radial,forward),side);
-  if(!voidBranchCrossesCenter(medium,proposed))return proposed;
-  // Bend tangentially away from the void while still going outward
-  // along the original hero -> medium branch.
+  const lateral=diff(toward,radial.map(v=>v*dot(toward,radial)) as Point);
+  const side=length(lateral)<.0001?[0,0,0] as Point:
+    unit(lateral).map(v=>v*(offshoot?2.3+variation*.9:.35+variation*.95)) as Point;
+  const forward=2.6+variation*5.7;
+  const candidate=add(add(medium,radial,forward),side);
+  if(!voidBranchCrossesCenter(medium,candidate))return candidate;
+  const inline=add(medium,radial,forward);
+  if(!voidBranchCrossesCenter(medium,inline))return inline;
+  // Never let an edge pierce the empty center; preserve positive progress.
   const normal=outward(medium);
-  const tangent=diff(normal,radial.map(v=>v*dot(normal,radial)) as Point);
-  const tangentDir=unit(tangent);
-  if(length(tangent)>.0001){
-    for(const distance of [5,10,20,36,60]){
-      const attempt=add(add(medium,radial,forward),tangentDir,distance);
-      if(!voidBranchCrossesCenter(medium,attempt))return attempt;
-    }
+  for(const bend of [5,10,18,30,60]){
+    const trial=add(inline,normal,bend);
+    if(!voidBranchCrossesCenter(medium,trial)&&
+      dot(diff(trial,medium),radial)>0)return trial;
   }
-  // Degenerate case: the parent is nearly tangent to the ellipsoid.
-  return add(medium,outward(medium),Math.max(forward,8));
+  return add(medium,radial,forward);
 }
 
 /** VOID is a different PLACEMENT of the existing 13 3D figure kinds, not an
@@ -149,23 +201,51 @@ export function voidSceneObjects(
     heroLocations.push(point);
     create('primary',i,scaled(...point),.75+random()*.60);
   }
-  // Medium relays follow *their own* large junction, not an independent
-  // world-space sample. Sample the native cosmic filaments for direction.
+  // Draw a shared cosmic filament skeleton BETWEEN large gravitational
+  // knots, then plant medium relays at increasing distances ALONG its paths.
+  // Unlike PR #105, relay direction is no longer a random 3D field vector.
+  const corridors=voidHubCorridors(heroLocations);
+  const routesByHero=heroLocations.map((_,hero)=>
+    corridors.filter(route=>route.a===hero||route.b===hero));
   for(let i=0;i<supports;i++){
     const sample=pointFromField(field.figures,i);
-    // Give each large knot at least one nearby relay when possible.
-    const hero=i<heroes?i:nearestIndex(sample,heroLocations);
-    const point=placeMedium(heroLocations[hero],sample,hierarchyRandom());
+    const reserved=i<heroes?routesByHero[i]:undefined;
+    const corridor=reserved?.length?
+      reserved[Math.floor(hierarchyRandom()*reserved.length)]:
+      corridors.length?corridors[(i-heroes+heroes*corridors.length)%corridors.length]:
+        undefined;
+    let hero:number,point:Point;
+    if(corridor){
+      // The first relays seed every large knot; remaining ones distribute
+      // across the backbone for an even web rather than a single bright bush.
+      hero=i<heroes?i:(hierarchyRandom()<.5?corridor.a:corridor.b);
+      if(hero!==corridor.a&&hero!==corridor.b)hero=corridor.a;
+      const other=hero===corridor.a?corridor.b:corridor.a;
+      const t=.06+hierarchyRandom()*.48;
+      point=placeMedium(heroLocations[hero],heroLocations[other],
+        sample,t,hierarchyRandom());
+    }else{
+      // Extremely sparse scenes may have only one large knot. Keep a short,
+      // safe, seed-dependent branch rather than adding another large figure.
+      hero=i<heroes?i:nearestIndex(sample,heroLocations);
+      const base=heroLocations[hero];
+      const direction=unit(diff(sample,base));
+      const forward=8+hierarchyRandom()*13;
+      const trial=add(base,direction,forward);
+      point=voidBranchCrossesCenter(base,trial)?
+        add(base,outward(base),forward):trial;
+    }
     supportLocations.push(point);supportHero.push(hero);
     create('support',i,scaled(...point),.32+random()*.21,`void-primary-${hero}`);
   }
-  // Small accents inherit an actual medium parent and extend beyond it,
-  // preserving the physical big -> medium -> small ordering in space.
+  // Each medium has a small handful of accents, distributed along its
+  // forward filament. Only one in seven branches deviates appreciably to
+  // make genuine side shoots; the rest stay close to the continuous spine.
   for(let i=0;i<count-heroes-supports;i++){
     const sample=pointFromField(field.figures,supports+i);
-    const parent=nearestIndex(sample,supportLocations);
+    const parent=i%supports;
     const point=placeSmall(heroLocations[supportHero[parent]],
-      supportLocations[parent],sample,hierarchyRandom());
+      supportLocations[parent],sample,hierarchyRandom(),i%7===0);
     create('accent',i,scaled(...point),.105+random()*.16,`void-support-${parent}`);
   }
   return result;
