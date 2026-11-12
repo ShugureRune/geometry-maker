@@ -194,7 +194,7 @@ describe('VOID standby seed morph at thousands-of-figure scale',()=>{
     expect(matches.some(m=>m.from!.position.some((v,i)=>v!==m.to!.position[i]))).toBe(true);
     const kinds=[...THREE_KINDS];
     const changed={...next[0],kind:kinds.find(k=>k!==next[0].kind)!};
-    expect(matchVoidObjects(old,[changed,...next.slice(1)])[0].to.kind).toBe(changed.kind);
+    expect(matchVoidObjects(old,[changed,...next.slice(1)])[0].to!.kind).toBe(changed.kind);
     const extras=matchVoidObjects(old.slice(0,50),next.slice(0,60));
     expect(extras).toHaveLength(60);
     expect(extras.filter(m=>!m.from)).toHaveLength(10);
