@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition} from './model';
-import {entranceDefaults,THREE_ENTRANCE_MODES,threeEntranceStyle,threeEntranceProgress,threeEntrancePose,neuralEntranceTier,neuralWireProgress,neuralWireEndpoints,validateThreeEntrance} from './entrance';
+import {entranceDefaults,THREE_ENTRANCE_MODES,threeEntranceStyle,threeEntranceProgress,threeEntrancePose,neuralEntranceTier,neuralWireProgress,neuralWireEndpoints,neuralWireWindowProgress,validateThreeEntrance} from './entrance';
 import {threeDefaults,validateThreeSettings} from './settings';
 
 describe('3D seeded one-shot entrance',()=>{
@@ -104,6 +104,24 @@ describe('3D seeded one-shot entrance',()=>{
       .toBeGreaterThan(threeEntranceProgress(medium,3,unstaggered));
     expect(threeEntranceProgress(medium,3,unstaggered))
       .toBeGreaterThan(threeEntranceProgress(small,3,unstaggered));
+  });
+  it('grows and erases a cable FROM the primary even when the opposite node is larger',()=>{
+    const hero={radius:.4},largeRelay={radius:2};
+    const heroPosition:[number,number,number]=[0,0,0];
+    const relayPosition:[number,number,number]=[4,0,0];
+    const at=.25;
+    const joining=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,at,'a');
+    expect(joining).toEqual({start:heroPosition,end:[1,0,0],reverse:false});
+    // During removal, the missing part starts at the SAME primary endpoint.
+    const removing=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,.75,'a',true);
+    expect(removing).toEqual({start:[1,0,0],end:relayPosition,reverse:false});
+    const reverse=neuralWireEndpoints(largeRelay,hero,relayPosition,heroPosition,.75,'b',true);
+    expect(reverse).toEqual({start:[1,0,0],end:relayPosition,reverse:true});
+    expect(neuralWireWindowProgress(0,0,.4)).toBe(0);
+    expect(neuralWireWindowProgress(.4,0,.4)).toBe(1);
+    expect(neuralWireWindowProgress(.5,.5,.8)).toBe(0);
+    expect(neuralWireWindowProgress(.65,.5,.8)).toBeGreaterThan(0);
+    expect(neuralWireWindowProgress(.65,.5,.8)).toBeLessThan(1);
   });
   it('grows wires from the larger moving mesh and preserves line colors/direction',()=>{
     const big={radius:1.2},small={radius:.2};
