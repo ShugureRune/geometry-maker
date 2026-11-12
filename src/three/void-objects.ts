@@ -3,15 +3,10 @@ import {generateVoidField,voidFigureCount,VOID_EMPTY_CENTER,VOID_EMPTY_RADII,typ
 import {THREE_KINDS,type ThreeComposition,type ThreeKind,type ThreeObject,type Vector3Tuple} from './model';
 import type {NetworkEdge} from './network';
 
-/** The fourth stage exists ONLY inside VOID. Other 3D scenes retain their
- * original primary/support/accent roles and color/material compatibility.
- */
-export type VoidTier='core'|'primary'|'support'|'accent';
+/** VOID uses the three existing figure roles; no special fourth tier. */
+export type VoidTier='primary'|'support'|'accent';
 export type VoidFigure=ThreeObject&{voidTier:VoidTier;voidParentId?:string};
 const VOID_COORDINATE_SCALE=.255;
-const coreKind=(enabled:readonly ThreeKind[]):ThreeKind=>
-  (['icosahedron','dodecahedron','octahedron','sphere'] as ThreeKind[])
-    .find(kind=>enabled.includes(kind))??enabled[0];
 
 /** Prevent a wire or an anchored child from crossing the large empty volume.
  * This checks the closest point on the complete segment, not just its ends.
@@ -30,9 +25,8 @@ function crossesEmptyVoid(a:Vector3Tuple,b:Vector3Tuple,scale:number):boolean{
 }
 
 /** A deterministic, locally softened gravitational potential proxy.
- * A deep well (large positive depth here) is the right home for a massive
- * corestone. Gravitational acceleration itself can vanish at the center of
- * a symmetric mass concentration, so we do NOT look for acceleration peaks.
+ * Deep wells mark where the native primary figures belong. Acceleration
+ * can vanish at a symmetric mass center, so we do NOT seek its peak.
  *
  * The generated filament figures stand in for matter tracers: nearby tracer
  * masses contribute to a finite-range potential well. A knot where multiple
@@ -81,16 +75,16 @@ export function voidKnotGravityScores(field:VoidField):number[]{
 }
 
 /** Choose the deepest wells first, with just enough spacing to avoid
- * visually overlapping giant cores. Never choose the furthest-apart knots:
- * those tended to land corestones in sparsely populated outer filaments.
+ * putting main figures on top of one another. Rank dense mass wells
+ * ahead of sparsely populated outer filaments.
  */
-export function selectVoidGravityCoreKnots(field:VoidField,count:number):number[]{
+export function selectVoidGravityPrimaryKnots(field:VoidField,count:number):number[]{
   const scores=voidKnotGravityScores(field);
   const ranked=scores.map((score,index)=>({index,score}))
     .sort((a,b)=>b.score-a.score||a.index-b.index);
   const target=Math.min(ranked.length,Math.max(0,Math.floor(count)));
   const selected:number[]=[];
-  for(const minimumDistance of [32,20,0]){
+  for(const minimumDistance of [24,14,0]){
     for(const candidate of ranked){
       if(selected.length>=target)break;
       if(selected.includes(candidate.index))continue;
@@ -107,10 +101,8 @@ export function selectVoidGravityCoreKnots(field:VoidField,count:number):number[
   return selected;
 }
 
-/** Four real size/role tiers: gigantic corestones, original major figures,
- * medium relays and small accents. No extra background particles are added.
- * Distinct seeded anchors are chosen from true filament knots; each anchor
- * has only a handful of primary branches, so it cannot become a starburst.
+/** Three native tiers: gravity-anchored primary figures, medium relays
+ * and tiny accents on filaments. No giant primary figures or extra background.
  */
 export function voidSceneObjects(
   composition:ThreeComposition,seed:string,density:number,low:boolean,
@@ -119,18 +111,16 @@ export function voidSceneObjects(
   const count=voidFigureCount(density,low);
   if(count===0||enabledKinds.length===0||composition.objects.length===0)return [];
   const field=generateVoidField(seed,count);
-  const random=seededRandom('void-four-tiers-v1:'+seed);
+  const random=seededRandom('void-three-tiers-gravity-v1:'+seed);
   const templates=composition.objects;
   const groups={
     primary:templates.filter(object=>object.role==='primary'),
     support:templates.filter(object=>object.role==='support'),
     accent:templates.filter(object=>object.role==='accent'),
   };
-  const coreCount=Math.min(count,count<80?1:Math.max(2,Math.min(8,Math.round(count/300))));
-  const heroCount=Math.min(count-coreCount,
-    Math.max(coreCount*3,Math.min(coreCount*6,Math.round(count*.015))));
-  const supportCount=Math.min(count-coreCount-heroCount,Math.round(count*.20));
-  const accentCount=count-coreCount-heroCount-supportCount;
+  const heroCount=Math.min(count,Math.max(1,Math.min(24,Math.round(count*.018))));
+  const supportCount=Math.min(count-heroCount,Math.round(count*.20));
+  const accentCount=count-heroCount-supportCount;
   const result:VoidFigure[]=[];
   const scale=VOID_COORDINATE_SCALE*spacingFactor;
   const scaled=(x:number,y:number,z:number):Vector3Tuple=>[x*scale,y*scale,z*scale];
@@ -143,12 +133,10 @@ export function voidSceneObjects(
     return length<1;
   };
   const create=(tier:VoidTier,i:number,point:Vector3Tuple,radius:number,parent?:string)=>{
-    const role:ThreeObject['role']=tier==='core'||tier==='primary'?'primary':
-      tier==='support'?'support':'accent';
+    const role:ThreeObject['role']=tier;
     const matches=groups[role].length?groups[role]:templates;
     const template=matches[i%matches.length];
-    const kind=tier==='core'?coreKind(enabledKinds):
-      tier!=='primary'&&i<enabledKinds.length?enabledKinds[i]:
+    const kind=tier!=='primary'&&i<enabledKinds.length?enabledKinds[i]:
       enabledKinds.includes(template.kind)?template.kind:
         enabledKinds[Math.floor(random()*enabledKinds.length)];
     const figure:VoidFigure={
@@ -166,13 +154,12 @@ export function voidSceneObjects(
     result.push(figure);
     return figure;
   };
-  // Anchor corestones at the densest, most strongly convergent knots.
-  // The ranking is computed in the unscaled field so spacingPercent never
-  // alters which physical gravitational wells get selected.
-  const selected=selectVoidGravityCoreKnots(field,coreCount);
-  const cores=selected.map((k,i)=>create('core',i,
+  // Native primary figures inherit the gravity-selected convergence knots.
+  // Use unscaled field scores to keep knot choices stable across spacing.
+  const selected=selectVoidGravityPrimaryKnots(field,heroCount);
+  const heroes=selected.map((k,i)=>create('primary',i,
     scaled(field.knots[k*3],field.knots[k*3+1],field.knots[k*3+2]),
-    2.15+random()*.48));
+    .75+random()*.43));
   // Pick nearby, empty-space-safe points. These are REAL native 3D figures,
   // with parent IDs for preferred local hierarchy wiring.
   const near=(anchor:VoidFigure,minDistance:number,maxDistance:number):Vector3Tuple|null=>{
@@ -195,13 +182,6 @@ export function voidSceneObjects(
     const offset=(i%count)*4;
     return scaled(field.figures[offset],field.figures[offset+1],field.figures[offset+2]);
   };
-  const heroes:VoidFigure[]=[];
-  for(let i=0;i<heroCount;i++){
-    const parent=cores[i%cores.length];
-    const nearby=near(parent,3.02,3.65);
-    heroes.push(create('primary',i,nearby??sample(i),.75+random()*.43,
-      nearby?parent.id:undefined));
-  }
   const supports:VoidFigure[]=[];
   for(let i=0;i<supportCount;i++){
     const parent=heroes[i%Math.max(1,heroes.length)];
@@ -230,10 +210,8 @@ export function voidConnectionReach(count:number):number{
 }
 
 
-/** Bounded local FOUR-STAGE wiring. An edge is allowed only between adjacent
- * tiers (core→primary→support→accent) or among nearby support/accent peers.
- * Explicit parent links get first choice; disconnected distant pieces are
- * preferable to giant wires crossing the empty universe.
+/** Bounded local three-stage wiring: primary→support→accent, plus
+ * nearby support/accent peer links. No huge remote root connections.
  */
 export function voidSceneConnections(
   objects:readonly ThreeObject[],spacingFactor=1,
@@ -241,9 +219,8 @@ export function voidSceneConnections(
   if(objects.length<2)return [];
   const nodes=[...objects].sort((a,b)=>a.id.localeCompare(b.id));
   const scale=Number.isFinite(spacingFactor)&&spacingFactor>0?spacingFactor:1;
-  const ordinaryReach=voidConnectionReach(nodes.length)*scale;
-  const coreReach=Math.max(ordinaryReach,4.25*scale);
-  const cellSize=coreReach;
+  const reach=voidConnectionReach(nodes.length)*scale;
+  const cellSize=reach;
   const bucket=(x:number,y:number,z:number)=>`${x},${y},${z}`;
   const cells=new Map<string,number[]>();
   const coords=nodes.map(node=>node.position.map(v=>Math.floor(v/cellSize)) as Vector3Tuple);
@@ -252,10 +229,9 @@ export function voidSceneConnections(
     if(list)list.push(i);else cells.set(key,[i]);
   });
   const tier=(node:ThreeObject):number=>
-    node.id.startsWith('void-core-')?0:
-    node.role==='primary'?1:node.role==='support'?2:3;
+    node.role==='primary'?0:node.role==='support'?1:2;
   const maxDegree=(o:ThreeObject)=>
-    tier(o)===0?8:tier(o)===1?8:tier(o)===2?5:3;
+    o.role==='primary'?7:o.role==='support'?5:3;
   type Candidate={i:number;j:number;distance:number;score:number;parent:boolean};
   const candidates:Candidate[]=[];
   for(let i=0;i<nodes.length;i++){
@@ -268,14 +244,13 @@ export function voidSceneConnections(
         if(j<=i)continue;
         const b=nodes[j],rankB=tier(b);
         const adjacent=Math.abs(rankA-rankB)===1;
-        const alongFilament=rankA===rankB&&rankA>=2;
+        const alongFilament=rankA===rankB&&rankA>=1;
         if(!adjacent&&!alongFilament)continue;
         const distance=Math.hypot(
           a.position[0]-b.position[0],
           a.position[1]-b.position[1],
           a.position[2]-b.position[2],
         );
-        const reach=Math.min(rankA,rankB)===0?coreReach:ordinaryReach;
         if(distance<.0001||distance>reach||
           crossesEmptyVoid(a.position,b.position,scale))continue;
         const parent=(a as VoidFigure).voidParentId===b.id||
