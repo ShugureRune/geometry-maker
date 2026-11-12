@@ -27,6 +27,7 @@ import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScal
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {standbyDefaults,easeInOut,matchThreeObjects,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
+import {inclinedCameraOrbitStep} from './camera-orbit';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -318,14 +319,22 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
         // zoom. Rotation is opt-in, frame-rate independent and temporarily
         // pauses after a manual drag / pinch / wheel interaction.
         const standby=settings.standby??standbyDefaults;
-        orbit.autoRotate=standby.enabled&&standby.cameraAutoRotate&&
+        const autoOrbit=standby.enabled&&standby.cameraAutoRotate&&
           settings.animation&&!exportingVideo.current&&!document.hidden&&
           performance.now()>=cameraInteractionUntil.current;
+        const tiltedOrbit=autoOrbit&&standby.cameraOrbitMode==='inclined';
+        // Preserve the existing horizontal OrbitControls orbit exactly as
+        // before. Inclined orbit takes over only the angular step, never
+        // repositions or reinitializes the camera when modes change.
+        orbit.autoRotate=autoOrbit&&!tiltedOrbit;
         orbit.autoRotateSpeed=standby.cameraRotateSpeed;
-        // Auto-rotation with damping accumulates angular momentum, so simply
-        // turning it off would keep the camera drifting after pause. Run
-        // continuous orbit without damping; manual gestures keep damping.
-        orbit.enableDamping=!orbit.autoRotate;
+        orbit.enableDamping=!autoOrbit;
+        if(tiltedOrbit){
+          const next=inclinedCameraOrbitStep(camera.position.toArray() as [number,number,number],
+            orbit.target.toArray() as [number,number,number],
+            delta,standby.cameraRotateSpeed,standby.cameraOrbitTilt);
+          camera.position.set(...next);
+        }
         orbit.update(Math.min(.1,Math.max(0,delta)));
       }
     }
@@ -588,6 +597,7 @@ export default function ThreePreview(props: Props) {
     data-standby-entrance-complete={props.skipEntrance?'true':'false'}
     data-camera-auto-rotate={(props.settings.standby??standbyDefaults).enabled&&
       (props.settings.standby??standbyDefaults).cameraAutoRotate?'on':'off'}
+    data-camera-orbit-mode={(props.settings.standby??standbyDefaults).cameraOrbitMode}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-floor-style={(props.settings.floorGrid??floorGridDefaults).style}
       data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
