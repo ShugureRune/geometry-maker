@@ -74,3 +74,56 @@ test('standby camera orbit defaults OFF, moves without zoom jumps, pauses and su
   await expect(page.locator('#three-standby-camera-speed')).toHaveValue('3');
   expect(errors).toEqual([]);
 });
+
+test('tilted 10-degree orbit moves camera vertically, stays centered and restores its mode',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('./');
+  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
+  await category(page,'図形');
+  await page.getByLabel('3D描画品質').selectOption('low');
+  const preview=page.getByTestId('three-preview');
+  await expect(preview.locator('canvas')).toBeVisible();
+
+  await category(page,'アニメーション');
+  await page.getByLabel('3D待機画面モードを有効化').check();
+  const orbit=page.getByRole('checkbox',{name:'待機中にカメラを自動回転'});
+  await expect(orbit).not.toBeChecked();
+  await orbit.check();
+  const mode=page.locator('#three-standby-orbit-mode');
+  await expect(mode).toHaveValue('horizontal');
+  await expect(page.locator('#three-standby-camera-tilt')).toHaveCount(0);
+  await mode.selectOption('inclined');
+  await expect(preview).toHaveAttribute('data-camera-orbit-mode','inclined');
+  const tilt=page.locator('#three-standby-camera-tilt');
+  await expect(tilt).toHaveValue('10');
+  await page.locator('#three-standby-camera-speed').fill('3');
+
+  const first=await viewFromSavedSettings(page);
+  await page.waitForTimeout(1450);
+  const second=await viewFromSavedSettings(page);
+  expect(Math.abs(second.view.position[1]-first.view.position[1])).toBeGreaterThan(.08);
+  expect(distance(first.view.target,second.view.target)).toBeLessThan(.05);
+  expect(distance(first.view.position,first.view.target))
+    .toBeCloseTo(distance(second.view.position,second.view.target),1);
+
+  await category(page,'アニメーション');
+  await tilt.fill('20');
+  await expect(tilt).toHaveValue('20');
+  await mode.selectOption('horizontal');
+  await expect(page.locator('#three-standby-camera-tilt')).toHaveCount(0);
+  await mode.selectOption('inclined');
+  await expect(tilt).toHaveValue('20');
+
+  await expect.poll(async()=>page.evaluate(()=>{
+    try{return JSON.parse(localStorage.getItem('geometry-maker-studio-autosave-v1')??'null')
+      ?.threeD?.settings?.standby?.cameraOrbitMode;}
+    catch{return null;}
+  })).toBe('inclined');
+  await page.reload();
+  await category(page,'アニメーション');
+  await expect(page.getByRole('checkbox',{name:'待機中にカメラを自動回転'})).toBeChecked();
+  await expect(page.locator('#three-standby-orbit-mode')).toHaveValue('inclined');
+  await expect(page.locator('#three-standby-camera-tilt')).toHaveValue('20');
+  expect(errors).toEqual([]);
+});
