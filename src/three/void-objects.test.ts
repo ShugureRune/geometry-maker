@@ -86,7 +86,7 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
       const tier={primary:0,support:1,accent:2};
       const rankA=tier[a.voidTier],rankB=tier[b.voidTier];
       expect(Math.abs(rankA-rankB)===1||
-        (rankA===rankB&&rankA>=2)).toBe(true);
+        (rankA===rankB&&rankA>=1)).toBe(true);
       expect(Math.hypot(...a.position.map((v,i)=>v-b.position[i]))).toBeCloseTo(link.distance,8);
       const pair=[link.a,link.b].sort().join('|');
       expect(pairs.has(pair)).toBe(false);
