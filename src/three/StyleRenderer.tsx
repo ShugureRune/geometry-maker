@@ -16,7 +16,7 @@ import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
 import {splitExitEnter,standbyMorphWireProgress,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
-import {neuralStartupFlash,neuralPacketAt,neuralSignalPlan} from './neural-signals';
+import {neuralStartupFlash,neuralPacketTrailAt,neuralArrivalFlashAt,neuralSignalPlan} from './neural-signals';
 
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
@@ -239,21 +239,30 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
 }
 
 
-/** A single instanced draw call for synchronized traveling impulses.
- * Both heroes emit at once; each medium relays the wave into all its children
- * only when the upstream pulse arrives. No timers or per-wire meshes.
- * Signal heads follow their floating node centers, like NetworkLines.
+/** One instanced draw call for glowing signal heads, their fading trails,
+ * and the short halo each relay/leaf produces on reception. Every effect is
+ * evaluated from the pausable 3D clock (including repeated seed changes).
+ * Incoming wiring can begin carrying packets as soon as each section grows:
+ * no particle ever runs ahead of its visible cable during a morph.
  */
-export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false}:{
+export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false,standby,completionOverride}:{
   objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;
   background:Background;low:boolean;seconds:RefObject<number>;skipEntrance?:boolean;
+  standby?:{transition:ThreeStandbyTransition;matches?:readonly MorphMatch[]};
+  /** Absolute clock position to synchronize a fresh wave after a seed switch. */
+  completionOverride?:number;
 }){
   const network=settings.network??networkDefaults;
   const entrance=settings.entrance??entranceDefaults;
-  // All hero subtrees share a single pulse clock, and children inherit their
-  // launch time from the moment their upstream pulse reaches the relay.
   const signalPlan=useMemo(()=>neuralSignalPlan(objects,edges),[objects,edges]);
+  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges),[objects,edges]);
+  const matchesById=useMemo(()=>{
+    const lookup=new Map<string,MorphMatch>();
+    for(const match of standby?.matches??[])if(match.to)lookup.set(match.to.id,match);
+    return lookup;
+  },[standby?.matches]);
   const lanes=low?1:2;
+  const tailCount=low?2:4;
   const mesh=useRef<InstancedMesh>(null);
   const dummy=useMemo(()=>new Object3D(),[]);
   const packetColor=useMemo(()=>new Color(),[]);
@@ -263,53 +272,101 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
       const a=byId.get(edge.a)!,b=byId.get(edge.b)!;
       const route=signalPlan.routes[index];
       const source=route.source==='a'?a:b;
+      const target=route.source==='a'?b:a;
       const color=new Color(styleColor(network.colorMode,network.customColor,
         source.role,background,network.contrast));
       color.multiplyScalar(radiance(color,network.glow,low));
-      return {a,b,route,color};
+      return {a,b,route,window:wireRoutes[index],target,color};
     });
-  },[objects,edges,signalPlan,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
+  },[objects,edges,signalPlan,wireRoutes,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
   const update=()=>{
     const instance=mesh.current;
     if(!instance)return;
     const clock=seconds.current;
-    const completion=entrance.enabled&&!skipEntrance?entrance.duration:0;
+    const completion=completionOverride??(entrance.enabled&&!skipEntrance?entrance.duration:0);
     const visibility=settings.visibilityAnimation??visibilityDefaults;
     let used=0;
+    const add=(position:readonly number[],size:number,strength:number,color:Color)=>{
+      if(strength<=.001)return;
+      dummy.position.set(position[0],position[1],position[2]);
+      dummy.scale.setScalar(Math.max(.0001,size));
+      dummy.updateMatrix();
+      instance.setMatrixAt(used,dummy.matrix);
+      packetColor.copy(color).multiplyScalar(strength);
+      instance.setColorAt(used,packetColor);
+      used++;
+    };
     for(const edge of topology){
-      const segment=visibleNetworkSegment(edge.a,edge.b,clock,visibility,
-        settings.floatAmount,settings.rotationAmount);
-      if(!segment)continue;
-      const reverse=edge.route.source==='b';
-      const origin=reverse?segment.end:segment.start;
-      const target=reverse?segment.start:segment.end;
+      let origin:readonly number[],target:readonly number[];
+      let opacity=1,available=1;
+      if(standby){
+        const from=standbyWirePose(edge.a,'new',matchesById.get(edge.a.id),
+          standby.transition,clock,settings,'');
+        const to=standbyWirePose(edge.b,'new',matchesById.get(edge.b.id),
+          standby.transition,clock,settings,'');
+        opacity=Math.min(from.opacity,to.opacity);
+        if(opacity<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
+        origin=edge.route.source==='a'?from.position:to.position;
+        target=edge.route.source==='a'?to.position:from.position;
+        if(standby.transition.mode==='morph'){
+          available=standbyMorphWireProgress(clock,standby.transition.duration,'new',0,1,edge.window);
+        }else if(entrance.enabled&&entrance.mode==='neural-grow'){
+          const enter=splitExitEnter(clock,standby.transition.duration).enter;
+          available=neuralWireWindowProgress(
+            (enter-NEURAL_WIRE_START_FRACTION)/(1-NEURAL_WIRE_START_FRACTION),
+            edge.window.start,edge.window.end);
+        }else{
+          // Classic exit/enter has no partial cable: wait for the incoming
+          // figure and line to finish appearing before sending electricity.
+          available=splitExitEnter(clock,standby.transition.duration).enter>=.999?1:0;
+        }
+        if(available<=.001)continue;
+      }else{
+        const segment=visibleNetworkSegment(edge.a,edge.b,clock,visibility,
+          settings.floatAmount,settings.rotationAmount);
+        if(!segment)continue;
+        origin=edge.route.source==='a'?segment.start:segment.end;
+        target=edge.route.source==='a'?segment.end:segment.start;
+      }
+      const base=(low?.054:.043)*Math.sqrt(network.width);
       for(let lane=0;lane<lanes;lane++){
-        const packet=neuralPacketAt(clock,completion,edge.route,signalPlan.cycle,lane);
-        if(!packet)continue;
-        dummy.position.set(
-          origin[0]+(target[0]-origin[0])*packet.progress,
-          origin[1]+(target[1]-origin[1])*packet.progress,
-          origin[2]+(target[2]-origin[2])*packet.progress);
-        dummy.scale.setScalar((low?.053:.041)*Math.sqrt(network.width)*(.5+.5*packet.alpha));
-        dummy.updateMatrix();
-        instance.setMatrixAt(used,dummy.matrix);
-        packetColor.copy(edge.color).multiplyScalar(1.7*packet.alpha);
-        instance.setColorAt(used,packetColor);
-        used++;
+        // A few fading samples behind the head create a smooth afterglow.
+        const trail=neuralPacketTrailAt(clock,completion,edge.route,signalPlan.cycle,lane,tailCount);
+        for(const [i,packet] of trail.entries()){
+          if(packet.progress>available+.0001)continue; // no flying off an unfinished cable
+          const position=[
+            origin[0]+(target[0]-origin[0])*packet.progress,
+            origin[1]+(target[1]-origin[1])*packet.progress,
+            origin[2]+(target[2]-origin[2])*packet.progress,
+          ];
+          const scale=base*(i===0?1.2:Math.max(.38,1-i*.19))*(.7+.3*packet.alpha);
+          add(position,scale,1.7*packet.alpha*opacity,edge.color);
+        }
+        // A halo at the receiver marks the exact instant of relay/leaf
+        // activation; draw just outside the actual solid, not inside it.
+        if(available>=.999){
+          const flash=neuralArrivalFlashAt(clock,completion,edge.route,signalPlan.cycle,lane);
+          if(flash>.001){
+            const radius=edge.target.radius*(1.12+.12*(1-flash));
+            add(target,radius,.65*flash*opacity,edge.color);
+          }
+        }
       }
     }
     instance.count=used;
     instance.instanceMatrix.needsUpdate=true;
     if(instance.instanceColor)instance.instanceColor.needsUpdate=true;
   };
-  // Reserve the instanced-color attribute before the first render, even if
-  // no packet is active yet. Otherwise the first impulse can need a shader recompile.
+  // Allocate colors before the first visible frame, including when the
+  // incoming layer is temporarily invisible during a standby transition.
   useLayoutEffect(()=>{
     if(mesh.current&&!mesh.current.instanceColor)mesh.current.setColorAt(0,new Color('#ffffff'));
     update();
-  },[topology,network.width,settings,entrance,seconds,skipEntrance,lanes]);
+  },[topology,network.width,settings,entrance,seconds,skipEntrance,standby,
+    completionOverride,lanes,tailCount]);
   useFrame(update);
-  return <instancedMesh ref={mesh} args={[undefined,undefined,topology.length*lanes]}
+  return <instancedMesh ref={mesh}
+    args={[undefined,undefined,topology.length*lanes*(tailCount+2)]}
     count={0} frustumCulled={false} renderOrder={2}>
     <sphereGeometry args={[1,low?6:10,low?4:8]}/>
     <meshBasicMaterial color="#ffffff" transparent opacity={.98} blending={AdditiveBlending}
