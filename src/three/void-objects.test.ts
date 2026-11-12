@@ -22,10 +22,17 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
   });
   it('keeps native figure roles, 3D kinds, rotations and floating motion metadata',()=>{
     const figures=voidSceneObjects(comp,'cosmos',100,false);
-    const primary=figures.filter(o=>o.role==='primary');
+    const primary=figures.filter(o=>o.voidTier==='primary');
+    const cores=figures.filter(o=>o.voidTier==='core');
     const support=figures.filter(o=>o.role==='support');
     const accent=figures.filter(o=>o.role==='accent');
-    expect(primary.length).toBeGreaterThan(2);
+    expect(cores.length).toBeGreaterThanOrEqual(2);
+    expect(primary.length).toBeGreaterThan(cores.length);
+    expect(cores.every(o=>o.role==='primary')).toBe(true);
+    expect(Math.min(...cores.map(o=>o.radius))).toBeGreaterThan(
+      Math.max(...primary.map(o=>o.radius))*1.5);
+    expect(new Set(figures.map(o=>o.voidTier))).toEqual(
+      new Set(['core','primary','support','accent']));
     expect(support.length).toBeGreaterThan(primary.length);
     expect(accent.length).toBeGreaterThan(support.length);
     expect(new Set(figures.map(o=>o.kind)).size).toBeGreaterThan(7);
@@ -68,7 +75,7 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
     const byId=new Map(figures.map(o=>[o.id,o]));
     const degree=new Map<string,number>();
     const pairs=new Set<string>();
-    expect(edges.length).toBeGreaterThan(figures.length*.35);
+    expect(edges.length).toBeGreaterThan(figures.length*.25);
     expect(edges.length).toBeLessThanOrEqual(Math.floor(figures.length*.95));
     expect(voidSceneConnections([...figures].reverse())).toEqual(edges);
     for(const link of edges){
@@ -76,7 +83,14 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
       expect(a).toBeDefined();
       expect(b).toBeDefined();
       expect(link.distance).toBeGreaterThan(0);
-      expect(link.distance).toBeLessThanOrEqual(voidConnectionReach(figures.length)+1e-8);
+      const coreLink=a.voidTier==='core'||b.voidTier==='core';
+      expect(link.distance).toBeLessThanOrEqual(
+        (coreLink?Math.max(4.25,voidConnectionReach(figures.length)):
+          voidConnectionReach(figures.length))+1e-8);
+      const tier={core:0,primary:1,support:2,accent:3};
+      const rankA=tier[a.voidTier],rankB=tier[b.voidTier];
+      expect(Math.abs(rankA-rankB)===1||
+        (rankA===rankB&&rankA>=2)).toBe(true);
       expect(Math.hypot(...a.position.map((v,i)=>v-b.position[i]))).toBeCloseTo(link.distance,8);
       const pair=[link.a,link.b].sort().join('|');
       expect(pairs.has(pair)).toBe(false);
@@ -95,9 +109,34 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
     }
     for(const figure of figures){
       expect(degree.get(figure.id)??0).toBeLessThanOrEqual(
-        figure.role==='primary'?6:figure.role==='support'?4:3);
+        figure.voidTier==='core'?8:figure.role==='primary'?8:
+          figure.role==='support'?5:3);
     }
     expect(voidSceneConnections([])).toEqual([]);
+  });
+  it('attaches corestone branches to their real corestones without remote spokes',()=>{
+    for(const density of [10,100,200]){
+      const figures=voidSceneObjects(comp,'four-stage-space',density,false);
+      const byId=new Map(figures.map(o=>[o.id,o]));
+      const edges=voidSceneConnections(figures);
+      const pairs=new Set(edges.map(edge=>[edge.a,edge.b].sort().join('|')));
+      const cores=figures.filter(o=>o.voidTier==='core');
+      const mains=figures.filter(o=>o.voidTier==='primary');
+      expect(cores.length).toBeGreaterThan(0);
+      expect(cores.length).toBeLessThanOrEqual(8);
+      expect(Math.min(...cores.map(o=>o.radius))).toBeGreaterThan(
+        Math.max(...mains.map(o=>o.radius)));
+      for(const main of mains.filter(o=>o.voidParentId)){
+        const parent=byId.get(main.voidParentId!)!;
+        expect(parent.voidTier).toBe('core');
+        expect(pairs.has([main.id,parent.id].sort().join('|'))).toBe(true);
+      }
+      for(const edge of edges){
+        const a=byId.get(edge.a)!,b=byId.get(edge.b)!;
+        expect(emptyRegion(...a.position)).toBe(false);
+        expect(emptyRegion(...b.position)).toBe(false);
+      }
+    }
   });
   it('scales connections with user spacing and keeps the low-density web local',()=>{
     const small=voidSceneObjects(comp,'sparse-cosmos',100,true);
