@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {generateThreeComposition,spaceThreeComposition,THREE_KINDS} from './model';
-import {voidSceneObjects,voidSceneConnections,voidConnectionReach} from './void-objects';
-import {VOID_EMPTY_CENTER,VOID_EMPTY_RADII,voidFigureCount} from './void-field';
+import {voidSceneObjects,voidSceneConnections,voidConnectionReach,voidKnotGravityScores,selectVoidGravityCoreKnots} from './void-objects';
+import {VOID_EMPTY_CENTER,VOID_EMPTY_RADII,voidFigureCount,generateVoidField,type VoidField} from './void-field';
 
 const comp=spaceThreeComposition(generateThreeComposition('native-void-web','16:9'));
 const emptyRegion=(x:number,y:number,z:number,factor=1)=>{
@@ -113,6 +113,41 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
           figure.role==='support'?5:3);
     }
     expect(voidSceneConnections([])).toEqual([]);
+  });
+  it('places the first corestone in the deepest local mass well, not the farthest knot',()=>{
+    const positions:number[]=[];
+    for(let i=0;i<20;i++)positions.push(
+      10+(i%5)-2,15+Math.floor(i/5)-2,-70+(i%3)-1,.4);
+    positions.push(-110,0,-170,.3,105,0,-210,.3);
+    const count=positions.length/4;
+    const field:VoidField={count,figures:new Float32Array(positions),
+      shapes:new Uint8Array(count),colorMix:new Float32Array(count),
+      knots:new Float32Array([-110,0,-170,10,15,-70,105,0,-210]),
+      filaments:new Float32Array(0),shapeCounts:[count,0,0]};
+    const scores=voidKnotGravityScores(field);
+    expect(scores[1]).toBeGreaterThan(scores[0]);
+    expect(scores[1]).toBeGreaterThan(scores[2]);
+    expect(selectVoidGravityCoreKnots(field,2)[0]).toBe(1);
+  });
+  it('anchors real seeded corestones at high-potential filament junctions',()=>{
+    for(const [seed,density,low] of [
+      ['cosmos',100,false],['dense-cosmos',200,false],['light-cosmos',100,true],
+    ] as const){
+      const field=generateVoidField(seed,voidFigureCount(density,low));
+      const scores=voidKnotGravityScores(field);
+      const figures=voidSceneObjects(comp,seed,density,low);
+      const cores=figures.filter(o=>o.voidTier==='core');
+      const selected=selectVoidGravityCoreKnots(field,cores.length);
+      const highest=scores.indexOf(Math.max(...scores));
+      expect(selected[0]).toBe(highest);
+      for(let i=0;i<cores.length;i++){
+        const knot=selected[i]*3;
+        for(let axis=0;axis<3;axis++)
+          expect(cores[i].position[axis]).toBeCloseTo(field.knots[knot+axis]*.255,7);
+      }
+      expect(cores.every(o=>!emptyRegion(...o.position))).toBe(true);
+      expect(selectVoidGravityCoreKnots(field,cores.length)).toEqual(selected);
+    }
   });
   it('attaches corestone branches to their real corestones without remote spokes',()=>{
     for(const density of [10,100,200]){
