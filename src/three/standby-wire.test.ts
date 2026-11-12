@@ -71,8 +71,11 @@ describe('3D standby wire endpoint synchronization',()=>{
     expect(threeVisibility(newer,t,visibility)).toBe(1);
     const oldWire=standbyWirePose(older,'old',pair,transition,t,combined,'wire-new');
     const newWire=standbyWirePose(newer,'new',pair,transition,t,combined,'wire-new');
-    expect(oldWire.opacity).toBeCloseTo(1);
-    expect(newWire.opacity).toBeCloseTo(1);
+    // Shared meshes fade in smoothly from the old (hidden) visibility
+    // instead of popping fully visible at the first seed-switch frame.
+    expect(oldWire.opacity).toBeGreaterThan(0);
+    expect(oldWire.opacity).toBeLessThan(.3);
+    expect(newWire.opacity).toBeCloseTo(oldWire.opacity);
     expect(oldWire.position).toEqual(newWire.position);
     // When the actual shared mesh vanishes, both wire layers vanish too.
     const hiddenNew={...newer,phase:0};
