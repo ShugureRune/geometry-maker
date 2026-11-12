@@ -1,5 +1,5 @@
 import {seededRandom} from '../scene';
-import {generateVoidField,voidFigureCount,VOID_KNOT_COUNT,VOID_EMPTY_CENTER,VOID_EMPTY_RADII} from './void-field';
+import {generateVoidField,voidFigureCount,VOID_EMPTY_CENTER,VOID_EMPTY_RADII,type VoidField} from './void-field';
 import {THREE_KINDS,type ThreeComposition,type ThreeKind,type ThreeObject,type Vector3Tuple} from './model';
 import type {NetworkEdge} from './network';
 
@@ -27,6 +27,84 @@ function crossesEmptyVoid(a:Vector3Tuple,b:Vector3Tuple,scale:number):boolean{
   }
   const t=aa>1e-12?Math.max(0,Math.min(1,-ab/aa)):0;
   return bb+2*ab*t+aa*t*t<1;
+}
+
+/** A deterministic, locally softened gravitational potential proxy.
+ * A deep well (large positive depth here) is the right home for a massive
+ * corestone. Gravitational acceleration itself can vanish at the center of
+ * a symmetric mass concentration, so we do NOT look for acceleration peaks.
+ *
+ * The generated filament figures stand in for matter tracers: nearby tracer
+ * masses contribute to a finite-range potential well. A knot where multiple
+ * filaments meet gets a modest convergence bonus, but cannot beat an
+ * essentially empty knot on connectivity alone. No heavyweight N-body
+ * simulation or all-pairs figure search is required (56 x <=2800).
+ */
+export function voidKnotGravityScores(field:VoidField):number[]{
+  const knots=field.knots.length/3;
+  if(knots===0)return [];
+  const incidences=new Uint8Array(knots);
+  const indexByPosition=new Map<string,number>();
+  const key=(x:number,y:number,z:number)=>`${x}:${y}:${z}`;
+  for(let i=0;i<knots;i++){
+    const k=i*3;
+    indexByPosition.set(key(field.knots[k],field.knots[k+1],field.knots[k+2]),i);
+  }
+  // Filament endpoints that exactly coincide with knots mark converging
+  // branches; intermediate polyline vertices do not count as junctions.
+  for(let j=0;j<field.filaments.length;j+=6){
+    for(const o of [0,3]){
+      const idx=indexByPosition.get(key(
+        field.filaments[j+o],field.filaments[j+o+1],field.filaments[j+o+2]));
+      if(idx!==undefined)incidences[idx]++;
+    }
+  }
+  const radius=42, radiusSq=radius*radius,softeningSq=36;
+  const baseline=1/Math.sqrt(radiusSq+softeningSq);
+  const scores:number[]=[];
+  for(let i=0;i<knots;i++){
+    const k=i*3,x=field.knots[k],y=field.knots[k+1],z=field.knots[k+2];
+    let localWell=0;
+    for(let j=0;j<field.count;j++){
+      const q=j*4,dx=x-field.figures[q],dy=y-field.figures[q+1],
+        dz=z-field.figures[q+2],dSq=dx*dx+dy*dy+dz*dz;
+      if(dSq>=radiusSq)continue;
+      const tracerRadius=field.figures[q+3];
+      // More massive tracers deepen the well, while a floor keeps the
+      // number of nearby small figures important as a density measure.
+      const mass=.4+8*Math.pow(Math.max(0,tracerRadius),3);
+      localWell+=mass*(1/Math.sqrt(dSq+softeningSq)-baseline);
+    }
+    scores.push(localWell*(1+Math.min(6,incidences[i])*.12));
+  }
+  return scores;
+}
+
+/** Choose the deepest wells first, with just enough spacing to avoid
+ * visually overlapping giant cores. Never choose the furthest-apart knots:
+ * those tended to land corestones in sparsely populated outer filaments.
+ */
+export function selectVoidGravityCoreKnots(field:VoidField,count:number):number[]{
+  const scores=voidKnotGravityScores(field);
+  const ranked=scores.map((score,index)=>({index,score}))
+    .sort((a,b)=>b.score-a.score||a.index-b.index);
+  const target=Math.min(ranked.length,Math.max(0,Math.floor(count)));
+  const selected:number[]=[];
+  for(const minimumDistance of [32,20,0]){
+    for(const candidate of ranked){
+      if(selected.length>=target)break;
+      if(selected.includes(candidate.index))continue;
+      const k=candidate.index*3;
+      const suitable=selected.every(other=>{
+        const t=other*3;
+        const dx=field.knots[k]-field.knots[t],dy=field.knots[k+1]-field.knots[t+1],
+          dz=field.knots[k+2]-field.knots[t+2];
+        return dx*dx+dy*dy+dz*dz>=minimumDistance*minimumDistance;
+      });
+      if(suitable)selected.push(candidate.index);
+    }
+  }
+  return selected;
 }
 
 /** Four real size/role tiers: gigantic corestones, original major figures,
@@ -88,24 +166,13 @@ export function voidSceneObjects(
     result.push(figure);
     return figure;
   };
-  // Largest-separated real knots form the web's major junctions. Their
-  // positions remain deterministic and outside the reserved central VOID.
-  const knots=Array.from({length:VOID_KNOT_COUNT},(_,i):Vector3Tuple=>
-    scaled(field.knots[i*3],field.knots[i*3+1],field.knots[i*3+2]));
-  const selected:number[]=[Math.floor(random()*knots.length)];
-  while(selected.length<coreCount){
-    let best=-1,bestDistance=-1;
-    for(let i=0;i<knots.length;i++){
-      if(selected.includes(i))continue;
-      const nearest=Math.min(...selected.map(j=>
-        (knots[i][0]-knots[j][0])**2+
-        (knots[i][1]-knots[j][1])**2+
-        (knots[i][2]-knots[j][2])**2));
-      if(nearest>bestDistance){best=i;bestDistance=nearest;}
-    }
-    selected.push(best);
-  }
-  const cores=selected.map((k,i)=>create('core',i,knots[k],2.15+random()*.48));
+  // Anchor corestones at the densest, most strongly convergent knots.
+  // The ranking is computed in the unscaled field so spacingPercent never
+  // alters which physical gravitational wells get selected.
+  const selected=selectVoidGravityCoreKnots(field,coreCount);
+  const cores=selected.map((k,i)=>create('core',i,
+    scaled(field.knots[k*3],field.knots[k*3+1],field.knots[k*3+2]),
+    2.15+random()*.48));
   // Pick nearby, empty-space-safe points. These are REAL native 3D figures,
   // with parent IDs for preferred local hierarchy wiring.
   const near=(anchor:VoidFigure,minDistance:number,maxDistance:number):Vector3Tuple|null=>{
