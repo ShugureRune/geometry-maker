@@ -141,3 +141,73 @@ describe('VOID gravity hierarchy places large > medium > small in actual branch 
     }
   });
 });
+
+
+describe('Cosmic spine corridors instead of radial firework clusters',()=>{
+  const raw=(position:readonly number[])=>position.map(n=>n/.255);
+  const distToSegment=(point:readonly number[],a:readonly number[],b:readonly number[])=>{
+    const d=a.map((v,i)=>b[i]-v);
+    const u=Math.min(1,Math.max(0,a.reduce((s,v,i)=>s+(point[i]-v)*d[i],0)/
+      (d.reduce((s,v)=>s+v*v,0)||1)));
+    return Math.hypot(...a.map((v,i)=>point[i]-v-d[i]*u));
+  };
+  it('concentrates most medium figures along inter-knot corridors, not outward rays',()=>{
+    for(const seed of ['cosmos','gravity-tree','web-seed-after']){
+      const figures=voidSceneObjects(comp,seed,200,false);
+      const heroes=figures.filter(f=>f.role==='primary').map(f=>raw(f.position));
+      const relays=figures.filter(f=>f.role==='support').map(f=>raw(f.position));
+      let aligned=0;
+      for(const relay of relays){
+        let best=Infinity;
+        for(let i=0;i<heroes.length;i++)for(let j=i+1;j<heroes.length;j++){
+          if(voidBranchCrossesCenter(heroes[i],heroes[j]))continue;
+          best=Math.min(best,distToSegment(relay,heroes[i],heroes[j]));
+        }
+        if(best<=6.5)aligned++;
+      }
+      expect(heroes.length).toBeGreaterThan(2);
+      expect(relays.length).toBeGreaterThan(300);
+      expect(aligned/relays.length).toBeGreaterThan(.83);
+    }
+  });
+  it('distributes small filaments evenly across relays rather than radiating from a few',()=>{
+    for(const [low,density] of [[true,10],[true,100],[false,100],[false,200]] as const){
+      const figures=voidSceneObjects(comp,'balanced-branches',density,low);
+      const relays=figures.filter(f=>f.role==='support');
+      const small=figures.filter(f=>f.role==='accent');
+      const used=new Map(relays.map(f=>[f.id,0]));
+      for(const child of small){
+        const parent=child.voidParentId!;
+        expect(used.has(parent)).toBe(true);
+        used.set(parent,used.get(parent)!+1);
+      }
+      if(used.size){
+        const values=[...used.values()];
+        expect(Math.max(...values)-Math.min(...values)).toBeLessThanOrEqual(1);
+        expect(Math.max(...values)).toBeLessThanOrEqual(Math.ceil(small.length/relays.length));
+      }
+      // Extra backbone wires were intentionally NOT added: preserve the
+      // rooted wire scheduler and network animation cost.
+      expect(voidSceneConnections(figures)).toHaveLength(relays.length+small.length);
+    }
+  });
+  it('keeps thin child branches aligned with their parent corridor',()=>{
+    const figures=voidSceneObjects(comp,'narrow-filaments',200,false);
+    const byId=new Map(figures.map(f=>[f.id,f]));
+    const sideDistances:number[]=[];
+    for(const child of figures.filter(f=>f.role==='accent')){
+      const parent=byId.get(child.voidParentId!)!;
+      const hero=byId.get(parent.voidParentId!)!;
+      const rootDirection=parent.position.map((v,i)=>v-hero.position[i]);
+      const childDelta=child.position.map((v,i)=>v-parent.position[i]);
+      const unitLength=Math.hypot(...rootDirection)||1;
+      const projection=rootDirection.reduce((sum,v,i)=>sum+v*childDelta[i],0)/unitLength;
+      expect(projection).toBeGreaterThan(0);
+      const side=Math.sqrt(Math.max(0,childDelta.reduce((sum,v)=>sum+v*v,0)-projection**2));
+      sideDistances.push(side/.255);
+    }
+    sideDistances.sort((a,b)=>a-b);
+    expect(sideDistances[Math.floor(sideDistances.length*.95)]).toBeLessThan(4);
+    expect(sideDistances.every(Number.isFinite)).toBe(true);
+  });
+});
