@@ -110,7 +110,8 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
       const {transition,variant}=standby;
       const {position,rotation,radius,opacity:alpha,colorMix}=standbyObjectPose(
         standby.from,standby.to,seconds.current,transition,variant,
-        settings.floatAmount,settings.rotationAmount,entrance,seed
+        settings.floatAmount,settings.rotationAmount,entrance,seed,
+        (settings.network??networkDefaults).enabled
       );
       const visibility=standbyMeshVisibility(
         standby.from,standby.to,variant,seconds.current,transition,appearance);
