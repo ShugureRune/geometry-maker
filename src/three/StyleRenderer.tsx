@@ -11,6 +11,7 @@ import type {ThreeSettings} from './settings';
 import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
+import {networkEndpointColor,networkReceiverColor,neuralWireColorAt} from './network-colors';
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
@@ -110,10 +111,9 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
   useLayoutEffect(()=>{material.opacity=currentOpacity();},
     [material,network.opacity,standby?.transition.id,standby?.transition.mode,standby?.transition.duration,standby?.layer]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;return value;},[geometry,material]);
-  const colors=useMemo(()=>topology.map(({a,b})=>[a,b].map(object=>{
-    const color=new Color(styleColor(network.colorMode,network.customColor,object.role,background,network.contrast));
-    return color.multiplyScalar(radiance(color,network.glow,low));
-  })),[topology,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
+  const colors=useMemo(()=>topology.map(({a,b})=>[a,b].map(object=>
+    networkEndpointColor(object.role,network,background,low))),
+    [topology,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);useEffect(()=>()=>material.dispose(),[material]);
   useLayoutEffect(()=>{
     material.worldUnits=!low;material.linewidth=.018*network.width;
@@ -266,6 +266,8 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
   const mesh=useRef<InstancedMesh>(null);
   const dummy=useMemo(()=>new Object3D(),[]);
   const packetColor=useMemo(()=>new Color(),[]);
+  // Reusable linear-RGB color for the packet's position along the gradient.
+  const gradientColor=useMemo(()=>new Color(),[]);
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
     return edges.map((edge,index)=>{
@@ -273,10 +275,12 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
       const route=signalPlan.routes[index];
       const source=route.source==='a'?a:b;
       const target=route.source==='a'?b:a;
-      const color=new Color(styleColor(network.colorMode,network.customColor,
-        source.role,background,network.contrast));
-      color.multiplyScalar(radiance(color,network.glow,low));
-      return {a,b,route,window:wireRoutes[index],target,color};
+      const sourceColor=networkEndpointColor(source.role,network,background,low);
+      const targetColor=networkEndpointColor(target.role,network,background,low);
+      // The receiver halo belongs to the SOLID, not to the network tint.
+      const receiverColor=networkReceiverColor(target.role,background);
+      return {a,b,route,window:wireRoutes[index],target,
+        sourceColor,targetColor,receiverColor};
     });
   },[objects,edges,signalPlan,wireRoutes,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
   const update=()=>{
@@ -341,7 +345,10 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
             origin[2]+(target[2]-origin[2])*packet.progress,
           ];
           const scale=base*(i===0?1.2:Math.max(.38,1-i*.19))*(.7+.3*packet.alpha);
-          add(position,scale,1.7*packet.alpha*opacity,edge.color);
+          // Both the bright head AND each trailing particle sample the
+          // underlying wire gradient at their own current position.
+          add(position,scale,1.7*packet.alpha*opacity,
+            neuralWireColorAt(edge.sourceColor,edge.targetColor,packet.progress,gradientColor));
         }
         // A halo at the receiver marks the exact instant of relay/leaf
         // activation; draw just outside the actual solid, not inside it.
@@ -349,7 +356,7 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
           const flash=neuralArrivalFlashAt(clock,completion,edge.route,signalPlan.cycle,lane);
           if(flash>.001){
             const radius=edge.target.radius*(1.12+.12*(1-flash));
-            add(target,radius,.65*flash*opacity,edge.color);
+            add(target,radius,.65*flash*opacity,edge.receiverColor);
           }
         }
       }
