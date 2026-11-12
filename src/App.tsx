@@ -94,7 +94,10 @@ export default function App() {
   const threeApi=useRef<ThreePreviewHandle|null>(null);
   const threeView=useRef<ThreeView|undefined>(saved?.threeD.view);
   const [threeReady,setThreeReady]=useState(false);
-  const [threeRestore,setThreeRestore]=useState({serial:0,time:saved?.threeD.elapsedSeconds??0});
+  const [threeRestore,setThreeRestore]=useState({
+    serial:0,time:saved?.threeD.elapsedSeconds??0,
+    floorTime:saved?.threeD.floorElapsedSeconds??saved?.threeD.elapsedSeconds??0,
+  });
   const [standbyTransition,setStandbyTransition]=useState<ThreeStandbyTransition|null>(null);
   const [standbyFinishedSeed,setStandbyFinishedSeed]=useState<string|null>(saved?.threeD.standbyComplete?saved.threeD.seed:null);
   const [threeExportBusy,setThreeExportBusy]=useState(false);
@@ -185,7 +188,10 @@ export default function App() {
         seed,aspectRatio:ratio,density,visualTheme,background,
         colorSettings:activeColors,settings:threeSettings,
         ...(threeView.current?{view:threeView.current}:{}),
-        elapsedSeconds:elapsed,exportWidth:1920,exportHeight:1080,
+        elapsedSeconds:elapsed,
+        floorElapsedSeconds:Math.max(0,Math.min(1e9,
+          threeApi.current?.getFloorElapsedSeconds?.()??threeRestore.floorTime)),
+        exportWidth:1920,exportHeight:1080,
         ...(standbyFinishedSeed===seed?{standbyComplete:true}:{}),
       };
       const draft:StudioAutosave={
@@ -212,7 +218,7 @@ export default function App() {
   },[renderMode,category,threeCategory,studioFocus,sidebarCollapsed,
     version,seed,ratio,density,visualTheme,enabledShapeKinds,background,
     activeColors,textOverlay,magicSettings,ambient,animation,threeSettings,
-    threeRestore.time,standbyFinishedSeed]);
+    threeRestore.time,threeRestore.floorTime,standbyFinishedSeed]);
   useEffect(()=>{if(ambient.enabled&&version!==MAGIC_ALGORITHM_VERSION)playback.setPlaying(false);},[ambient.enabled,version]);
   useEffect(()=>{playback.restart(true);},[]);
   const cues=useMemo(()=>schedule(candidates,seed,version),[candidates,seed,version]);
@@ -525,11 +531,14 @@ export default function App() {
           project={()=>({kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed,aspectRatio:ratio,density,visualTheme,background,
             colorSettings:activeColors,settings:threeSettings,
              ...(standbyFinishedSeed===seed?{standbyComplete:true}:{}),
+             floorElapsedSeconds:Math.max(0,Math.min(1e9,
+               threeApi.current?.getFloorElapsedSeconds?.()??threeRestore.floorTime)),
              ...(threeView.current?{view:threeView.current}:{})})}
           onRestore={(project:ThreeProject)=>{
             setStandbyTransition(null);setStandbyFinishedSeed(project.standbyComplete?project.seed:null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
             setVisualTheme(project.visualTheme);setColorSettings(project.colorSettings);setBackground(project.colorSettings?coloredBackground(project.background,project.colorSettings):project.background);
-            setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds}));
+            setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds,
+              floorTime:project.floorElapsedSeconds??project.elapsedSeconds}));
           }}/>}
         </div>
       </aside>
@@ -563,7 +572,8 @@ export default function App() {
               setThreeRestore(current=>({...current,serial:current.serial+1}));
             }}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
-                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
+                {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time}
+                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
                    skipEntrance={standbyFinishedSeed===seed}
                    onTransitionComplete={id=>{
                      setStandbyFinishedSeed(seed);
