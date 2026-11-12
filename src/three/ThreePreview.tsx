@@ -17,7 +17,8 @@ import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,NeuralSignals,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
-import {voidFigureCount} from './void-field';
+import {voidSceneObjects,voidSceneConnections} from './void-objects';
+import {VoidRenderer} from './VoidRenderer';
 import {skyDefaults} from './sky-settings';
 import {worldDefaults,sunlightAtHour} from './world-settings';
 import {ExploreController} from './ExploreController';
@@ -609,21 +610,38 @@ export default function ThreePreview(props: Props) {
   const exploring=!!world.explore;
   const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
   const sunlight=sunlightAtHour(world.timeOfDay);
-  const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
+  const isVoid=(props.settings.sky??skyDefaults).kind==='cosmic-void';
+  const voidDensity=(props.settings.sky??skyDefaults).density;
+  // VOID replaces the normal constellation with hundreds/thousands of the
+  // SAME 13 kinds and three native figure roles: no extra background solids.
+  const objects=useMemo(()=>isVoid?
+    voidSceneObjects(props.composition,props.skySeed,voidDensity,low,
+      props.settings.enabledKinds,threeSpacingFactor(props.settings.spacingPercent??100)):
+    visibleThreeObjects(props.composition,props.density,props.settings.enabledKinds),
+    [isVoid,props.composition,props.skySeed,voidDensity,low,props.settings.enabledKinds,
+      props.settings.spacingPercent,props.density]);
   const previousObjects=useMemo(()=>props.transition?
-    visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
-    [props.transition,props.density,props.settings.enabledKinds]);
-  const matches=useMemo<MorphMatch[]>(()=>props.transition?.mode==='morph'?
-    matchThreeObjects(previousObjects,objects):[],[props.transition,previousObjects,objects]);
+    isVoid?voidSceneObjects(props.transition.fromComposition,
+      props.transition.fromSeed,voidDensity,low,props.settings.enabledKinds,
+      threeSpacingFactor(props.settings.spacingPercent??100)):
+      visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
+    [props.transition,isVoid,voidDensity,low,props.density,props.settings.enabledKinds,
+      props.settings.spacingPercent]);
+  // Matching 2,800 independent nodes would be prohibitively expensive.
+  // VOID instead crossfades two complete instanced networks as seeded webs.
+  const matches=useMemo<MorphMatch[]>(()=>!isVoid&&props.transition?.mode==='morph'?
+    matchThreeObjects(previousObjects,objects):[],[isVoid,props.transition,previousObjects,objects]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
   const edges=useMemo(()=>network.enabled?
-    networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
-    [objects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
+    isVoid?voidSceneConnections(objects):
+      networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
+    [objects,isVoid,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const previousEdges=useMemo(()=>props.transition&&network.enabled?
-    networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
-    [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
+    isVoid?voidSceneConnections(previousObjects):
+      networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
+    [props.transition,previousObjects,isVoid,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -657,8 +675,7 @@ export default function ThreePreview(props: Props) {
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-floor-style={(props.settings.floorGrid??floorGridDefaults).style}
       data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind}
-    data-void-count={(props.settings.sky??skyDefaults).kind==='cosmic-void'?
-      voidFigureCount((props.settings.sky??skyDefaults).density,low):0}
+    data-void-count={isVoid?objects.length:0}
     data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
@@ -674,6 +691,16 @@ export default function ThreePreview(props: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={floorSeconds} view={props.view} low={low}/>
+      {isVoid?<>
+        {props.transition&&<VoidRenderer objects={previousObjects} settings={props.settings}
+          background={props.transition.fromBackground} visualTheme={props.transition.fromTheme}
+          low={low} seconds={seconds} seed={props.transition.fromSeed}
+          standby={{transition:props.transition,layer:'old'}}/>}
+        <VoidRenderer objects={objects} settings={props.settings}
+          background={props.background} visualTheme={props.visualTheme}
+          low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance}
+          standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>
+      </>:<>
       {props.transition ? props.transition.mode==='morph'?
         matches.map(match=><group key={match.id}>
           {match.from&&match.to&&match.from.kind===match.to.kind?
@@ -703,6 +730,7 @@ export default function ThreePreview(props: Props) {
         objects.map(object=><Solid key={object.id} object={object} settings={props.settings}
           background={props.background} visualTheme={props.visualTheme} low={low}
           seconds={seconds} outlines={outlines} seed={props.skySeed} skipEntrance={props.skipEntrance}/>)}
+      </>}
       {props.transition&&previousCelestial.map(body=><CelestialObjectMesh key={'old-'+body.id}
         body={body} settings={props.settings} low={low} seconds={seconds} seed={props.transition!.fromSeed}
         standby={{transition:props.transition!,layer:'old'}}/>)}
