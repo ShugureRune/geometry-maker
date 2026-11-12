@@ -1,0 +1,49 @@
+name: 3D neural network wiring checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/three/network.ts'
+      - 'src/three/style-settings.ts'
+      - 'src/three/ThreeStyleControls.tsx'
+      - 'src/three/ThreePreview.tsx'
+      - 'src/three/network.test.ts'
+      - 'src/three/style-settings.test.ts'
+      - 'tests/three-neural-network.spec.ts'
+      - '.github/workflows/three-neural-network.yml'
+  pull_request:
+    paths:
+      - 'src/three/network.ts'
+      - 'src/three/style-settings.ts'
+      - 'src/three/ThreeStyleControls.tsx'
+      - 'src/three/ThreePreview.tsx'
+      - 'src/three/network.test.ts'
+      - 'src/three/style-settings.test.ts'
+      - 'tests/three-neural-network.spec.ts'
+      - '.github/workflows/three-neural-network.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  neural-network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify neural branches, settings recovery and standby transitions
+        run: npx playwright test tests/three-neural-network.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: neural-wiring-regressions
+          path: test-results/
+          retention-days: 7
