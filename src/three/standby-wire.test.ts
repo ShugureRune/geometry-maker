@@ -4,6 +4,7 @@ import {entranceDefaults} from './entrance';
 import {threeDefaults} from './settings';
 import {matchThreeObjects,morphPose,splitExitEnter,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
+import {threeVisibility,visibilityDefaults} from './visibility';
 
 const from=generateThreeComposition('wire-old','16:9');
 const to=generateThreeComposition('wire-new','16:9');
@@ -53,6 +54,44 @@ describe('3D standby wire endpoint synchronization',()=>{
     const removed=matchThreeObjects(from.objects.slice(0,7),to.objects.slice(0,3)).find(m=>m.from&&!m.to)!;
     expect(standbyWirePose(removed.from!,'old',removed,transition,0,settings,'wire-new').opacity).toBe(1);
     expect(standbyWirePose(removed.from!,'old',removed,transition,transition.duration,settings,'wire-new').opacity).toBe(0);
+  });
+
+  it('uses the visible shared mesh phase, never the invisible old seed phase, for both wire layers',()=>{
+    const older={...from.objects[0],role:'support' as const,phase:Math.PI*2*.2};
+    const newer={...to.objects[0],kind:older.kind,role:'support' as const,
+      phase:Math.PI*2*.3};
+    const pair={id:'linked-shared',from:older,to:newer};
+    const visibility={...visibilityDefaults,enabled:true,keepPrimaryVisible:false,
+      stagger:true};
+    const combined={...settings,visibilityAnimation:visibility};
+    const t=1;
+    // Old visibility is zero, yet the shared mesh is drawn with the NEW
+    // object's visibility. Both old/new wires must follow that SAME mesh.
+    expect(threeVisibility(older,transition.fromTime+t,visibility)).toBe(0);
+    expect(threeVisibility(newer,t,visibility)).toBe(1);
+    const oldWire=standbyWirePose(older,'old',pair,transition,t,combined,'wire-new');
+    const newWire=standbyWirePose(newer,'new',pair,transition,t,combined,'wire-new');
+    expect(oldWire.opacity).toBeCloseTo(1);
+    expect(newWire.opacity).toBeCloseTo(1);
+    expect(oldWire.position).toEqual(newWire.position);
+    // When the actual shared mesh vanishes, both wire layers vanish too.
+    const hiddenNew={...newer,phase:0};
+    const hiddenPair={...pair,to:hiddenNew};
+    const wire=standbyWirePose(older,'old',hiddenPair,transition,0,combined,'wire-new');
+    expect(wire.opacity).toBe(0);
+  });
+  it('hides transition wires whenever the exact old/new drawn mesh is invisible',()=>{
+    const older={...from.objects[0],role:'support' as const,phase:Math.PI*2*.2};
+    const newer={...to.objects[0],role:'support' as const,
+      kind:older.kind==='sphere'?'cube':'sphere',phase:Math.PI*2*.3};
+    const pair={id:'cross-geometry',from:older,to:newer};
+    const combined={...settings,visibilityAnimation:{
+      ...visibilityDefaults,enabled:true,keepPrimaryVisible:false,
+    }};
+    const t=1;
+    expect(threeVisibility(older,transition.fromTime+t,combined.visibilityAnimation)).toBe(0);
+    expect(standbyWirePose(older,'old',pair,transition,t,combined,'wire-new').opacity).toBe(0);
+    expect(standbyWirePose(newer,'new',pair,transition,t,combined,'wire-new').opacity).toBeGreaterThan(0);
   });
   it('matches reverse exit / new entrance without leading the solids',()=>{
     const exit={...transition,mode:'exit-enter' as const};
