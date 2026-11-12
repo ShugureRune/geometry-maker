@@ -7,7 +7,7 @@ import type {NetworkEdge} from './network';
  * Stored on the figure so rendering and cables use the SAME rooted tree.
  * Ordinary ThreeObject consumers can ignore this optional VOID metadata.
  */
-export type VoidFigure=ThreeObject&{voidParentId?:string};
+export type VoidFigure=ThreeObject&{voidParentId?:string;voidBridgeId?:string};
 type Point=Vector3Tuple;
 const VOID_CENTER:Point=[0,0,-115],VOID_RADII:Point=[23,19,35];
 const squared=(a:readonly number[],b:readonly number[])=>
@@ -40,54 +40,144 @@ const outward=(p:Point):Point=>unit([
 const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 const pointFromField=(figures:Float32Array,index:number):Point=>
   [figures[index*4],figures[index*4+1],figures[index*4+2]];
-const nearestIndex=(point:Point,candidates:readonly Point[]):number=>{
-  let best=0,measure=Infinity;
-  for(let i=0;i<candidates.length;i++){
-    const d=squared(point,candidates[i]);
-    if(d<measure){measure=d;best=i;}
-  }
-  return best;
+const blend=(a:Point,b:Point,t:number):Point=>[
+  a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,
+];
+const cross=(a:Point,b:Point):Point=>[
+  a[1]*b[2]-a[2]*b[1],
+  a[2]*b[0]-a[0]*b[2],
+  a[0]*b[1]-a[1]*b[0],
+];
+/** A spine links two large junctions; a spur runs from one junction toward a
+ * filament sample. Supports become ordered waypoints, not radial spokes.
+ */
+type FilamentPath={
+  root:number;from:Point;to:Point;via?:Point;targetHero?:number;
+  bend:Point;weight:number;
 };
-/** Medium figures are planted outward from a hero toward seeded filament
- * samples; short bounded branches never pierce the central void.
- */
-function placeMedium(hero:Point,sample:Point,variation:number):Point{
-  let direction=diff(sample,hero);
-  if(length(direction)<.001)direction=outward(hero);
-  direction=unit(direction);
-  const distance=clamp(length(diff(sample,hero))*.40,7,35)*(0.86+variation*.28);
-  const proposed=add(hero,direction,distance);
-  return voidBranchCrossesCenter(hero,proposed)?
-    add(hero,outward(hero),distance):proposed;
-}
-/** Small figures extend BEYOND their medium parent along its hero-to-medium
- * direction, then bend sideways toward another seeded filament sample.
- * The outward projection always remains positive: big -> medium -> small.
- */
-function placeSmall(hero:Point,medium:Point,sample:Point,variation:number):Point{
-  const radial=unit(diff(medium,hero));
-  const toward=diff(sample,medium);
-  const projected=dot(toward,radial);
-  const forward=clamp(projected*.36+3+variation*4,3,16);
-  const lateral=diff(toward,radial.map(x=>x*projected) as Point);
-  const lateralSize=length(lateral);
-  const side=length(lateral)>0?
-    lateral.map(v=>v*Math.min(.4,6/lateralSize)) as Point:[0,0,0] as Point;
-  const proposed=add(add(medium,radial,forward),side);
-  if(!voidBranchCrossesCenter(medium,proposed))return proposed;
-  // Bend tangentially away from the void while still going outward
-  // along the original hero -> medium branch.
-  const normal=outward(medium);
-  const tangent=diff(normal,radial.map(v=>v*dot(normal,radial)) as Point);
-  const tangentDir=unit(tangent);
-  if(length(tangent)>.0001){
-    for(const distance of [5,10,20,36,60]){
-      const attempt=add(add(medium,radial,forward),tangentDir,distance);
-      if(!voidBranchCrossesCenter(medium,attempt))return attempt;
+/** Find a short route outside the central void. Prefer the straight segment;
+ * when it crosses the void, try deterministic outside waypoints. */
+function safeRoute(from:Point,to:Point):{via?:Point;distance:number}|undefined{
+  if(!voidBranchCrossesCenter(from,to))
+    return {distance:length(diff(to,from))};
+  const directions:Point=[
+    [1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1],
+    [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
+    [1,0,1],[-1,0,1],[0,1,1],[0,-1,1],
+  ];
+  let best:{via:Point;distance:number}|undefined;
+  for(const spread of [1.2,1.7,2.5,3.5]){
+    for(const v of directions){
+      const n=unit(v);
+      const via:Point=[
+        VOID_CENTER[0]+n[0]*(VOID_RADII[0]+22)*spread,
+        VOID_CENTER[1]+n[1]*(VOID_RADII[1]+22)*spread,
+        VOID_CENTER[2]+n[2]*(VOID_RADII[2]+22)*spread,
+      ];
+      if(voidBranchCrossesCenter(from,via)||voidBranchCrossesCenter(via,to))continue;
+      const distance=length(diff(via,from))+length(diff(to,via));
+      if(!best||distance<best.distance)best={via,distance};
     }
   }
-  // Degenerate case: the parent is nearly tangent to the ellipsoid.
-  return add(medium,outward(medium),Math.max(forward,8));
+  return best;
+}
+function filamentPath(
+  root:number,from:Point,to:Point,random:()=>number,
+  weight:number,targetHero?:number,via?:Point,
+):FilamentPath{
+  const axis=unit(diff(to,from));
+  const reference:Point=Math.abs(axis[1])<.85?[0,1,0]:[1,0,0];
+  const side=unit(cross(axis,reference)),up=unit(cross(axis,side));
+  const angle=random()*Math.PI*2;
+  const amplitude=via?0:Math.min(4,length(diff(to,from))*.065)*
+    (.3+.7*random());
+  return {root,from,to,via,targetHero,weight,bend:[
+    (side[0]*Math.cos(angle)+up[0]*Math.sin(angle))*amplitude,
+    (side[1]*Math.cos(angle)+up[1]*Math.sin(angle))*amplitude,
+    (side[2]*Math.cos(angle)+up[2]*Math.sin(angle))*amplitude,
+  ]};
+}
+function alongPath(path:FilamentPath,t:number,curved=true):Point{
+  if(path.via){
+    const first=length(diff(path.via,path.from));
+    const second=length(diff(path.to,path.via));
+    const s=t*(first+second);
+    return s<=first?
+      blend(path.from,path.via,s/first):
+      blend(path.via,path.to,(s-first)/second);
+  }
+  return add(blend(path.from,path.to,t),path.bend,
+    curved?Math.sin(Math.PI*t):0);
+}
+/** Build a sparse minimum-length backbone among the existing large junctions.
+ * A middle-sized waypoint along each connection keeps the visible network
+ * continuous while avoiding a straight wire through the central void.
+ */
+function cosmicSpines(
+  heroes:readonly Point[],field:Float32Array,supportCount:number,
+  random:()=>number,
+):FilamentPath[]{
+  const paths:FilamentPath[]=[];
+  if(heroes.length===0||supportCount===0)return paths;
+  const visited=new Set<number>([0]);
+  while(visited.size<heroes.length){
+    let best:{a:number;b:number;via?:Point;distance:number}|undefined;
+    for(const a of visited)for(let b=0;b<heroes.length;b++){
+      if(visited.has(b))continue;
+      const route=safeRoute(heroes[a],heroes[b]);
+      if(route&&(!best||route.distance<best.distance))
+        best={a,b,...route};
+    }
+    if(!best)break;
+    visited.add(best.b);
+    paths.push(filamentPath(best.a,heroes[best.a],heroes[best.b],
+      random,2,best.b,best.via));
+  }
+  // Give each hub a few curved secondary filaments rather than spraying
+  // dozens of unrelated spokes directly from the hub.
+  const spurs=Math.min(heroes.length*2,Math.max(1,Math.floor(supportCount/7)));
+  for(let i=0;i<spurs;i++){
+    const root=i%heroes.length;
+    const sample=pointFromField(field,(i*47+11)%Math.max(1,field.length/4));
+    const from=heroes[root];
+    let direction=diff(sample,from);
+    if(length(direction)<.001)direction=outward(from);
+    const extent=clamp(length(direction)*.48,10,37)*(.87+random()*.26);
+    const to=add(from,unit(direction),extent);
+    const route=safeRoute(from,to);
+    const endpoint=route?to:add(from,outward(from),extent);
+    paths.push(filamentPath(root,from,endpoint,random,1));
+  }
+  return paths;
+}
+/** Small figures follow the medium figure's filament tangent, with a narrow
+ * sideways spread. A positive outward projection preserves big -> mid -> small
+ * without the 10-30 unit radial spikes that produced firework bouquets.
+ */
+function placeFilamentAccent(
+  hero:Point,medium:Point,tangent:Point,sample:Point,
+  random:()=>number,
+):Point{
+  const radial=unit(diff(medium,hero));
+  const aligned=dot(tangent,radial)>.4?
+    unit(add(tangent,radial,.35)):radial;
+  const offset=diff(sample,medium);
+  const sideways=diff(offset,add([0,0,0],radial,dot(offset,radial)));
+  const side=length(sideways)>.001?
+    unit(sideways):unit(cross(radial,Math.abs(radial[1])<.85?[0,1,0]:[1,0,0]));
+  const forward=.55+random()*2.5;
+  const width=.25+random()*1.35;
+  for(const fraction of [1,.5,0]){
+    const point=add(add(medium,aligned,forward),side,width*fraction);
+    if(!voidBranchCrossesCenter(medium,point)&&
+      dot(diff(point,medium),radial)>0)return point;
+  }
+  // Very close to the void surface: shorten the step rather than piercing it.
+  for(const distance of [.4,.1,.01]){
+    const point=add(medium,radial,distance);
+    if(!voidBranchCrossesCenter(medium,point))return point;
+  }
+  return add(medium,outward(medium),.01);
 }
 
 /** VOID is a different PLACEMENT of the existing 13 3D figure kinds, not an
