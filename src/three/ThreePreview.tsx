@@ -204,6 +204,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const backdrop=useRef<{context:CanvasRenderingContext2D;texture:CanvasTexture;width:number;height:number}|null>(null);
   const lastBackdropBlend=useRef(-1);
   const aspect = composition.width / composition.height;
+  const inVoid=settings.sky?.kind==='cosmic-void';
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
   function resetView() {
     cameraReset.current=null;
@@ -212,8 +213,8 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     // the previous gesture can keep moving the camera after Reset was pressed.
     const damping = orbit?.enableDamping;
     if (orbit) {orbit.enableDamping = false; orbit.update();}
-    camera.position.set(0, .7, homeDistance);
-    orbit?.target.set(0, 0, -.4);
+    camera.position.set(0, inVoid?3:.7, inVoid?36:homeDistance);
+    orbit?.target.set(0, 0, inVoid?-28:-.4);
     orbit?.update();
     if (orbit) orbit.enableDamping = damping ?? true;
     invalidate();
@@ -232,7 +233,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const orbit = new OrbitControls(camera, gl.domElement);
     controls.current = orbit;
     orbit.enableDamping = true; orbit.dampingFactor = .08; orbit.enablePan = false;
-    orbit.minDistance = 3; orbit.maxDistance = 80;
+    orbit.minDistance = 3; orbit.maxDistance = inVoid?220:80;
     gl.domElement.tabIndex = 0;
     gl.domElement.setAttribute('aria-label', '3D視点操作：ドラッグで回転、ホイールまたはピンチでズーム');
     orbit.listenToKeyEvents(gl.domElement);
@@ -274,6 +275,16 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     invalidate();
   },[explore,invalidate,view]);
 
+  // The cosmic web spans a deeper 3D volume than a normal constellation.
+  // Recenter only when ENTERING or LEAVING VOID, not on density edits.
+  const lastVoid=useRef(inVoid);
+  useEffect(()=>{
+    const changed=lastVoid.current!==inVoid;
+    lastVoid.current=inVoid;
+    if(!changed)return;
+    if(controls.current)controls.current.maxDistance=inVoid?220:80;
+    resetView();
+  },[inVoid]);
   // Reframe on aspect-ratio changes, while material/color/density changes retain the view.
   const lastAspect = useRef(aspect);
   useEffect(() => {if (Math.abs(lastAspect.current - aspect) > 1e-6) {lastAspect.current = aspect; resetView();}}, [aspect]);
