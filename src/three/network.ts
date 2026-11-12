@@ -81,12 +81,11 @@ export function networkConnections(objects:readonly ThreeObject[],distance:numbe
 
 
 /** Directed visual routes rooted at the most important primary figure.
- * A line may only start after the route reaching its source has arrived,
- * so smaller branches never start spontaneously away from the hero.
- *
- * Connection topology is unchanged: distance/degree settings still control
- * which wires exist. Separate graph components (when those settings leave
- * islands) are scheduled one at a time after the hero's component.
+ * A line may only start after its source is reached, so a child cable never
+ * ignites before its parent is connected. In neural three-tier mode, each
+ * support and accent has exactly one parent in the preceding size tier.
+ * Separate hero trees play sequentially to avoid simultaneous origins;
+ * classic nearest mode may additionally produce separate smaller islands.
  */
 export type RootedWireStep={
   source:'a'|'b';
