@@ -80,7 +80,7 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,voidMode=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;voidMode?:boolean}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
@@ -106,25 +106,57 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     return layer==='old'?1-phases.exit:phases.enter;
   };
   const currentOpacity=()=>network.opacity*transitionEnvelope();
+  const haloOpacity=()=>currentOpacity()*.26*Math.min(1,Math.max(0,network.glow)/100);
   const material=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,
     depthTest:true,depthWrite:false,toneMapped:true,opacity:currentOpacity()}),[]);
-  useLayoutEffect(()=>{material.opacity=currentOpacity();},
-    [material,network.opacity,standby?.transition.id,standby?.transition.mode,standby?.transition.duration,standby?.layer]);
+  // VOID's deep camera distances turn world-unit wires into subpixel dots.
+  // A separate wide additive pass gives the thin core a visible soft halo,
+  // without altering geometry, gradients, signal timing or user settings.
+  const haloMaterial=useMemo(()=>new LineMaterial({worldUnits:false,vertexColors:true,
+    transparent:true,depthTest:true,depthWrite:false,toneMapped:true,
+    blending:AdditiveBlending,opacity:0}),[]);
+  useLayoutEffect(()=>{
+    material.opacity=currentOpacity();
+    haloMaterial.opacity=voidMode?haloOpacity():0;
+  },[material,haloMaterial,network.opacity,network.glow,voidMode,
+    standby?.transition.id,standby?.transition.mode,standby?.transition.duration,standby?.layer]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;return value;},[geometry,material]);
+  const haloLine=useMemo(()=>{const value=new LineSegments2(geometry,haloMaterial);value.frustumCulled=false;return value;},[geometry,haloMaterial]);
   const colors=useMemo(()=>topology.map(({a,b})=>[a,b].map(object=>
     networkEndpointColor(object.role,network,background,low))),
     [topology,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
-  useEffect(()=>()=>geometry.dispose(),[geometry]);useEffect(()=>()=>material.dispose(),[material]);
+  useEffect(()=>()=>geometry.dispose(),[geometry]);
+  useEffect(()=>()=>material.dispose(),[material]);
+  useEffect(()=>()=>haloMaterial.dispose(),[haloMaterial]);
   useLayoutEffect(()=>{
-    material.worldUnits=!low;material.linewidth=.018*network.width;
+    // Keep legacy high-quality world-unit widths outside VOID. In VOID,
+    // display-space widths stay visible at any depth (and work in exports).
+    const screenSpace=low||voidMode;
+    material.worldUnits=!screenSpace;
+    material.linewidth=.018*network.width;
+    line.renderOrder=voidMode?2:0;
+    haloLine.renderOrder=1;
     line.onBeforeRender=function(renderer){
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
-      if(low){material.linewidth=Math.max(.8,network.width*1.2)*material.resolution.y/Math.max(1,size.height);material.uniformsNeedUpdate=true;}
+      if(screenSpace){
+        const pixels=voidMode?Math.max(1.55,network.width*1.85):
+          Math.max(.8,network.width*1.2);
+        material.linewidth=pixels*material.resolution.y/Math.max(1,size.height);
+        material.uniformsNeedUpdate=true;
+      }
+    };
+    haloLine.onBeforeRender=function(renderer){
+      LineSegments2.prototype.onBeforeRender.call(this,renderer);
+      haloMaterial.linewidth=Math.max(3.4,network.width*4.6)*
+        haloMaterial.resolution.y/Math.max(1,size.height);
+      haloMaterial.uniformsNeedUpdate=true;
     };
     invalidate();
-  },[line,network.width,network.opacity,material,low,size.height,invalidate]);
+  },[line,haloLine,network.width,network.opacity,network.glow,material,
+    haloMaterial,low,voidMode,size.height,invalidate]);
   const updateWire=()=>{
     material.opacity=currentOpacity();
+    haloMaterial.opacity=voidMode?haloOpacity():0;
     const clock=standby?.layer==='old'?standby.transition.fromTime+seconds.current:seconds.current;
     const start=geometry.getAttribute('instanceStart') as InterleavedBufferAttribute;
     const end=geometry.getAttribute('instanceEnd') as InterleavedBufferAttribute;
@@ -235,7 +267,11 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
   useLayoutEffect(updateWire,[geometry,topology,colors,settings,background,standby,
     seconds,seed,skipEntrance,network.opacity,network.animation]);
   useFrame(updateWire);
-  return <primitive object={line} dispose={null}/>;
+  return <>
+    {voidMode&&network.glow>0&&network.opacity>0&&
+      <primitive object={haloLine} dispose={null}/>}
+    <primitive object={line} dispose={null}/>
+  </>;
 }
 
 
