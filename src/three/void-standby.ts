@@ -54,6 +54,10 @@ export function voidSeedTravel(elapsed:number,duration:number):number{
     (MORPH_WIRE_ATTACH_START-MORPH_WIRE_RELEASE_END));
 }
 export function voidSeedMix(from:number,to:number,fraction:number):number{
+  // Return the exact source/target values at the endpoints: floating-point
+  // arithmetic must not shift a settled node when its standby layer unmounts.
+  if(fraction<=0)return from;
+  if(fraction>=1)return to;
   return from+(to-from)*fraction;
 }
 /** Nearest-angle interpolation prevents sudden multi-turn reversals. */
