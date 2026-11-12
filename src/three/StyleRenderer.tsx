@@ -316,9 +316,10 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
             (enter-NEURAL_WIRE_START_FRACTION)/(1-NEURAL_WIRE_START_FRACTION),
             edge.window.start,edge.window.end);
         }else{
-          // Classic exit/enter has no partial cable: wait for the incoming
-          // figure and line to finish appearing before sending electricity.
-          available=splitExitEnter(clock,standby.transition.duration).enter>=.999?1:0;
+          // In classic exit/enter the wire fades in with its two nodes rather
+          // than growing along a path. Endpoint opacity above gates particles
+          // while both figures form, so it can already come alive mid-enter.
+          available=1;
         }
         if(available<=.001)continue;
       }else{
