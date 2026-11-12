@@ -290,8 +290,12 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
     instance.instanceMatrix.needsUpdate=true;
     if(instance.instanceColor)instance.instanceColor.needsUpdate=true;
   };
-  // No origin flash at mount or when restoring a paused project.
-  useLayoutEffect(update,[topology,network.width,settings,entrance,seconds,skipEntrance,lanes]);
+  // Reserve the instanced-color attribute before the first render, even if
+  // no packet is active yet. Otherwise the first impulse can need a shader recompile.
+  useLayoutEffect(()=>{
+    if(mesh.current&&!mesh.current.instanceColor)mesh.current.setColorAt(0,new Color('#ffffff'));
+    update();
+  },[topology,network.width,settings,entrance,seconds,skipEntrance,lanes]);
   useFrame(update);
   return <instancedMesh ref={mesh} args={[undefined,undefined,topology.length*lanes]}
     count={0} frustumCulled={false} renderOrder={2}>
