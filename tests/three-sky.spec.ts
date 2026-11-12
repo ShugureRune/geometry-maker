@@ -46,7 +46,7 @@ test('all eight 3D skies render unique seeded PNGs without removing objects or b
     await category(page,'背景');
     await select.selectOption(kind);
     await expect(preview).toHaveAttribute('data-sky-kind',kind);
-    await expect(page.getByLabel('背景エフェクトの強さ')).toHaveValue('100');
+    await expect(page.locator('#three-sky-intensity')).toHaveValue('100');
     await expect(preview).toHaveAttribute('data-object-count',objectCount!);
     const bytes=await png(page);
     expect(bytes.subarray(1,4).toString()).toBe('PNG');
