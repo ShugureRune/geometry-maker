@@ -42,10 +42,10 @@ test('3D seeded entrance reveals, finishes, and replay starts a new one-shot ani
   // The fixture requests reduced motion. Explicitly opt into the entrance to exercise it.
   await page.getByLabel('3D図形を順番に登場させる').check();
   await expect(preview).toHaveAttribute('data-entrance-enabled','true');
-  await expect(page.getByLabel('3D登場演出の種類')).toHaveValue('seeded');
+  await expect(page.locator('#three-entrance-mode')).toHaveValue('seeded');
   await expect(page.getByTestId('three-entrance-style')).toContainText('今回のシードの演出：');
-  await page.getByLabel('3D登場演出の種類').selectOption('spiral');
-  await page.getByLabel('登場アニメーションの時間').fill('2');
+  await page.locator('#three-entrance-mode').selectOption('spiral');
+  await page.locator('#three-entrance-duration').fill('2');
   await page.getByLabel('3Dアニメーションを有効化').check();
   await page.getByRole('button',{name:'3D登場演出を最初から再生'}).click();
   const initial=await project(page);
@@ -74,7 +74,7 @@ test('3D random seed preserves entrance UI and settings JSON roundtrip / legacy 
   await start(page);
   await category(page,'アニメーション');
   await page.getByLabel('3D図形を順番に登場させる').check();
-  await page.getByLabel('登場アニメーションの時間').fill('9');
+  await page.locator('#three-entrance-duration').fill('9');
   await page.getByLabel('主役から順番に登場').uncheck();
   const saved=await project(page);
   expect(saved.settings.entrance).toMatchObject({enabled:true,mode:'seeded',duration:9,stagger:false});
@@ -83,14 +83,14 @@ test('3D random seed preserves entrance UI and settings JSON roundtrip / legacy 
   await page.getByRole('button',{name:'ランダムシードを生成'}).click();
   expect(await page.getByTestId('current-seed').textContent()).not.toBe(before);
   await category(page,'アニメーション');
-  await expect(page.getByLabel('登場アニメーションの時間')).toHaveValue('9');
+  await expect(page.locator('#three-entrance-duration')).toHaveValue('9');
   const current=await project(page);
   await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'seed-settings.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))
   });
   await category(page,'アニメーション');
   await expect(page.getByLabel('主役から順番に登場')).not.toBeChecked();
-  await expect(page.getByLabel('登場アニメーションの時間')).toHaveValue('9');
+  await expect(page.locator('#three-entrance-duration')).toHaveValue('9');
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-entrance-enabled','true');
   await category(page,'書き出し');
   const old={...current,settings:{...current.settings}};
@@ -110,5 +110,5 @@ test('automatic 3D entrance is enabled for ordinary motion preferences',async({p
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-entrance-enabled','true');
   await category(page,'アニメーション');
   await expect(page.getByLabel('3D図形を順番に登場させる')).toBeChecked();
-  await expect(page.getByLabel('3D登場演出の種類')).toHaveValue('seeded');
+  await expect(page.locator('#three-entrance-mode')).toHaveValue('seeded');
 });
