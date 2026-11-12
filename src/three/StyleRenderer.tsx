@@ -12,7 +12,7 @@ import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,visibleNetworkSegment,type networkConnections} from './network';
-import {threeVisibility,visibilityDefaults,visibilityUsesFade} from './visibility';
+import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress} from './entrance';
 import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
@@ -27,7 +27,6 @@ export function useOutlineGeometry(enabled:boolean,low:boolean){
 export function NeonOutline({geometry,object,settings,background,low,seconds,morphOpacity,skipEntrance=false}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;morphOpacity?:RefObject<number>;skipEntrance?:boolean}){
   const neon=settings.neon??neonDefaults, {invalidate,size}=useThree();
   const visibilityLoop=(settings.visibilityAnimation??visibilityDefaults).enabled;
-  const fading=visibilityUsesFade(settings.visibilityAnimation??visibilityDefaults);
   const entrance=settings.entrance??entranceDefaults;
   const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
   // Initialize a newly created line with its real animation alpha. A default
