@@ -14,7 +14,7 @@ import {networkPulse,radiance,styleColor} from './style-paint';
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireProgress} from './entrance';
-import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {splitExitEnter,standbyMorphWireProgress,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketAt} from './neural-signals';
 
@@ -111,8 +111,9 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
   const transitionEnvelope=()=>{
     if(!standby)return 1;
     const {transition,layer}=standby;
-    const t=seconds.current/transition.duration;
-    if(transition.mode==='morph')return layer==='old'?1-easeInOut(t):easeInOut(t);
+    // Morph links now change their physical length; fading the whole layer
+    // would hide the visible retract/grow stroke before it reaches the node.
+    if(transition.mode==='morph')return 1;
     const phases=splitExitEnter(seconds.current,transition.duration);
     return layer==='old'?1-phases.exit:phases.enter;
   };
@@ -146,13 +147,15 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const entrance=settings.entrance??entranceDefaults;
     const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
     const neuralAppearance=entrance.enabled&&entrance.mode==='neural-grow'&&!skipEntrance;
-    // Exit/enter animates new lines after all new solids are visible.
-    // Morph mode keeps existing wire continuity instead of deleting links.
+    // Exit/enter retains the original reveal. Morph transitions explicitly
+    // detach every cable BEFORE moving any nodes, then redraw the new topology.
     const growthTime=standby?.layer==='new'&&standby.transition.mode==='exit-enter'
       ?splitExitEnter(seconds.current,standby.transition.duration).enter*entrance.duration
       :seconds.current;
     const growWires=neuralAppearance&&(appearing||
       (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
+    const morphWireLength=standby?.transition.mode==='morph'?
+      standbyMorphWireProgress(seconds.current,standby.transition.duration,standby.layer):null;
     let active=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
@@ -192,8 +195,8 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         ];
       }
       let reverse=false;
-      if(growWires){
-        const progress=neuralWireProgress(growthTime,entrance,wireOrder[i],topology.length);
+      if(growWires||morphWireLength!==null){
+        const progress=morphWireLength??neuralWireProgress(growthTime,entrance,wireOrder[i],topology.length);
         // Zero progress is a hidden connection (not an opaque dot at origin).
         if(progress<=.001)continue;
         const growing=neuralWireEndpoints(a,b,positionA as [number,number,number],
