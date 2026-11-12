@@ -109,10 +109,11 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
   const haloOpacity=()=>currentOpacity()*.26*Math.min(1,Math.max(0,network.glow)/100);
   const material=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,
     depthTest:true,depthWrite:false,toneMapped:true,opacity:currentOpacity()}),[]);
-  // VOID's deep camera distances turn world-unit wires into subpixel dots.
-  // A separate wide additive pass gives the thin core a visible soft halo,
-  // without altering geometry, gradients, signal timing or user settings.
-  const haloMaterial=useMemo(()=>new LineMaterial({worldUnits:false,vertexColors:true,
+  // The wide additive halo uses REAL world-space thickness too, so it
+  // grows when zoomed in and recedes with depth just like the cable core.
+  // This preserves perspective instead of turning distant wires into
+  // equally thick screen-space strokes.
+  const haloMaterial=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,
     transparent:true,depthTest:true,depthWrite:false,toneMapped:true,
     blending:AdditiveBlending,opacity:0}),[]);
   useLayoutEffect(()=>{
@@ -129,26 +130,27 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
   useEffect(()=>()=>material.dispose(),[material]);
   useEffect(()=>()=>haloMaterial.dispose(),[haloMaterial]);
   useLayoutEffect(()=>{
-    // Keep legacy high-quality world-unit widths outside VOID. In VOID,
-    // display-space widths stay visible at any depth (and work in exports).
-    const screenSpace=low||voidMode;
+    // VOID must keep perspective-dependent line thickness at ALL qualities.
+    // Only ordinary low-quality scenes retain the former pixel-based width.
+    const screenSpace=low&&!voidMode;
     material.worldUnits=!screenSpace;
-    material.linewidth=.018*network.width;
+    // A modestly thicker WORLD-space cable is visible at typical cosmic
+    // distances, but still narrows naturally as the camera moves away.
+    material.linewidth=(voidMode?.032:.018)*network.width;
     line.renderOrder=voidMode?2:0;
     haloLine.renderOrder=1;
     line.onBeforeRender=function(renderer){
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
       if(screenSpace){
-        const pixels=voidMode?Math.max(1.55,network.width*1.85):
-          Math.max(.8,network.width*1.2);
+        const pixels=Math.max(.8,network.width*1.2);
         material.linewidth=pixels*material.resolution.y/Math.max(1,size.height);
         material.uniformsNeedUpdate=true;
       }
     };
     haloLine.onBeforeRender=function(renderer){
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
-      haloMaterial.linewidth=Math.max(3.4,network.width*4.6)*
-        haloMaterial.resolution.y/Math.max(1,size.height);
+      // Fixed world-unit diameter, NOT a fixed on-screen pixel width.
+      haloMaterial.linewidth=.115*network.width;
       haloMaterial.uniformsNeedUpdate=true;
     };
     invalidate();
