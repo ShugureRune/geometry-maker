@@ -2,6 +2,7 @@ import {seededRandom} from '../scene';
 import {generateVoidField,voidFigureCount,VOID_EMPTY_CENTER,VOID_EMPTY_RADII,type VoidField} from './void-field';
 import {THREE_KINDS,type ThreeComposition,type ThreeKind,type ThreeObject,type Vector3Tuple} from './model';
 import type {NetworkEdge} from './network';
+import type {MorphMatch} from './standby';
 
 /** VOID uses the three existing figure roles; no special fourth tier. */
 export type VoidTier='primary'|'support'|'accent';
@@ -198,6 +199,21 @@ export function voidSceneObjects(
       nearby?parent.id:undefined);
   }
   return result;
+}
+
+/** Pair existing VOID figure IDs in linear time, not the quadratic generic
+ * 3D min-cost matching. Native role/index IDs survive seed rerolls; kinds,
+ * positions and colors may change while the figure remains the same node.
+ * Explicit unmatched nodes still enter or exit safely if density changes.
+ */
+export function matchVoidObjects(
+  from:readonly ThreeObject[],to:readonly ThreeObject[],
+):MorphMatch[]{
+  const old=new Map(from.map(o=>[o.id,o]));
+  const next=new Map(to.map(o=>[o.id,o]));
+  const matches:MorphMatch[]=from.map(o=>({id:'void-'+o.id,from:o,to:next.get(o.id)}));
+  for(const o of to)if(!old.has(o.id))matches.push({id:'void-added-'+o.id,to:o});
+  return matches;
 }
 
 /** A local reach adjusted for how densely the field is populated.

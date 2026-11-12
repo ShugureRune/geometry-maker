@@ -6,6 +6,8 @@ import type {VisualTheme} from '../themes';
 import {fallbackThreeColors} from './style-paint';
 import {threeVisibility,visibilityDefaults,visibilityUsesScale} from './visibility';
 import {threeEntrancePose,entranceDefaults} from './entrance';
+import {networkDefaults} from './style-settings';
+import {standbyMeshVisibility,standbyObjectPose,type MorphMatch} from './standby';
 import {themeMaterial,type ThreeSettings} from './settings';
 import {THREE_KINDS,type ThreeKind,type ThreeObject} from './model';
 import type {ThreeStandbyTransition} from './standby';
@@ -15,8 +17,10 @@ type Props={
   visualTheme:VisualTheme;low:boolean;seconds:RefObject<number>;seed:string;
   skipEntrance?:boolean;
   standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};
+  matches?:readonly MorphMatch[];
 };
-type BatchProps=Props&{kind:ThreeKind;group:ThreeObject[]};
+type BatchProps=Props&{kind:ThreeKind;group:ThreeObject[];
+  matchesById:ReadonlyMap<string,MorphMatch>};
 
 function geometry(kind:ThreeKind,low:boolean){
   switch(kind){
@@ -40,7 +44,7 @@ function geometry(kind:ThreeKind,low:boolean){
  * A few thousand objects create just 13 React meshes, not 2,800 components.
  */
 function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
-  skipEntrance=false,standby}:BatchProps){
+  skipEntrance=false,standby,matchesById}:BatchProps){
   const mesh=useRef<InstancedMesh>(null);
   const material=useRef<MeshStandardMaterial>(null);
   const dummy=useMemo(()=>new Object3D(),[]);
@@ -50,6 +54,13 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
     support:new Color(background.figureColors?.support??fallbackThreeColors.support),
     accent:new Color(background.figureColors?.accent??fallbackThreeColors.accent),
   }),[background]);
+  // The new mesh needs the OLD palette when a same-kind figure morphs
+  // continuously into the new seed. Other layers retain their own colors.
+  const oldPalette=useMemo(()=>({
+    primary:new Color(standby?.transition.fromBackground.figureColors?.primary??fallbackThreeColors.primary),
+    support:new Color(standby?.transition.fromBackground.figureColors?.support??fallbackThreeColors.support),
+    accent:new Color(standby?.transition.fromBackground.figureColors?.accent??fallbackThreeColors.accent),
+  }),[standby?.transition.fromBackground]);
   const neon=settings.neon;
   const kindMaterial=settings.material==='theme'?themeMaterial(visualTheme):settings.material;
   const translucent=!!neon?.enabled&&neon.display==='transparent';
@@ -61,46 +72,71 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
     const instance=mesh.current;
     if(!instance)return;
     const time=seconds.current;
-    const morph=standby?Math.min(1,Math.max(0,time/standby.transition.duration)):1;
-    const smooth=morph*morph*(3-2*morph);
-    let transitionAlpha=1;
-    if(standby){
-      if(standby.transition.mode==='morph'){
-        transitionAlpha=standby.layer==='old'?1-smooth:smooth;
-      }else{
-        transitionAlpha=standby.layer==='old'?
-          1-Math.min(1,morph*2):Math.max(0,Math.min(1,(morph-.5)*2));
-      }
-    }
     for(let i=0;i<group.length;i++){
       const object=group[i];
-      // Inline the pure threePose formula to avoid allocating thousands
-      // of position/rotation arrays every WebGL frame.
-      const drift=Math.sin(Math.max(0,time)*object.floatRate+object.phase)-Math.sin(object.phase);
-      const rise=drift*settings.floatAmount;
-      let x=object.position[0]+rise*.08;
-      let y=object.position[1]+rise*.25;
-      let z=object.position[2];
-      const progress=standby||skipEntrance?null:
-        entrance.enabled?threeEntrancePose(object,time,entrance,seed):null;
-      if(progress){
-        x+=progress.offset[0];y+=progress.offset[1];z+=progress.offset[2];
+      let x:number,y:number,z:number;
+      let rx:number,ry:number,rz:number;
+      let scale:number,alpha:number,colorMix=1,shared=false;
+      if(standby){
+        const match=matchesById.get(object.id);
+        const from=match?.from??(standby.layer==='old'?object:undefined);
+        const to=match?.to??(standby.layer==='new'?object:undefined);
+        shared=standby.transition.mode==='morph'&&!!from&&!!to&&from.kind===to.kind;
+        // A matching geometry is drawn ONCE by the incoming instanced mesh.
+        // Old and new renderers each have 13 draw batches, not 2,800 React
+        // meshes. Hide only the redundant old instance during the morph.
+        if(shared&&standby.layer==='old'){
+          dummy.scale.setScalar(.00001);
+          dummy.position.set(...object.position);
+          dummy.updateMatrix();
+          instance.setMatrixAt(i,dummy.matrix);
+          tint.setRGB(0,0,0);
+          instance.setColorAt(i,tint);
+          continue;
+        }
+        const variant=shared?'shared':standby.layer;
+        const pose=standbyObjectPose(from,to,time,standby.transition,variant,
+          settings.floatAmount,settings.rotationAmount,entrance,seed,
+          (settings.network??networkDefaults).enabled);
+        const visibility=standbyMeshVisibility(from,to,variant,time,standby.transition,appearance);
+        x=pose.position[0];y=pose.position[1];z=pose.position[2];
+        rx=pose.rotation[0];ry=pose.rotation[1];rz=pose.rotation[2];
+        alpha=visibility*pose.opacity;
+        // Per-instance alpha is not available in the native instanced
+        // standard material. Combine tint fading with a small scale-down,
+        // preventing a dark opaque silhouette from blocking incoming nodes.
+        scale=pose.radius*(scaleVisibility?Math.max(.001,visibility):1)*
+          Math.sqrt(Math.max(.000001,pose.opacity));
+        colorMix=pose.colorMix;
+      }else{
+        // Match the ordinary static 3D animation with no per-frame arrays.
+        const drift=Math.sin(Math.max(0,time)*object.floatRate+object.phase)-Math.sin(object.phase);
+        const rise=drift*settings.floatAmount;
+        x=object.position[0]+rise*.08;
+        y=object.position[1]+rise*.25;
+        z=object.position[2];
+        const progress=skipEntrance?null:
+          entrance.enabled?threeEntrancePose(object,time,entrance,seed):null;
+        if(progress){
+          x+=progress.offset[0];y+=progress.offset[1];z+=progress.offset[2];
+        }
+        const visibility=threeVisibility(object,time,appearance);
+        alpha=visibility*(progress?.opacity??1);
+        scale=object.radius*(scaleVisibility?Math.max(.001,visibility):1)*
+          (progress?.scale??1);
+        rx=object.rotation[0]+object.spin[0]*Math.max(0,time)*settings.rotationAmount;
+        ry=object.rotation[1]+object.spin[1]*Math.max(0,time)*settings.rotationAmount;
+        rz=object.rotation[2]+object.spin[2]*Math.max(0,time)*settings.rotationAmount+
+          (progress?.rotationZ??0);
       }
-      const visibility=threeVisibility(object,time,appearance);
-      const alpha=visibility*transitionAlpha*(progress?.opacity??1);
-      const scale=alpha<=.001?0.00001:object.radius*
-        (scaleVisibility?Math.max(.001,visibility):1)*
-        (progress?.scale??1);
       dummy.position.set(x,y,z);
-      dummy.rotation.set(
-        object.rotation[0]+object.spin[0]*Math.max(0,time)*settings.rotationAmount,
-        object.rotation[1]+object.spin[1]*Math.max(0,time)*settings.rotationAmount,
-        object.rotation[2]+object.spin[2]*Math.max(0,time)*settings.rotationAmount+
-          (progress?.rotationZ??0));
-      dummy.scale.setScalar(Math.max(.00001,scale));
+      dummy.rotation.set(rx,ry,rz);
+      dummy.scale.setScalar(Math.max(.00001,alpha<=.001?0:scale));
       dummy.updateMatrix();
       instance.setMatrixAt(i,dummy.matrix);
-      tint.copy(palette[object.role]).multiplyScalar(Math.max(0,alpha));
+      tint.copy(shared?oldPalette[object.role]:palette[object.role]);
+      if(shared)tint.lerp(palette[object.role],colorMix);
+      tint.multiplyScalar(Math.max(0,alpha));
       instance.setColorAt(i,tint);
     }
     instance.instanceMatrix.needsUpdate=true;
@@ -109,7 +145,8 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
       (neon?.faceOpacity??.5):kindMaterial==='glass'?.72:1;
   };
   useLayoutEffect(update,[group,settings,background,seconds,seed,skipEntrance,standby,
-    appearance,entrance,kindMaterial,neon,translucent,palette,scaleVisibility]);
+    appearance,entrance,kindMaterial,neon,translucent,palette,oldPalette,
+    scaleVisibility,matchesById]);
   useFrame(update);
   if(group.length===0)return null;
   return <instancedMesh ref={mesh} args={[undefined,undefined,group.length]}
@@ -128,6 +165,14 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
 
 /** All VOID figures use their existing kind-instanced material. */
 export function VoidRenderer(props:Props){
+  const matchesById=useMemo(()=>{
+    const byId=new Map<string,MorphMatch>();
+    for(const match of props.matches??[]){
+      const node=props.standby?.layer==='old'?match.from:match.to;
+      if(node)byId.set(node.id,match);
+    }
+    return byId;
+  },[props.matches,props.standby?.layer]);
   const groups=useMemo(()=>{
     const byKind=new Map<ThreeKind,ThreeObject[]>();
     for(const kind of THREE_KINDS)byKind.set(kind,[]);
@@ -136,6 +181,6 @@ export function VoidRenderer(props:Props){
   },[props.objects]);
   return <group name="cosmic-void-web" userData={{figureCount:props.objects.length}}>
     {THREE_KINDS.map(kind=><VoidBatch key={kind} {...props}
-      group={groups.get(kind)!} kind={kind}/>)}
+      group={groups.get(kind)!} kind={kind} matchesById={matchesById}/>)}
   </group>;
 }

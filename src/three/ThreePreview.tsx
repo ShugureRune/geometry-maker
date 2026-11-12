@@ -17,7 +17,7 @@ import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,NeuralSignals,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
-import {voidSceneObjects,voidSceneConnections} from './void-objects';
+import {voidSceneObjects,voidSceneConnections,matchVoidObjects} from './void-objects';
 import {VoidRenderer} from './VoidRenderer';
 import {skyDefaults} from './sky-settings';
 import {worldDefaults,sunlightAtHour} from './world-settings';
@@ -638,10 +638,13 @@ export default function ThreePreview(props: Props) {
       visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
     [props.transition,isVoid,voidDensity,low,props.density,props.settings.enabledKinds,
       props.settings.spacingPercent]);
-  // Matching 2,800 independent nodes would be prohibitively expensive.
-  // VOID instead crossfades two complete instanced networks as seeded webs.
-  const matches=useMemo<MorphMatch[]>(()=>!isVoid&&props.transition?.mode==='morph'?
-    matchThreeObjects(previousObjects,objects):[],[isVoid,props.transition,previousObjects,objects]);
+  // Generic min-cost matching is quadratic; VOID has stable figure IDs.
+  // Match the thousands of existing nodes in linear time, so standby morph
+  // and the moving wire endpoints share exactly the same old/new pairs.
+  const matches=useMemo<MorphMatch[]>(()=>props.transition?.mode==='morph'?
+    isVoid?matchVoidObjects(previousObjects,objects):
+      matchThreeObjects(previousObjects,objects):[],
+    [isVoid,props.transition,previousObjects,objects]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
@@ -713,11 +716,12 @@ export default function ThreePreview(props: Props) {
       {isVoid?<>
         {props.transition&&<VoidRenderer objects={previousObjects} settings={props.settings}
           background={props.transition.fromBackground} visualTheme={props.transition.fromTheme}
-          low={low} seconds={seconds} seed={props.transition.fromSeed}
+          low={low} seconds={seconds} seed={props.transition.fromSeed} matches={matches}
           standby={{transition:props.transition,layer:'old'}}/>}
         <VoidRenderer objects={objects} settings={props.settings}
           background={props.background} visualTheme={props.visualTheme}
           low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance}
+          matches={matches}
           standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>
       </>:<>
       {props.transition ? props.transition.mode==='morph'?
