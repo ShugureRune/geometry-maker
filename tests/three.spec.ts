@@ -428,6 +428,9 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await page.getByLabel('3Dアニメーションを有効化').uncheck();
   expect(digest(await png(page))).not.toBe(circuit);
   const savedFrame=digest(await png(page));
+  const floorBefore=await preview.evaluate(el=>({
+    time:el.dataset.floorTime,offset:el.dataset.floorOffset,mode:el.dataset.floorStyle,
+  }));
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
   await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
@@ -452,7 +455,20 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await expect(page.locator('#floor-circuit-accent')).toHaveValue('#e6a65c');
   const restored=digest(await png(page));
   const restoredTwice=digest(await png(page));
-  console.log('MB JSON',JSON.stringify({savedFrame,restored,restoredTwice}));
+  const floorAfter=await preview.evaluate(el=>({
+    time:el.dataset.floorTime,offset:el.dataset.floorOffset,mode:el.dataset.floorStyle,
+  }));
+  // Compare the restored project with the saved state, not only its PNG bytes.
+  await category(page,'書き出し');
+  const diagnosticDownload=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const restoredProject=JSON.parse((await readFile((await (await diagnosticDownload).path())!)).toString());
+  console.log('MB JSON',JSON.stringify({
+    savedFrame,restored,restoredTwice,floorBefore,floorAfter,
+    before:{floorTime:project.floorElapsedSeconds,time:project.elapsedSeconds,view:project.view,background:project.background,colors:project.colorSettings},
+    after:{floorTime:restoredProject.floorElapsedSeconds,time:restoredProject.elapsedSeconds,view:restoredProject.view,background:restoredProject.background,colors:restoredProject.colorSettings},
+    settingsSame:JSON.stringify(restoredProject.settings)===JSON.stringify(project.settings),
+  }));
   expect(restoredTwice).toBe(savedFrame);
   expect(errors).toEqual([]);
 });
