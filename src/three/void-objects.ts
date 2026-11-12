@@ -7,7 +7,11 @@ import type {NetworkEdge} from './network';
  * Stored on the figure so rendering and cables use the SAME rooted tree.
  * Ordinary ThreeObject consumers can ignore this optional VOID metadata.
  */
-export type VoidFigure=ThreeObject&{voidParentId?:string};
+export type VoidFigure=ThreeObject&{
+  voidParentId?:string;
+  /** Sparse, void-safe cosmic trunk links between large junctions. */
+  voidTrunkTargets?:readonly string[];
+};
 type Point=Vector3Tuple;
 const VOID_CENTER:Point=[0,0,-115],VOID_RADII:Point=[23,19,35];
 const squared=(a:readonly number[],b:readonly number[])=>
@@ -90,6 +94,91 @@ function placeSmall(hero:Point,medium:Point,sample:Point,variation:number):Point
   return add(medium,outward(medium),Math.max(forward,8));
 }
 
+/** A nearest-connection backbone between the large cosmic junctions.
+ * Kruskal keeps the number of long cables small (at most heroes-1) and
+ * rejects any edge whose straight wire would cut through the central void.
+ * The few unconnectable knots remain independent rather than drawing through
+ * empty space. Only the 12 hero positions are compared, never 2,800 figures.
+ */
+export function voidHeroBackbone(heroes:readonly Point[]):{a:number;b:number}[]{
+  const candidates:{a:number;b:number;distance:number}[]=[];
+  for(let i=0;i<heroes.length;i++)for(let j=i+1;j<heroes.length;j++){
+    if(!voidBranchCrossesCenter(heroes[i],heroes[j]))
+      candidates.push({a:i,b:j,distance:squared(heroes[i],heroes[j])});
+  }
+  candidates.sort((a,b)=>a.distance-b.distance||a.a-b.a||a.b-b.b);
+  const parent=heroes.map((_,i)=>i);
+  const root=(n:number):number=>{
+    while(parent[n]!==n)n=parent[n];
+    return n;
+  };
+  const result:{a:number;b:number}[]=[];
+  for(const link of candidates){
+    const a=root(link.a),b=root(link.b);
+    if(a===b)continue;
+    parent[b]=a;
+    result.push({a:link.a,b:link.b});
+  }
+  return result;
+}
+type FilamentLane={point:Point;direction:Point};
+const cross=(a:Point,b:Point):Point=>[
+  a[1]*b[2]-a[2]*b[1],
+  a[2]*b[0]-a[0]*b[2],
+  a[0]*b[1]-a[1]*b[0],
+];
+const laneAxes=(origin:Point,direction:Point):[Point,Point]=>{
+  const outside=outward(origin);
+  let across=diff(outside,add([0,0,0],direction,dot(outside,direction)));
+  if(length(across)<.001)across=cross(direction,
+    Math.abs(direction[1])<.9?[0,1,0]:[1,0,0]);
+  const first=unit(across);
+  return [first,unit(cross(direction,first))];
+};
+/** A medium relay lies near a real large-to-large backbone corridor. Its
+ * cable always returns to its large parent, but several relays now follow
+ * the SAME narrow lane rather than shooting outward in random directions.
+ */
+function placeTrunkMedium(
+  hero:Point,neighbor:Point,along:number,angle:number,width:number,
+):FilamentLane{
+  const direction=unit(diff(neighbor,hero));
+  const center=add(hero,diff(neighbor,hero),along);
+  const [out,side]=laneAxes(center,direction);
+  const offset=add(add([0,0,0],out,Math.cos(angle)*width),
+    side,Math.sin(angle)*width);
+  const candidate=add(center,offset);
+  // At a grazed void boundary keep the relay ON its safe trunk segment.
+  const point=voidBranchCrossesCenter(hero,candidate)?center:candidate;
+  return {point,direction};
+}
+/** Instead of spreading 5–8 small figures as long spokes around each relay,
+ * continue them a short way ALONG the local filament, with slight thickness.
+ * A single local parent still anchors each small cable.
+ */
+function placeFilamentAccent(
+  hero:Point,medium:Point,direction:Point,forward:number,angle:number,width:number,
+):Point{
+  const center=add(medium,direction,forward);
+  const [out,side]=laneAxes(medium,direction);
+  const offset=add(add([0,0,0],out,Math.cos(angle)*width),
+    side,Math.sin(angle)*width);
+  const point=add(center,offset);
+  // Preserve the previous large -> medium -> small outward ordering and
+  // avoid crossing the void. The exact straight centerline is the fallback.
+  if(!voidBranchCrossesCenter(medium,point)&&
+    dot(diff(medium,hero),diff(point,medium))>0)return point;
+  if(!voidBranchCrossesCenter(medium,center)&&
+    dot(diff(medium,hero),diff(center,medium))>0)return center;
+  const safe=unit(add(direction,outward(medium)));
+  for(const step of [forward,forward*2,forward*4]){
+    const alternate=add(medium,safe,step);
+    if(!voidBranchCrossesCenter(medium,alternate)&&
+      dot(diff(medium,hero),diff(alternate,medium))>0)return alternate;
+  }
+  return placeSmall(hero,medium,add(medium,direction,forward*3),.5);
+}
+
 /** VOID is a different PLACEMENT of the existing 13 3D figure kinds, not an
  * extra particle background. Primary objects occupy the cosmic-web knots;
  * support objects sit on filaments; accents make the dense surrounding web.
@@ -113,6 +202,7 @@ export function voidSceneObjects(
   const heroLocations:Point[]=[];
   const supportLocations:Point[]=[];
   const supportHero:number[]=[];
+  const supportDirections:Point[]=[];
   const pick=(role:ThreeObject['role'],i:number)=>{
     const suitable=templates.filter(obj=>obj.role===role);
     return (suitable.length?suitable:templates)[i%(suitable.length||templates.length)];
@@ -149,23 +239,51 @@ export function voidSceneObjects(
     heroLocations.push(point);
     create('primary',i,scaled(...point),.75+random()*.60);
   }
-  // Medium relays follow *their own* large junction, not an independent
-  // world-space sample. Sample the native cosmic filaments for direction.
-  for(let i=0;i<supports;i++){
-    const sample=pointFromField(field.figures,i);
-    // Give each large knot at least one nearby relay when possible.
-    const hero=i<heroes?i:nearestIndex(sample,heroLocations);
-    const point=placeMedium(heroLocations[hero],sample,hierarchyRandom());
-    supportLocations.push(point);supportHero.push(hero);
-    create('support',i,scaled(...point),.32+random()*.21,`void-primary-${hero}`);
+  // First connect the large junctions into a small number of safe trunks.
+  // This is the missing long-range structure from the screenshot: independent
+  // radial bouquets become a connected cosmic filament network.
+  const trunks=voidHeroBackbone(heroLocations);
+  const neighbors:number[][]=Array.from({length:heroes},()=>[]);
+  for(const {a,b} of trunks){
+    neighbors[a].push(b);neighbors[b].push(a);
   }
-  // Small accents inherit an actual medium parent and extend beyond it,
-  // preserving the physical big -> medium -> small ordering in space.
+  for(let i=0;i<heroes;i++){
+    const targets=trunks.filter(link=>link.a===i).map(link=>
+      `void-primary-${link.b}`);
+    if(targets.length)result[i].voidTrunkTargets=targets;
+    neighbors[i].sort((a,b)=>a-b);
+  }
+  // Medium relays cluster around the SAME long filaments between junctions.
+  // Spread their attachment evenly among large hubs; the random clock controls
+  // only their position/sideways wobble, not an unrelated world-space target.
+  for(let i=0;i<supports;i++){
+    const hero=i%heroes;
+    const choices=neighbors[hero];
+    const sample=pointFromField(field.figures,i);
+    const lane=choices.length?
+      placeTrunkMedium(heroLocations[hero],
+        heroLocations[choices[Math.floor(hierarchyRandom()*choices.length)]],
+        .13+.74*hierarchyRandom(),hierarchyRandom()*Math.PI*2,
+        .4+hierarchyRandom()*2.7):
+      {point:placeMedium(heroLocations[hero],sample,hierarchyRandom()),
+       direction:unit(diff(sample,heroLocations[hero]))};
+    supportLocations.push(lane.point);
+    supportHero.push(hero);
+    supportDirections.push(lane.direction);
+    create('support',i,scaled(...lane.point),.32+random()*.21,`void-primary-${hero}`);
+  }
+  // Every medium node hosts only a FEW short, nearly parallel small branches.
+  // No more nearest-neighbor crowding of hundreds of accents onto one relay.
   for(let i=0;i<count-heroes-supports;i++){
+    const parent=i%supports;
+    const hero=heroLocations[supportHero[parent]];
+    const medium=supportLocations[parent];
     const sample=pointFromField(field.figures,supports+i);
-    const parent=nearestIndex(sample,supportLocations);
-    const point=placeSmall(heroLocations[supportHero[parent]],
-      supportLocations[parent],sample,hierarchyRandom());
+    const point=neighbors[supportHero[parent]].length?
+      placeFilamentAccent(hero,medium,supportDirections[parent],
+        1.6+hierarchyRandom()*5.8,hierarchyRandom()*Math.PI*2,
+        .25+hierarchyRandom()*1.9):
+      placeSmall(hero,medium,sample,hierarchyRandom());
     create('accent',i,scaled(...point),.105+random()*.16,`void-support-${parent}`);
   }
   return result;
@@ -206,6 +324,16 @@ export function voidSceneConnections(objects:readonly ThreeObject[]):NetworkEdge
     // Backwards-compatible fallback for existing plain ThreeObject callers.
     return nearest(child,child.role==='support'?hero:support.length?support:hero);
   };
-  return [...support.map(connect),...accent.map(connect)]
+  // Draw the backbone itself: one sparse large-to-large cable per trunk.
+  // Its geometry, glow, packet movement and wire animation still use the
+  // existing NetworkLines / NeuralSignals implementations unchanged.
+  const trunks=hero.flatMap(from=>
+    ((from as VoidFigure).voidTrunkTargets??[]).flatMap(id=>{
+      const to=byId.get(id);
+      return to?.role==='primary'?[{
+        a:from.id,b:to.id,distance:Math.sqrt(squared(from.position,to.position)),
+      }]:[];
+    }));
+  return [...trunks,...support.map(connect),...accent.map(connect)]
     .filter((edge):edge is NetworkEdge=>edge!==null);
 }
