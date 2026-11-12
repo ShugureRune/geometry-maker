@@ -1,5 +1,6 @@
 import type {ThreeObject,Vector3Tuple} from './model';
 import {entranceDefaults} from './entrance';
+import {threeVisibility,visibilityDefaults} from './visibility';
 import {standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import type {ThreeSettings} from './settings';
 
@@ -18,5 +19,12 @@ export function standbyWirePose(
     ?'shared':layer;
   const result=standbyObjectPose(from,to,seconds,transition,variant,
     settings.floatAmount,settings.rotationAmount,settings.entrance??entranceDefaults,seed);
-  return {position:result.position,opacity:result.opacity};
+  // Shared same-kind morphs render ONE "to" mesh, even in the old network
+  // layer. Use that exact mesh's phase/time; otherwise the old wire remains
+  // visible while the actual shared solid is hidden by the new seed's loop.
+  const meshObject=variant==='shared'?to!:layer==='old'?from!:to!;
+  const meshTime=variant==='old'?transition.fromTime+seconds:seconds;
+  const visibility=threeVisibility(meshObject,meshTime,
+    settings.visibilityAnimation??visibilityDefaults);
+  return {position:result.position,opacity:result.opacity*visibility};
 }
