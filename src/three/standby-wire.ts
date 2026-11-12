@@ -18,7 +18,7 @@ export function standbyWirePose(
   const variant=transition.mode==='morph'&&from&&to&&from.kind===to.kind
     ?'shared':layer;
   const result=standbyObjectPose(from,to,seconds,transition,variant,
-    settings.floatAmount,settings.rotationAmount,settings.entrance??entranceDefaults,seed);
+    settings.floatAmount,settings.rotationAmount,settings.entrance??entranceDefaults,seed,true);
   // Shared meshes blend OLD and NEW repeat phases without popping. Their
   // linked wires use this exact same visibility envelope on both layers.
   const visibility=standbyMeshVisibility(from,to,variant,seconds,transition,
