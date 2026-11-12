@@ -51,27 +51,33 @@ describe('detached neural wiring during automatic seed morph',()=>{
 });
 
 describe('both standby wiring directions originate at the hero',()=>{
-  it('moves its growing and erasing fronts outward in the same parent-before-child order',()=>{
+  it('retracts from distant child cables to the primary in exact reverse growth order',()=>{
     const parent={start:0,end:.4};
     const child={start:.4,end:1};
     for(const duration of [1,2,4,8]){
       for(const part of [0,.1,.25,.5,.75,1]){
         const removingTime=duration*MORPH_WIRE_RELEASE_END*part;
-        const joiningTime=duration*(MORPH_WIRE_ATTACH_START+
-          (1-MORPH_WIRE_ATTACH_START)*part);
+        // Release at 1 - part is the same frame as attachment at part.
+        const mirroredJoiningTime=duration*(MORPH_WIRE_ATTACH_START+
+          (1-MORPH_WIRE_ATTACH_START)*(1-part));
         for(const route of [parent,child]){
           const oldVisible=standbyMorphWireProgress(removingTime,duration,'old',0,1,route);
-          const newVisible=standbyMorphWireProgress(joiningTime,duration,'new',0,1,route);
-          // Both fronts advance from the parent: old loses precisely the
-          // portion of the cable that new would have just grown.
-          expect(oldVisible+newVisible).toBeCloseTo(1,10);
+          const newVisible=standbyMorphWireProgress(mirroredJoiningTime,duration,'new',0,1,route);
+          expect(oldVisible).toBeCloseTo(newVisible,10);
           expect(oldVisible).toBeGreaterThanOrEqual(0);
-          expect(newVisible).toBeGreaterThanOrEqual(0);
+          expect(oldVisible).toBeLessThanOrEqual(1);
         }
       }
       const during=duration*.04;
-      expect(standbyMorphWireProgress(during,duration,'old',0,1,parent)).toBeLessThan(1);
-      expect(standbyMorphWireProgress(during,duration,'old',1,2,child)).toBe(1);
+      // Child is being recalled first, while the parent cable stays attached.
+      expect(standbyMorphWireProgress(during,duration,'old',0,1,parent)).toBe(1);
+      expect(standbyMorphWireProgress(during,duration,'old',1,2,child)).toBeLessThan(1);
+      const midway=duration*.09;
+      expect(standbyMorphWireProgress(midway,duration,'old',0,1,parent)).toBe(1);
+      expect(standbyMorphWireProgress(midway,duration,'old',0,1,child)).toBe(0);
+      const nearEnd=duration*.15;
+      expect(standbyMorphWireProgress(nearEnd,duration,'old',0,1,parent)).toBeLessThan(1);
+      expect(standbyMorphWireProgress(nearEnd,duration,'old',0,1,child)).toBe(0);
       const reconnecting=duration*.85;
       expect(standbyMorphWireProgress(reconnecting,duration,'new',0,1,parent)).toBeGreaterThan(0);
       expect(standbyMorphWireProgress(reconnecting,duration,'new',1,2,child)).toBe(0);
