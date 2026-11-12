@@ -1,5 +1,5 @@
 import {seededRandom} from '../scene';
-import {generateVoidField,voidFigureCount} from './void-field';
+import {generateVoidField,voidFigureCount,VOID_KNOT_COUNT} from './void-field';
 import {THREE_KINDS,type ThreeComposition,type ThreeKind,type ThreeObject,type Vector3Tuple} from './model';
 import type {NetworkEdge} from './network';
 
@@ -29,8 +29,11 @@ export function voidSceneObjects(
     [x*.255*spacingFactor,y*.255*spacingFactor,z*.255*spacingFactor];
   const create=(role:ThreeObject['role'],i:number,point:Vector3Tuple,radius:number)=>{
     const template=pick(role,i);
-    const kind=enabledKinds.includes(template.kind)?template.kind:
-      enabledKinds[Math.floor(random()*enabledKinds.length)];
+    // Cycle through every enabled native 3D geometry before repeating, while
+    // preserving the original hero figure kinds at the web junctions.
+    const kind=role!=='primary'&&i<enabledKinds.length?enabledKinds[i]:
+      enabledKinds.includes(template.kind)?template.kind:
+        enabledKinds[Math.floor(random()*enabledKinds.length)];
     const rotation:Vector3Tuple=[
       template.rotation[0]+(random()-.5)*.4,
       template.rotation[1]+(random()-.5)*.4,
@@ -48,7 +51,7 @@ export function voidSceneObjects(
   // Existing hero kinds (and their roles) become the junctions of the web.
   // Knot indices are well-separated in the seeded spatial graph.
   for(let i=0;i<heroes;i++){
-    const offset=(i*5%56)*3;
+    const offset=(i*5%VOID_KNOT_COUNT)*3;
     create('primary',i,scaled(field.knots[offset],field.knots[offset+1],field.knots[offset+2]),
       .75+random()*.60);
   }
