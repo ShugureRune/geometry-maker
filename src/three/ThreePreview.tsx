@@ -763,16 +763,17 @@ export default function ThreePreview(props: Props) {
         skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
         settings={voidWireSettings} background={props.transition.fromBackground} low={low} seconds={seconds}
-        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}/>}
+        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}
+        parallelComponents={isVoid}/>}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges}
         settings={voidWireSettings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
-        skipEntrance={props.skipEntrance}/>}
+        skipEntrance={props.skipEntrance} parallelComponents={isVoid}/>}
       {edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
         <NeuralSignals objects={objects} edges={edges} settings={props.settings}
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
-          completionOverride={signalCompletionOverride}/>}
+          completionOverride={signalCompletionOverride} parallelComponents={isVoid}/>}
       <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
