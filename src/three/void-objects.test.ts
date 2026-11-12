@@ -71,7 +71,9 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
       expect(byId.has(link.a)).toBe(true);
       expect(byId.has(link.b)).toBe(true);
       const source=byId.get(link.a)!,target=byId.get(link.b)!;
-      expect(target.role==='support'?source.role==='primary':source.role==='support').toBe(true);
+      expect(target.role==='support'?
+        (source.role==='primary'||source.role==='support'):
+        (source.role==='support'||source.role==='accent')).toBe(true);
       expect(link.distance).toBeGreaterThanOrEqual(0);
     }
     expect(voidSceneConnections([])).toEqual([]);
@@ -99,21 +101,69 @@ describe('VOID gravity hierarchy places large > medium > small in actual branch 
           const parent=byId.get(node.voidParentId!)!;
           expect(parent).toBeDefined();
           expect(incoming.get(node.id)).toBe(parent.id);
-          expect(parent.role).toBe(node.role==='support'?'primary':'support');
+          expect(node.role==='support'?
+            (parent.role==='primary'||parent.role==='support'):
+            (parent.role==='support'||parent.role==='accent')).toBe(true);
           expect(parent.radius).toBeGreaterThan(node.radius);
           expect(voidBranchCrossesCenter(getRaw(parent.position),getRaw(node.position)))
             .toBe(false);
           if(node.role==='accent'){
-            const hero=byId.get(parent.voidParentId!)!;
-            const mediumDirection=parent.position.map((v,i)=>
-              v-hero.position[i]);
-            const smallDirection=node.position.map((v,i)=>
-              v-parent.position[i]);
-            const projected=mediumDirection.reduce((sum,v,i)=>sum+v*smallDirection[i],0);
-            expect(projected).toBeGreaterThan(0); // A->B->C along the outward branch
+            // No accent can be a parent of medium/large nodes; each thin
+            // branch is an outward hierarchy of progressively smaller nodes.
+            expect(parent.radius).toBeGreaterThan(node.radius);
           }
         }
       }
+    }
+  });
+  it('forms long gravity-to-gravity trunks with chained small branches, not radial fireworks',()=>{
+    for(const seed of ['cosmos','connected-web','heavy-scene','third-seed']){
+      const objects=voidSceneObjects(comp,seed,200,false);
+      const byId=new Map(objects.map(obj=>[obj.id,obj]));
+      const supports=objects.filter(o=>o.role==='support');
+      const accents=objects.filter(o=>o.role==='accent');
+      const trunks=new Map<number,typeof supports>();
+      for(const support of supports){
+        expect(support.voidFilamentId).toBeDefined();
+        expect(support.voidFilamentTargetId?.startsWith('void-primary-')).toBe(true);
+        const n=support.voidFilamentId!;
+        if(!trunks.has(n))trunks.set(n,[]);
+        trunks.get(n)!.push(support);
+      }
+      expect(trunks.size).toBeGreaterThan(4);
+      expect([...trunks.values()].some(nodes=>nodes.length>=8)).toBe(true);
+      for(const trunk of trunks.values()){
+        // Every main filament has only one large origin and proceeds as a
+        // linked chain of medium-sized relays toward a second large knot.
+        for(let i=0;i<trunk.length;i++){
+          const node=trunk[i];
+          const parent=byId.get(node.voidParentId!)!;
+          expect(parent?.id).toBe(i===0?parent.id:trunk[i-1].id);
+          if(i===0)expect(parent.role).toBe('primary');
+          else expect(parent.role).toBe('support');
+          expect(parent.radius).toBeGreaterThan(node.radius);
+          expect(node.voidFilamentTargetId).toBe(trunk[0].voidFilamentTargetId);
+          // Short adjacent links replace very long star-shaped root spokes.
+          const d=Math.hypot(...node.position.map((v,j)=>v-parent.position[j]));
+          expect(d).toBeLessThan(8.5);
+        }
+        const end=trunk[trunk.length-1];
+        const target=byId.get(end.voidFilamentTargetId!)!;
+        const remaining=Math.hypot(...target.position.map((v,j)=>v-end.position[j]));
+        expect(remaining).toBeLessThan(8.5);
+      }
+      const fanout=new Map<string,number>();
+      for(const node of accents){
+        const parent=byId.get(node.voidParentId!)!;
+        fanout.set(parent.id,(fanout.get(parent.id)??0)+1);
+        expect(parent.radius).toBeGreaterThan(node.radius);
+        expect(Math.hypot(...node.position.map((v,j)=>v-parent.position[j])))
+          .toBeLessThan(2.5);
+      }
+      expect(Math.max(...fanout.values())).toBeLessThanOrEqual(2);
+      expect(accents.some(o=>byId.get(o.voidParentId!)?.role==='accent')).toBe(true);
+      const edges=voidSceneConnections(objects);
+      expect(edges).toHaveLength(objects.length-objects.filter(o=>o.role==='primary').length);
     }
   });
   it('retains stable node IDs, parent relations, kind filters and spacing across rendering quality',()=>{
