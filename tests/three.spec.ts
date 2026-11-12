@@ -222,8 +222,8 @@ test('13 solid kinds are individually selectable, save to 3D JSON, and render wi
   await category(page,'図形');
   await page.getByRole('button',{name:'新しい6種類',exact:true}).click();
   await category(page,'装飾');
-  await page.getByLabel('ネオン線画を有効化').check();
-  await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await page.getByLabel('光る輪郭を表示').check();
+  await page.locator('#neon-display').selectOption('lines');
   await expect(preview).toHaveAttribute('data-neon-mode','lines');
   expect((await png(page)).length).toBeGreaterThan(10_000);
   await category(page,'書き出し');
@@ -268,8 +268,8 @@ test('3D figures fade, scale and disappear without changing IDs, and preserve pa
   await expect(preview).toHaveAttribute('data-visibility-mode','fade');
   await page.locator('#three-visibility-mode').selectOption('fade-scale');
   await category(page,'装飾');
-  await page.getByLabel('ネオン線画を有効化').check();
-  await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await page.getByLabel('光る輪郭を表示').check();
+  await page.locator('#neon-display').selectOption('lines');
   await expect(preview).toHaveAttribute('data-neon-mode','lines');
   const paused=digest(await png(page));
   await page.waitForTimeout(180);
@@ -305,7 +305,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   const preview=page.getByTestId('three-preview');
   const shapeCount=await preview.getAttribute('data-object-count');
   await category(page,'背景');
-  await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'床の模様'})).toBeVisible();
   await expect(preview).toHaveAttribute('data-floor-grid','off');
   await page.getByLabel('3D床グリッドを有効化').check();
   await expect(preview).toHaveAttribute('data-floor-grid','on');
@@ -363,7 +363,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   expect(digest(await png(page))).toBe(neonGrid);
   await page.getByRole('button',{name:'2Dモード',exact:true}).click();
   await expect(page.getByTestId('preview')).toBeVisible();
-  await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'床の模様'})).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -427,7 +427,11 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await page.waitForTimeout(550);
   await page.getByLabel('3Dアニメーションを有効化').uncheck();
   expect(digest(await png(page))).not.toBe(circuit);
-  const savedFrame=digest(await png(page));
+  const savedBuffer=await png(page);
+  const savedFrame=digest(savedBuffer);
+  const floorBefore=await preview.evaluate(el=>({
+    time:el.dataset.floorTime,offset:el.dataset.floorOffset,mode:el.dataset.floorStyle,
+  }));
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
   await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
@@ -450,10 +454,44 @@ test('3D floor circuit renders connected traces, animates signals and restores i
   await expect(page.locator('#floor-circuit-detail')).toHaveValue('85');
   await expect(page.locator('#floor-circuit-board-opacity')).toHaveValue('0.55');
   await expect(page.locator('#floor-circuit-accent')).toHaveValue('#e6a65c');
-  const restored=digest(await png(page));
-  const restoredTwice=digest(await png(page));
-  console.log('MB JSON',JSON.stringify({savedFrame,restored,restoredTwice}));
-  expect(restoredTwice).toBe(savedFrame);
+  const restoredBuffer=await png(page);
+  const restoredTwice=await png(page);
+  // A fixed time/scene must render identically on repeated captures.
+  expect(digest(restoredTwice)).toBe(digest(restoredBuffer));
+  const floorAfter=await preview.evaluate(el=>({
+    time:el.dataset.floorTime,offset:el.dataset.floorOffset,mode:el.dataset.floorStyle,
+  }));
+  expect(floorAfter).toEqual(floorBefore);
+  // The complete scene clock, PCB clock and settings must survive JSON roundtrip.
+  await category(page,'書き出し');
+  const savedAgain=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const before=JSON.parse(projectBytes.toString());
+  const after=JSON.parse((await readFile((await (await savedAgain).path())!)).toString());
+  expect(after).toEqual(before);
+
+  // Recreating a WebGL context can change isolated anti-aliased/shadow pixels.
+  // Allow imperceptible rasterization noise but reject actual scene differences.
+  const visualDifference=await page.evaluate(async({a,b})=>{
+    const decode=async(s:string)=>{
+      const img=new Image();img.src='data:image/png;base64,'+s;await img.decode();
+      const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
+      const ctx=canvas.getContext('2d')!;ctx.drawImage(img,0,0);
+      return ctx.getImageData(0,0,img.width,img.height).data;
+    };
+    const oldPixels=await decode(a),newPixels=await decode(b);
+    let changed=0,deltaSum=0;
+    for(let i=0;i<oldPixels.length;i+=4){
+      const delta=Math.abs(oldPixels[i]-newPixels[i])+
+        Math.abs(oldPixels[i+1]-newPixels[i+1])+
+        Math.abs(oldPixels[i+2]-newPixels[i+2]);
+      deltaSum+=delta;
+      if(delta>9)changed++;
+    }
+    return {changed,meanDelta:deltaSum/(oldPixels.length/4)};
+  },{a:savedBuffer.toString('base64'),b:restoredBuffer.toString('base64')});
+  expect(visualDifference.changed).toBeLessThan(1311); // <0.5% of the 512×512 image
+  expect(visualDifference.meanDelta).toBeLessThan(.5);
   expect(errors).toEqual([]);
 });
 

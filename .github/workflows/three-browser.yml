@@ -29,8 +29,21 @@ permissions:
 
 jobs:
   browser:
+    name: 3D browser (${{ matrix.suite }})
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: core
+            specs: 'tests/three.spec.ts'
+          - suite: network
+            specs: 'tests/neon-network.spec.ts tests/celestial.spec.ts tests/three-spacing.spec.ts tests/three-entrance.spec.ts'
+          - suite: sky
+            specs: 'tests/three-sky.spec.ts tests/three-liminal.spec.ts tests/three-seven-liminal.spec.ts'
+          - suite: world
+            specs: 'tests/three-terrain.spec.ts tests/three-visibility.spec.ts tests/three-world.spec.ts'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,10 +53,10 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Check 3D interaction, output, mobile touch and 2D compatibility
-        run: npx playwright test tests/three.spec.ts tests/neon-network.spec.ts tests/celestial.spec.ts tests/three-spacing.spec.ts tests/three-sky.spec.ts tests/three-liminal.spec.ts tests/three-seven-liminal.spec.ts tests/three-terrain.spec.ts tests/three-visibility.spec.ts tests/three-entrance.spec.ts tests/three-world.spec.ts
+        run: npx playwright test ${{ matrix.specs }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: three-browser-failures
+          name: three-browser-failures-${{ matrix.suite }}
           path: test-results/
           retention-days: 7

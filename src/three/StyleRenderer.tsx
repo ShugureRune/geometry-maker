@@ -1,7 +1,7 @@
 // Imported only from the lazy 3D renderer. No new runtime dependencies.
-import {useEffect, useLayoutEffect, useMemo, type RefObject} from 'react';
+import {useEffect, useLayoutEffect, useMemo, useRef, type RefObject} from 'react';
 import {useFrame, useThree} from '@react-three/fiber';
-import {Color, type InterleavedBufferAttribute} from 'three';
+import {AdditiveBlending,Color,InstancedMesh,Object3D,type InterleavedBufferAttribute} from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
@@ -16,6 +16,7 @@ import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireProgress} from './entrance';
 import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
+import {neuralStartupFlash,neuralPacketAt} from './neural-signals';
 
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
@@ -38,13 +39,14 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
     return visibility*arrival;
   };
   const weight=object.role==='primary'?1:object.role==='support'?.8:.65;
-  const material=useMemo(()=>{
-    const initialColor=new Color(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
-    initialColor.multiplyScalar(radiance(initialColor,neon.glow,low));
-    return new LineMaterial({worldUnits:!low,depthTest:true,depthWrite:false,
-      transparent:visibilityLoop||entranceFade||!!morphOpacity,toneMapped:true,
-      linewidth:.022*neon.width*weight,color:initialColor,opacity:currentOpacity()});
-  },[visibilityLoop,entranceFade,morphOpacity]);
+  const baseColor=useMemo(()=>{
+    const value=new Color(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
+    return value.multiplyScalar(radiance(value,neon.glow,low));
+  },[neon.colorMode,neon.customColor,neon.contrast,neon.glow,object.role,background,low]);
+  const material=useMemo(()=>new LineMaterial({worldUnits:!low,depthTest:true,depthWrite:false,
+    transparent:visibilityLoop||entranceFade||!!morphOpacity,toneMapped:true,
+    linewidth:.022*neon.width*weight,color:baseColor,opacity:currentOpacity()}),
+    [visibilityLoop,entranceFade,morphOpacity]);
   // Reconcile immediately on React commits, not only on the next animation tick.
   useLayoutEffect(()=>{material.opacity=currentOpacity();},
     [material,morphOpacity,object,seconds,visibilityLoop,entranceFade,entrance,settings.visibilityAnimation]);
@@ -62,11 +64,18 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
       if(low){material.linewidth=Math.max(.8,neon.width*weight*1.5)*material.resolution.y/Math.max(1,size.height);material.uniformsNeedUpdate=true;}
     };
-    material.color.set(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
-    material.color.multiplyScalar(radiance(material.color,neon.glow,low));material.uniformsNeedUpdate=true;invalidate();
-  },[line,material,neon,object.role,background,low,size.height,invalidate]);
-  // Always write alpha before drawing; never leave a stale opacity on a reused material.
-  useFrame(()=>{material.opacity=currentOpacity();});
+    material.color.copy(baseColor);material.uniformsNeedUpdate=true;invalidate();
+  },[line,material,neon,baseColor,low,size.height,invalidate]);
+  // The same ignition illuminates line-only solids as well as filled meshes.
+  useFrame(()=>{
+    material.opacity=currentOpacity();
+    const network=settings.network??networkDefaults;
+    const ignition=network.enabled&&network.mode==='neural'&&!morphOpacity&&
+      !skipEntrance&&entrance.enabled
+      ?neuralStartupFlash(seconds.current,entrance.duration):0;
+    material.color.copy(baseColor).multiplyScalar(1+ignition*.75);
+    material.uniformsNeedUpdate=true;
+  });
   return <primitive object={line} dispose={null}/>;
 }
 
@@ -198,7 +207,9 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         end.setXYZ(active,...positionB as [number,number,number]);
       }
       if(perEdgeAlpha<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
-      const pulse=network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1;
+      const ignition=network.mode==='neural'&&!standby&&!skipEntrance&&entrance.enabled
+        ?neuralStartupFlash(seconds.current,entrance.duration):0;
+      const pulse=(network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1)*(1+ignition*.65);
       const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
       colorStart.setXYZ(active,ca.r*pulse*perEdgeAlpha,
         ca.g*pulse*perEdgeAlpha,ca.b*pulse*perEdgeAlpha);
@@ -218,6 +229,80 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     seconds,seed,skipEntrance,network.opacity,network.animation]);
   useFrame(updateWire);
   return <primitive object={line} dispose={null}/>;
+}
+
+
+/** A single instanced draw call for all traveling impulses; no per-wire meshes,
+ * timers or allocations proportional to elapsed time. Signal heads track the
+ * actual floating node centers, just like NetworkLines.
+ */
+export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false}:{
+  objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;
+  background:Background;low:boolean;seconds:RefObject<number>;skipEntrance?:boolean;
+}){
+  const network=settings.network??networkDefaults;
+  const entrance=settings.entrance??entranceDefaults;
+  const lanes=low?1:2;
+  const mesh=useRef<InstancedMesh>(null);
+  const dummy=useMemo(()=>new Object3D(),[]);
+  const packetColor=useMemo(()=>new Color(),[]);
+  const topology=useMemo(()=>{
+    const byId=new Map(objects.map(object=>[object.id,object]));
+    return edges.map((edge,rank)=>{
+      const a=byId.get(edge.a)!,b=byId.get(edge.b)!;
+      const source=a.radius>=b.radius?a:b;
+      const color=new Color(styleColor(network.colorMode,network.customColor,
+        source.role,background,network.contrast));
+      color.multiplyScalar(radiance(color,network.glow,low));
+      return {a,b,rank,distance:edge.distance,color};
+    });
+  },[objects,edges,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
+  const update=()=>{
+    const instance=mesh.current;
+    if(!instance)return;
+    const clock=seconds.current;
+    const completion=entrance.enabled&&!skipEntrance?entrance.duration:0;
+    const visibility=settings.visibilityAnimation??visibilityDefaults;
+    let used=0;
+    for(const edge of topology){
+      const segment=visibleNetworkSegment(edge.a,edge.b,clock,visibility,
+        settings.floatAmount,settings.rotationAmount);
+      if(!segment)continue;
+      const reverse=edge.b.radius>edge.a.radius;
+      const origin=reverse?segment.end:segment.start;
+      const target=reverse?segment.start:segment.end;
+      for(let lane=0;lane<lanes;lane++){
+        const packet=neuralPacketAt(clock,completion,edge.rank,edge.distance,lane);
+        if(!packet)continue;
+        dummy.position.set(
+          origin[0]+(target[0]-origin[0])*packet.progress,
+          origin[1]+(target[1]-origin[1])*packet.progress,
+          origin[2]+(target[2]-origin[2])*packet.progress);
+        dummy.scale.setScalar((low?.053:.041)*Math.sqrt(network.width)*(.5+.5*packet.alpha));
+        dummy.updateMatrix();
+        instance.setMatrixAt(used,dummy.matrix);
+        packetColor.copy(edge.color).multiplyScalar(1.7*packet.alpha);
+        instance.setColorAt(used,packetColor);
+        used++;
+      }
+    }
+    instance.count=used;
+    instance.instanceMatrix.needsUpdate=true;
+    if(instance.instanceColor)instance.instanceColor.needsUpdate=true;
+  };
+  // Reserve the instanced-color attribute before the first render, even if
+  // no packet is active yet. Otherwise the first impulse can need a shader recompile.
+  useLayoutEffect(()=>{
+    if(mesh.current&&!mesh.current.instanceColor)mesh.current.setColorAt(0,new Color('#ffffff'));
+    update();
+  },[topology,network.width,settings,entrance,seconds,skipEntrance,lanes]);
+  useFrame(update);
+  return <instancedMesh ref={mesh} args={[undefined,undefined,topology.length*lanes]}
+    count={0} frustumCulled={false} renderOrder={2}>
+    <sphereGeometry args={[1,low?6:10,low?4:8]}/>
+    <meshBasicMaterial color="#ffffff" transparent opacity={.98} blending={AdditiveBlending}
+      depthTest depthWrite={false} toneMapped={false}/>
+  </instancedMesh>;
 }
 
 export type OutlineGeometries=Map<ThreeKind,LineSegmentsGeometry>|null;

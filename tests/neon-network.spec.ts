@@ -38,7 +38,7 @@ test('presets and nearest connections preserve seed, objects, view and original 
   const project=JSON.parse(await saveJSON(page));expect(project.seed).toBe(savedBase.seed);expect(project.density).toBe(savedBase.density);
   expect(project.view).toEqual(savedBase.view);expect(project.settings.material).toBe(savedBase.settings.material);expect(project.background).toEqual(savedBase.background);
   await category(page,'装飾');await page.getByLabel('図形の接続を有効化').uncheck();await expect(preview).toHaveAttribute('data-network-count','0');
-  await page.getByLabel('図形の接続を有効化').check();await page.getByLabel('最大接続数',{exact:true}).fill('1');
+  await page.getByLabel('図形の接続を有効化').check();await page.locator('#network-count').fill('1');
   expect(Number(await preview.getAttribute('data-network-count'))).toBeLessThanOrEqual(Math.floor(Number(count)/2));
   await page.getByRole('button',{name:'サイバーグリッド',exact:true}).click();await expect(preview).toHaveAttribute('data-neon-mode','lines');
   await page.getByRole('button',{name:'スタンダード',exact:true}).click();await expect(preview).toHaveAttribute('data-neon-mode','off');
@@ -53,25 +53,25 @@ test('all neon modes, custom colors, thickness, opacity and glow affect real PNG
   await start(page);await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
   const images=new Set<string>();
   for(const mode of ['lines','transparent','surface']){
-    await category(page,'装飾');await page.getByLabel('ネオン表示方式').selectOption(mode);images.add(hash(await savePNG(page)));
+    await category(page,'装飾');await page.locator('#neon-display').selectOption(mode);images.add(hash(await savePNG(page)));
   }
   expect(images.size).toBe(3);
-  await category(page,'装飾');await page.getByLabel('ネオン表示方式').selectOption('transparent');await page.getByLabel('面の不透明度',{exact:true}).fill('0.5');
-  const translucent=hash(await savePNG(page));await category(page,'装飾');await page.getByLabel('面の不透明度',{exact:true}).fill('0');expect(hash(await savePNG(page))).not.toBe(translucent);
+  await category(page,'装飾');await page.locator('#neon-display').selectOption('transparent');await page.locator('#neon-face-opacity').fill('0.5');
+  const translucent=hash(await savePNG(page));await category(page,'装飾');await page.locator('#neon-face-opacity').fill('0');expect(hash(await savePNG(page))).not.toBe(translucent);
   await category(page,'装飾');await page.getByLabel('輪郭線の色モード').selectOption('custom');await page.locator('#neon-hex').fill('#33ccff');
   await page.getByLabel('接続線の色モード').selectOption('custom');await page.locator('#network-hex').fill('#ee44ff');
-  const colored=hash(await savePNG(page));await category(page,'装飾');await page.getByLabel('輪郭線の太さ',{exact:true}).fill('4');await page.getByLabel('接続線の太さ',{exact:true}).fill('4');
+  const colored=hash(await savePNG(page));await category(page,'装飾');await page.locator('#neon-width').fill('4');await page.locator('#network-width').fill('4');
   expect(hash(await savePNG(page))).not.toBe(colored);
-  await category(page,'装飾');await page.getByLabel('接続線の不透明度',{exact:true}).fill('0');const hiddenLinks=hash(await savePNG(page));
-  await category(page,'装飾');await page.getByLabel('接続線の不透明度',{exact:true}).fill('1');expect(hash(await savePNG(page))).not.toBe(hiddenLinks);
-  await category(page,'装飾');await page.getByLabel('輪郭線の発光強度',{exact:true}).fill('0');await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
-  const noGlow=hash(await savePNG(page));await category(page,'装飾');await page.getByLabel('輪郭線の発光強度',{exact:true}).fill('200');await page.getByLabel('接続線の発光強度',{exact:true}).fill('200');
+  await category(page,'装飾');await page.locator('#network-opacity').fill('0');const hiddenLinks=hash(await savePNG(page));
+  await category(page,'装飾');await page.locator('#network-opacity').fill('1');expect(hash(await savePNG(page))).not.toBe(hiddenLinks);
+  await category(page,'装飾');await page.locator('#neon-glow').fill('0');await page.locator('#network-glow').fill('0');
+  const noGlow=hash(await savePNG(page));await category(page,'装飾');await page.locator('#neon-glow').fill('200');await page.locator('#network-glow').fill('200');
   expect(hash(await savePNG(page))).not.toBe(noGlow);expect((await savePNG(page,1920,1080)).length).toBeGreaterThan(50_000);
 });
 
 test('pulse shares the pausable 3D clock and JSON restores exact paused pose and style',async({page})=>{
   await start(page);await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
-  await category(page,'アニメーション');await page.getByLabel('3D浮遊量',{exact:true}).fill('0');await page.getByLabel('3D回転量',{exact:true}).fill('0');
+  await category(page,'アニメーション');await page.locator('#three-float').fill('0');await page.locator('#three-rotation').fill('0');
   await page.getByRole('button',{name:'3Dを再生',exact:true}).click();
   const moving=hash(await savePNG(page));await page.waitForTimeout(300);expect(hash(await savePNG(page))).not.toBe(moving);
   await category(page,'アニメーション');await page.getByRole('button',{name:'3Dを一時停止',exact:true}).click();
@@ -91,7 +91,7 @@ test('mobile touch controls, lightweight neon and 2D export remain usable',async
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const page=await context.newPage();const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await start(page);
   await page.getByRole('button',{name:'サイバーグリッド',exact:true}).tap();await expect(page.getByTestId('three-preview')).toHaveAttribute('data-quality','low');
-  const slider=page.getByLabel('接続線の太さ',{exact:true});await slider.scrollIntoViewIfNeeded();const box=(await slider.boundingBox())!;
+  const slider=page.locator('#network-width');await slider.scrollIntoViewIfNeeded();const box=(await slider.boundingBox())!;
   await slider.tap({position:{x:box.width*.7,y:box.height/2}});expect(Number(await slider.inputValue())).toBeGreaterThan(1);
   await page.getByLabel('輪郭線の色モード').selectOption('accent');expect((await savePNG(page)).length).toBeGreaterThan(10_000);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -107,9 +107,9 @@ test('network-only edits refresh the paused live canvas without an export or ano
   const canvas=page.getByTestId('three-preview').locator('canvas');
   const before=hash(await canvas.screenshot());await page.locator('#network-hex').fill('#00ccff');
   await expect.poll(async()=>hash(await canvas.screenshot())).not.toBe(before);
-  const colored=hash(await canvas.screenshot());await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
+  const colored=hash(await canvas.screenshot());await page.locator('#network-glow').fill('0');
   await expect.poll(async()=>hash(await canvas.screenshot())).not.toBe(colored);
-  await page.getByLabel('ネオン線画を有効化').check();await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await page.getByLabel('光る輪郭を表示').check();await page.locator('#neon-display').selectOption('lines');
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-neon-mode','lines');
 });
 
@@ -119,7 +119,7 @@ test('fully disappeared figures leave no black ghost connections in exported PNG
   await page.getByLabel('発光強度').fill('0');
   await page.getByLabel('図形の接続を有効化').check();
   await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
-  await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
+  await page.locator('#network-glow').fill('0');
   await category(page,'アニメーション');
   await page.getByLabel('出現・消失アニメーションを有効化').check();
   await page.getByLabel('図形ごとにタイミングをずらす').uncheck();

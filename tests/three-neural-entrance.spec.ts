@@ -22,6 +22,8 @@ test('big → medium → small → neural wires is selectable and keeps saved pr
   await category(page,'装飾');
   await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
   await page.locator('#network-mode').selectOption('neural');
+  await expect(page.locator('#network-animation')).toHaveValue('signal');
+  await expect(preview).toHaveAttribute('data-neural-signals','on');
   await page.locator('#network-distance').fill('15');
   await expect.poll(async()=>Number(await preview.getAttribute('data-network-count')))
     .toBeGreaterThan(0);
@@ -45,6 +47,7 @@ test('big → medium → small → neural wires is selectable and keeps saved pr
     enabled:true,mode:'neural-grow',duration:4,
   });
   expect(saved.settings.network.mode).toBe('neural');
+  expect(saved.settings.network.animation).toBe('signal');
   await expect.poll(()=>page.evaluate(()=>{
     try{return JSON.parse(localStorage.getItem('geometry-maker-studio-autosave-v1')??'null')
       ?.threeD?.settings?.entrance?.mode;}catch{return null;}

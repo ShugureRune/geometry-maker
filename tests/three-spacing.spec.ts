@@ -32,7 +32,7 @@ test('3D spacing has a default of 100%, can move figures, and keeps seeded kind/
   const preview=page.getByTestId('three-preview');
   const count=await preview.getAttribute('data-object-count');
   await category(page,'図形');
-  const spacing=page.getByLabel('図形同士の距離',{exact:true});
+  const spacing=page.locator('#three-spacing');
   await expect(spacing).toHaveValue('100');
   const standard=digest(await png(page));
   await category(page,'図形');
@@ -61,7 +61,7 @@ test('spacing percent persists via JSON and preserves existing neon connection c
   const preview=page.getByTestId('three-preview');
   const count=await preview.getAttribute('data-network-count');
   await category(page,'図形');
-  await page.getByLabel('図形同士の距離',{exact:true}).fill('175');
+  await page.locator('#three-spacing').fill('175');
   await expect(preview).toHaveAttribute('data-network-count',count!);
   await category(page,'書き出し');
   const pending=page.waitForEvent('download');
@@ -70,13 +70,13 @@ test('spacing percent persists via JSON and preserves existing neon connection c
   const project=JSON.parse(bytes.toString());
   expect(project.settings.spacingPercent).toBe(175);
   await category(page,'図形');
-  await page.getByLabel('図形同士の距離',{exact:true}).fill('50');
+  await page.locator('#three-spacing').fill('50');
   await category(page,'書き出し');
   await page.getByLabel('保存した3D設定ファイル').setInputFiles({
     name:'spacing.json',mimeType:'application/json',buffer:bytes,
   });
   await category(page,'図形');
-  await expect(page.getByLabel('図形同士の距離',{exact:true})).toHaveValue('175');
+  await expect(page.locator('#three-spacing')).toHaveValue('175');
   await expect(preview).toHaveAttribute('data-network-count',count!);
   const restored=await png(page);
   expect(restored.length).toBeGreaterThan(10_000);

@@ -25,8 +25,8 @@ async function saveJson(page:Page){
 }
 test('3D standby morph swaps seeds and completes while keeping the preview mounted',async({page})=>{
   await start(page);
-  await page.getByLabel('シード切り替え演出').selectOption('morph');
-  await page.getByLabel('切り替え演出の長さ').fill('2');
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('2');
   const before=await page.getByTestId('current-seed').textContent();
   const preview=page.getByTestId('three-preview');
   await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
@@ -39,8 +39,8 @@ test('3D standby morph swaps seeds and completes while keeping the preview mount
   const completed=JSON.parse((await saveJson(page)).toString('utf8'));
   expect(completed.standbyComplete).toBe(true);
   await category(page,'アニメーション');
-  await page.getByLabel('シード切り替え演出').selectOption('exit-enter');
-  await page.getByLabel('切り替え演出の長さ').fill('1');
+  await page.locator('#three-standby-mode').selectOption('exit-enter');
+  await page.locator('#three-standby-transition').fill('1');
   await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
   await expect(preview).toHaveAttribute('data-standby-mode','exit-enter');
   await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:8000});
@@ -52,10 +52,10 @@ test('3D standby morph swaps seeds and completes while keeping the preview mount
 });
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
-  await page.getByLabel('シード切り替え演出').selectOption('exit-enter');
-  await page.getByLabel('シード切り替え間隔').fill('30');
-  await page.getByLabel('切り替え演出の長さ').fill('3');
-  await page.getByRole('checkbox',{name:'切り替え後もカメラの視点を維持する'}).uncheck();
+  await page.locator('#three-standby-mode').selectOption('exit-enter');
+  await page.locator('#three-standby-interval').fill('30');
+  await page.locator('#three-standby-transition').fill('3');
+  await page.getByRole('checkbox',{name:'視点をそのまま使う'}).uncheck();
   const saved=await saveJson(page);
   const original=JSON.parse(saved.toString('utf8'));
   expect(original.settings.standby).toMatchObject({
@@ -69,8 +69,8 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   });
   await category(page,'アニメーション');
   await expect(page.getByLabel('3D待機画面モードを有効化')).toBeChecked();
-  await expect(page.getByLabel('シード切り替え演出')).toHaveValue('exit-enter');
-  await expect(page.getByLabel('シード切り替え間隔')).toHaveValue('30');
+  await expect(page.locator('#three-standby-mode')).toHaveValue('exit-enter');
+  await expect(page.locator('#three-standby-interval')).toHaveValue('30');
   const old={...original,settings:{...original.settings}};
   delete old.settings.standby;
   await category(page,'書き出し');
@@ -82,9 +82,9 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
 });
 test('auto standby rotates seeds after configured idle interval and respects pause',async({page})=>{
   await start(page);
-  await page.getByLabel('切り替え演出の長さ').fill('1');
-  await page.getByLabel('シード切り替え間隔').fill('5');
-  await page.getByRole('checkbox',{name:'操作中は自動切り替えを一時停止する'}).uncheck();
+  await page.locator('#three-standby-transition').fill('1');
+  await page.locator('#three-standby-interval').fill('5');
+  await page.getByRole('checkbox',{name:'操作している間は止める'}).uncheck();
   const first=await page.getByTestId('current-seed').textContent();
   await expect.poll(()=>page.getByTestId('current-seed').textContent(),{timeout:12000}).not.toBe(first);
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-standby-active','false',{timeout:6000});
@@ -96,9 +96,9 @@ test('auto standby rotates seeds after configured idle interval and respects pau
 
 test('zoomed-in camera remains in place during a complete 3D morph',async({page})=>{
   await start(page);
-  await page.getByLabel('シード切り替え演出').selectOption('morph');
-  await page.getByLabel('切り替え演出の長さ').fill('2');
-  await page.getByRole('checkbox',{name:'操作中は自動切り替えを一時停止する'}).uncheck();
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('2');
+  await page.getByRole('checkbox',{name:'操作している間は止める'}).uncheck();
   const preview=page.getByTestId('three-preview');
   const canvas=preview.locator('canvas');
   await canvas.hover();
@@ -120,9 +120,9 @@ test('zoomed-in camera remains in place during a complete 3D morph',async({page}
 test('repeated standby changes cannot skip morph or background in one frame',async({page})=>{
   await start(page);
   const preview=page.getByTestId('three-preview');
-  await page.getByLabel('シード切り替え演出').selectOption('morph');
-  await page.getByLabel('切り替え演出の長さ').fill('3');
-  await page.getByRole('checkbox',{name:'操作中は自動切り替えを一時停止する'}).uncheck();
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('3');
+  await page.getByRole('checkbox',{name:'操作している間は止める'}).uncheck();
   // Prime the old 3D frame clock. Its elapsed time is deliberately much
   // larger than the first frame of the next transition.
   await page.waitForTimeout(1600);
