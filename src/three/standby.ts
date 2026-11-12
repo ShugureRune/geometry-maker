@@ -14,11 +14,16 @@ export type ThreeStandbySettings={
   /** Orbit around the current focal point only while standby playback runs. */
   cameraAutoRotate:boolean;
   cameraRotateSpeed:number;
+  /** Horizontal orbit or a satellite-like orbit on an inclined plane. */
+  cameraOrbitMode:'horizontal'|'inclined';
+  /** Inclination of the orbital plane relative to the horizontal, in degrees. */
+  cameraOrbitTilt:number;
 };
 export const standbyDefaults:ThreeStandbySettings={
   enabled:false,intervalSeconds:15,transitionSeconds:4,mode:'morph',
   preserveCamera:true,pauseOnInteraction:true,
   cameraAutoRotate:false,cameraRotateSpeed:1,
+  cameraOrbitMode:'horizontal',cameraOrbitTilt:10,
 };
 export function validateThreeStandby(value:unknown):ThreeStandbySettings{
   if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('3D待機画面の設定が不正です。');
@@ -29,6 +34,9 @@ export function validateThreeStandby(value:unknown):ThreeStandbySettings{
     typeof d.pauseOnInteraction!=='boolean'||typeof d.cameraAutoRotate!=='boolean'||
     typeof d.cameraRotateSpeed!=='number'||!Number.isFinite(d.cameraRotateSpeed)||
     d.cameraRotateSpeed<.25||d.cameraRotateSpeed>3||
+    (d.cameraOrbitMode!=='horizontal'&&d.cameraOrbitMode!=='inclined')||
+    typeof d.cameraOrbitTilt!=='number'||!Number.isFinite(d.cameraOrbitTilt)||
+    d.cameraOrbitTilt<5||d.cameraOrbitTilt>30||
     !Number.isInteger(d.intervalSeconds)||d.intervalSeconds<5||d.intervalSeconds>120||
     typeof d.transitionSeconds!=='number'||!Number.isFinite(d.transitionSeconds)||
     d.transitionSeconds<1||d.transitionSeconds>8||
