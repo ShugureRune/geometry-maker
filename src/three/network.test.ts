@@ -183,6 +183,74 @@ it('starts from the actual primary node, not from whichever branch happens to be
  }
 });
 
+it('starts both primary trees at once while each small wire waits for its own medium',()=>{
+ const base=generateThreeComposition('two-heroes-parallel','16:9').objects[0];
+ const node=(id:string,role:'primary'|'support'|'accent',x:number)=>({
+   ...base,id,role,position:[x,0,0] as [number,number,number],
+ });
+ // The branches deliberately have different lengths. Neither hero should
+ // wait for the other to finish even when the longest route is elsewhere.
+ const objects=[
+   node('small-b','accent',25),node('medium-b','support',23),
+   node('hero-b','primary',20),node('small-a','accent',3),
+   node('medium-a','support',2),node('hero-a','primary',0),
+ ];
+ const edges=networkConnections(objects,1,1,'neural');
+ const routes=rootedWireSteps(objects,edges);
+ const byChild=new Map(edges.map((edge,i)=>[edge.b,routes[i]]));
+ const a=byChild.get('medium-a')!,b=byChild.get('medium-b')!;
+ const leafA=byChild.get('small-a')!,leafB=byChild.get('small-b')!;
+ expect(a.rootId).toBe('hero-a');
+ expect(b.rootId).toBe('hero-b');
+ expect(a.component).not.toBe(b.component);
+ expect(a.sourceId).toBe('hero-a');
+ expect(b.sourceId).toBe('hero-b');
+ expect(a.start).toBe(0);
+ expect(b.start).toBe(0);
+ expect(leafA.start).toBeCloseTo(a.end,10);
+ expect(leafB.start).toBeCloseTo(b.end,10);
+ expect(leafA.start).toBeLessThan(leafB.start); // independent durations
+ expect(leafA.rootId).toBe('hero-a');
+ expect(leafB.rootId).toBe('hero-b');
+ expect(routes.every(route=>route.start>=0&&route.end<=1)).toBe(true);
+ expect(rootedWireSteps([...objects].reverse(),edges)).toEqual(routes);
+ // Reordering edges must not change the timings of either root.
+ const flipped=[...edges].reverse();
+ const key=(edge:{a:string;b:string})=>edge.a+':'+edge.b;
+ const byEdge=new Map(rootedWireSteps(objects,flipped).map((route,i)=>[key(flipped[i]),route]));
+ edges.forEach((edge,i)=>{
+   const same=byEdge.get(key(edge))!;
+   expect(same.rootId).toBe(routes[i].rootId);
+   expect(same.start).toBeCloseTo(routes[i].start,10);
+   expect(same.end).toBeCloseTo(routes[i].end,10);
+ });
+});
+
+it('starts separate hero trees together but delays non-hero islands until both finish',()=>{
+ const base=generateThreeComposition('parallel-and-island','16:9').objects[0];
+ const node=(id:string,role:'primary'|'support',x:number)=>({
+   ...base,id,role,position:[x,0,0] as [number,number,number],
+ });
+ const objects=[
+   node('hero-a','primary',0),node('medium-a','support',1),
+   node('hero-b','primary',20),node('medium-b','support',24),
+   node('island-a','support',50),node('island-b','support',51),
+ ];
+ const edges=[
+   {a:'island-a',b:'island-b',distance:1},
+   {a:'medium-b',b:'hero-b',distance:4},
+   {a:'medium-a',b:'hero-a',distance:1},
+ ];
+ const routes=rootedWireSteps(objects,edges);
+ expect(routes[1].rootId).toBe('hero-b');
+ expect(routes[2].rootId).toBe('hero-a');
+ expect(routes[1].start).toBe(0);
+ expect(routes[2].start).toBe(0);
+ expect(routes[0].start).toBeGreaterThan(routes[1].end);
+ expect(routes[0].start).toBeGreaterThan(routes[2].end);
+ expect(routes[0].end).toBe(1);
+});
+
 it('stages isolated components after the main figure rather than launching distant wires together',()=>{
  const base=generateThreeComposition('rooted-islands','16:9').objects[0];
  const obj=(id:string,role:'primary'|'support',x:number)=>({

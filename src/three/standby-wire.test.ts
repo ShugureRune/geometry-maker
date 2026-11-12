@@ -4,6 +4,7 @@ import {entranceDefaults} from './entrance';
 import {threeDefaults} from './settings';
 import {matchThreeObjects,morphPose,splitExitEnter,standbyMeshVisibility,standbyMorphMotionProgress,standbyMorphWireProgress,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
+import {networkConnections,rootedWireSteps} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 
 const from=generateThreeComposition('wire-old','16:9');
@@ -112,6 +113,49 @@ describe('both standby wiring directions originate at the hero',()=>{
       }
       expect(standbyMorphWireProgress(0,duration,'old',0,1,{start:0,end:1})).toBe(1);
       expect(standbyMorphWireProgress(duration,duration,'new',0,1,{start:0,end:1})).toBe(1);
+    }
+  });
+});
+
+describe('simultaneous hero-tree exit and entrance in standby',()=>{
+  it('both roots reconnect together and both roots retract last',()=>{
+    const base=from.objects[0];
+    const node=(id:string,role:'primary'|'support'|'accent',x:number)=>({
+      ...base,id,role,position:[x,0,0] as [number,number,number],
+    });
+    const objects=[
+      node('hero-a','primary',0),node('medium-a','support',2),
+      node('small-a','accent',3),node('hero-b','primary',20),
+      node('medium-b','support',23),node('small-b','accent',25),
+    ];
+    const edges=networkConnections(objects,1,1,'neural');
+    const routes=rootedWireSteps(objects,edges);
+    const byChild=new Map(edges.map((edge,i)=>[edge.b,routes[i]]));
+    const parentA=byChild.get('medium-a')!,parentB=byChild.get('medium-b')!;
+    const childA=byChild.get('small-a')!,childB=byChild.get('small-b')!;
+    for(const duration of [1,2,4,8]){
+      const begin=duration*MORPH_WIRE_ATTACH_START;
+      expect(standbyMorphWireProgress(begin,duration,'new',0,1,parentA)).toBe(0);
+      expect(standbyMorphWireProgress(begin,duration,'new',0,1,parentB)).toBe(0);
+      const justStarted=begin+duration*(1-MORPH_WIRE_ATTACH_START)*.1;
+      expect(standbyMorphWireProgress(justStarted,duration,'new',0,1,parentA)).toBeGreaterThan(0);
+      expect(standbyMorphWireProgress(justStarted,duration,'new',0,1,parentB)).toBeGreaterThan(0);
+      expect(standbyMorphWireProgress(justStarted,duration,'new',0,1,childA)).toBe(0);
+      expect(standbyMorphWireProgress(justStarted,duration,'new',0,1,childB)).toBe(0);
+      // At the beginning of the old-scene release, distant child wires
+      // disappear in each tree before either hero-connected parent retracts.
+      const started=duration*MORPH_WIRE_RELEASE_END*.1;
+      expect(standbyMorphWireProgress(started,duration,'old',0,1,parentA)).toBe(1);
+      expect(standbyMorphWireProgress(started,duration,'old',0,1,parentB)).toBe(1);
+      expect(standbyMorphWireProgress(started,duration,'old',0,1,childB)).toBeLessThan(1);
+      for(let step=0;step<=80;step++){
+        const elapsed=duration*MORPH_WIRE_RELEASE_END*step/80;
+        for(const [parent,child] of [[parentA,childA],[parentB,childB]]){
+          const p=standbyMorphWireProgress(elapsed,duration,'old',0,1,parent);
+          const c=standbyMorphWireProgress(elapsed,duration,'old',0,1,child);
+          if(p<1-1e-8)expect(c).toBe(0);
+        }
+      }
     }
   });
 });

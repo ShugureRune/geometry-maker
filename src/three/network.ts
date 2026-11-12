@@ -80,12 +80,11 @@ export function networkConnections(objects:readonly ThreeObject[],distance:numbe
 
 
 
-/** Directed visual routes rooted at the most important primary figure.
- * A line may only start after its source is reached, so a child cable never
- * ignites before its parent is connected. In neural three-tier mode, each
- * support and accent has exactly one parent in the preceding size tier.
- * Separate hero trees play sequentially to avoid simultaneous origins;
- * classic nearest mode may additionally produce separate smaller islands.
+/** Directed visual routes rooted at each primary figure. Cables within a
+ * hero's own hierarchy wait for their source to be reached, but all hero
+ * trees begin their propagation TOGETHER (rather than making a second hero
+ * wait for the first circuit to finish). Classic nearest mode may additionally
+ * produce islands with no primary; only those are scheduled afterwards.
  */
 export type RootedWireStep={
   source:'a'|'b';
@@ -135,9 +134,12 @@ export function rootedWireSteps(
     primary?Math.min(...group.ids.map(id=>
       Math.hypot(...byId.get(id)!.position.map((v,i)=>v-primary.position[i])))):0;
   groups.sort((a,b)=>{
-    const aMain=primary&&a.ids.includes(primary.id)?0:1;
-    const bMain=primary&&b.ids.includes(primary.id)?0:1;
-    return aMain-bMain||distFromPrimary(a)-distFromPrimary(b)||
+    // All connected components containing a hero must share time zero.
+    // Sort them first so non-hero islands can follow the longest hero wave.
+    const aHero=groupRoot(a).role==='primary'?0:1;
+    const bHero=groupRoot(b).role==='primary'?0:1;
+    return aHero-bHero||
+      (aHero===0?0:distFromPrimary(a)-distFromPrimary(b))||
       groupRoot(a).id.localeCompare(groupRoot(b).id);
   });
   const absolute:({source:'a'|'b';sourceId:string;rootId:string;component:number;
@@ -145,6 +147,8 @@ export function rootedWireSteps(
   let offset=0;
   groups.forEach((group,component)=>{
     const root=groupRoot(group);
+    const isHeroTree=root.role==='primary';
+    const componentOffset=isHeroTree?0:offset;
     const dist=new Map<string,number>(group.ids.map(id=>[id,Infinity]));
     const processed=new Set<string>();dist.set(root.id,0);
     // Dijkstra gives the earliest time each node can be reached from the
@@ -168,13 +172,14 @@ export function rootedWireSteps(
       const start=dist.get(sourceId)!;
       const end=start+Math.max(.001,edge.distance);
       absolute[index]={source,sourceId,rootId:root.id,component,
-        start:offset+start,end:offset+end};
+        start:componentOffset+start,end:componentOffset+end};
       extent=Math.max(extent,end);
     }
-    // Disconnected subgraphs cannot physically grow from the main figure.
-    // Delay the next component until all visible cables in this one are
-    // complete, never ignite multiple distant islands simultaneously.
-    offset+=extent+Math.max(.05,extent*.03);
+    // Two independent hero trees share the SAME starting clock. Keep the
+    // longest hero wave as the boundary before any unrelated nearest-mode
+    // islands. Non-hero islands retain their original sequential staging.
+    const after=componentOffset+extent+Math.max(.05,extent*.03);
+    offset=isHeroTree?Math.max(offset,after):after;
   });
   const total=Math.max(.001,...absolute.map(step=>step?.end??0));
   return absolute.map(step=>({
