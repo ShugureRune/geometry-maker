@@ -23,7 +23,7 @@ export function voidSeedReveal(
       easeInOut(progress*2):easeInOut((progress-.5)*2);
     const visible=layer==='old'?1-phase:phase;
     return {opacity:visible,size:.06+.94*visible,
-      rotationZ:layer==='old'?phase*.26:(1-phase)*(-.26)};
+      rotationZ:layer==='old'?phase*.26:(phase-1)*.26};
   }
   // Keep the old web completely intact while its cables retract (0–18%).
   // Then shrink it away. The incoming web emerges before its cables attach
@@ -32,7 +32,7 @@ export function voidSeedReveal(
   const newArrival=easeInOut((progress-.40)/(MORPH_WIRE_ATTACH_START-.40));
   const visible=layer==='old'?1-oldDeparture:newArrival;
   return {opacity:visible,size:.06+.94*visible,
-    rotationZ:layer==='old'?oldDeparture*.26:(1-newArrival)*(-.26)};
+    rotationZ:layer==='old'?oldDeparture*.26:(newArrival-1)*.26};
 }
 
 /** The outgoing web continues from its captured standby clock, rather than
