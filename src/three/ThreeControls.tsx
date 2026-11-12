@@ -35,7 +35,7 @@ export function ThreeShapeControls({settings, onChange}: Props) {
         sky:{...(settings.sky??skyDefaults),kind:e.target.checked?'cosmic-void':'classic'}})}/>
       ⚠ 危険区域：VOID MODE（コズミックウェブ）
     </label>
-    {voidEnabled&&<HelpInfo>VOID専用の巨大コアストーンを宇宙の結節点に設置し、コアストーン → 主役 → 補助 → 装飾の4段階で、数百〜数千個の既存3D図形をフィラメントに沿って配置します。コアストーンは既存の13種類から選んだ立体を特別な大きさ・発光素材で描画します。遠距離の接続と空洞を横断する配線は制限され、図形の総数にコアストーンも含まれます。高品質最大2,800個、軽量最大800個です。</HelpInfo>}
+    {voidEnabled&&<HelpInfo>VOID専用の巨大コアストーンを周囲の質量密度とフィラメント合流度から求めた重力の集積点に設置し、コアストーン → 主役 → 補助 → 装飾の4段階で、数百〜数千個の既存3D図形をフィラメントに沿って配置します。コアストーンは既存の13種類から選んだ立体を特別な大きさ・発光素材で描画します。遠距離の接続と空洞を横断する配線は制限され、図形の総数にコアストーンも含まれます。高品質最大2,800個、軽量最大800個です。</HelpInfo>}
     <ThreeRange id="three-spacing" label="図形の間隔" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
       min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
     <HelpInfo>100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</HelpInfo>
