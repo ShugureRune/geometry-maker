@@ -9,6 +9,7 @@ import {threeEntrancePose,entranceDefaults} from './entrance';
 import {themeMaterial,type ThreeSettings} from './settings';
 import {THREE_KINDS,type ThreeKind,type ThreeObject} from './model';
 import type {ThreeStandbyTransition} from './standby';
+import {voidSeedFigureTime,voidSeedReveal} from './void-standby';
 
 type Props={
   objects:readonly ThreeObject[];settings:ThreeSettings;background:Background;
@@ -61,22 +62,17 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
     const instance=mesh.current;
     if(!instance)return;
     const time=seconds.current;
-    const morph=standby?Math.min(1,Math.max(0,time/standby.transition.duration)):1;
-    const smooth=morph*morph*(3-2*morph);
-    let transitionAlpha=1;
-    if(standby){
-      if(standby.transition.mode==='morph'){
-        transitionAlpha=standby.layer==='old'?1-smooth:smooth;
-      }else{
-        transitionAlpha=standby.layer==='old'?
-          1-Math.min(1,morph*2):Math.max(0,Math.min(1,(morph-.5)*2));
-      }
-    }
+    // One lightweight phase calculation per draw batch, not per figure.
+    // Keep the preexisting 13 instanced meshes and their native materials.
+    const reveal=standby?voidSeedReveal(time,standby.transition.duration,
+      standby.transition.mode,standby.layer):null;
+    const figureTime=voidSeedFigureTime(time,standby?.layer,
+      standby?.transition.fromTime);
     for(let i=0;i<group.length;i++){
       const object=group[i];
       // Inline the pure threePose formula to avoid allocating thousands
       // of position/rotation arrays every WebGL frame.
-      const drift=Math.sin(Math.max(0,time)*object.floatRate+object.phase)-Math.sin(object.phase);
+      const drift=Math.sin(Math.max(0,figureTime)*object.floatRate+object.phase)-Math.sin(object.phase);
       const rise=drift*settings.floatAmount;
       let x=object.position[0]+rise*.08;
       let y=object.position[1]+rise*.25;
@@ -86,17 +82,17 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
       if(progress){
         x+=progress.offset[0];y+=progress.offset[1];z+=progress.offset[2];
       }
-      const visibility=threeVisibility(object,time,appearance);
-      const alpha=visibility*transitionAlpha*(progress?.opacity??1);
+      const visibility=threeVisibility(object,figureTime,appearance);
+      const alpha=visibility*(reveal?.opacity??1)*(progress?.opacity??1);
       const scale=alpha<=.001?0.00001:object.radius*
         (scaleVisibility?Math.max(.001,visibility):1)*
-        (progress?.scale??1);
+        (progress?.scale??1)*(reveal?.size??1);
       dummy.position.set(x,y,z);
       dummy.rotation.set(
-        object.rotation[0]+object.spin[0]*Math.max(0,time)*settings.rotationAmount,
-        object.rotation[1]+object.spin[1]*Math.max(0,time)*settings.rotationAmount,
-        object.rotation[2]+object.spin[2]*Math.max(0,time)*settings.rotationAmount+
-          (progress?.rotationZ??0));
+        object.rotation[0]+object.spin[0]*Math.max(0,figureTime)*settings.rotationAmount,
+        object.rotation[1]+object.spin[1]*Math.max(0,figureTime)*settings.rotationAmount,
+        object.rotation[2]+object.spin[2]*Math.max(0,figureTime)*settings.rotationAmount+
+          (progress?.rotationZ??0)+(reveal?.rotationZ??0));
       dummy.scale.setScalar(Math.max(.00001,scale));
       dummy.updateMatrix();
       instance.setMatrixAt(i,dummy.matrix);
