@@ -33,5 +33,9 @@ export function neuralWireColorAt(
   source:Color,target:Color,progress:number,result:Color,
 ):Color{
   const t=Number.isFinite(progress)?Math.max(0,Math.min(1,progress)):0;
+  // Exact endpoint copies avoid small rounding differences from Color.lerp(1),
+  // so the signal tip cannot be a slightly different hue at its receiver.
+  if(t<=0)return result.copy(source);
+  if(t>=1)return result.copy(target);
   return result.copy(source).lerp(target,t);
 }
