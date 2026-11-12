@@ -165,6 +165,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
 function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; low: boolean; onLost: () => void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
+  const cameraInteractionUntil=useRef(0);
   const cameraReset=useRef<{from:Vector3;focus:Vector3;elapsed:number;damping:boolean}|null>(null);
   const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
@@ -219,14 +220,20 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       invalidate();
     };
     orbit.addEventListener('change', change);
-    const interrupt=()=>{if(cameraReset.current){orbit.enableDamping=cameraReset.current.damping;cameraReset.current=null;}};
+    const interrupt=()=>{
+      cameraInteractionUntil.current=performance.now()+1500;
+      if(cameraReset.current){orbit.enableDamping=cameraReset.current.damping;cameraReset.current=null;}
+    };
+    const release=()=>{cameraInteractionUntil.current=performance.now()+1500;};
     orbit.addEventListener('start',interrupt);
+    orbit.addEventListener('end',release);
     const visibility = () => {skipDelta.current = true; if (!document.hidden) invalidate();};
     const lost = (event: Event) => {event.preventDefault(); onLost();};
     document.addEventListener('visibilitychange', visibility);
     gl.domElement.addEventListener('webglcontextlost', lost);
     return () => {
       orbit.removeEventListener('change', change);orbit.removeEventListener('start',interrupt);
+      orbit.removeEventListener('end',release);
       orbit.dispose(); controls.current = null;
       document.removeEventListener('visibilitychange', visibility);
       gl.domElement.removeEventListener('webglcontextlost', lost);
@@ -299,13 +306,24 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       if(journey&&orbit){
         journey.elapsed+=Math.min(.05,Math.max(0,delta));
         const t=easeInOut(journey.elapsed/1.15);
+        orbit.autoRotate=false;
         orbit.enableDamping=false;
         camera.position.lerpVectors(journey.from,new Vector3(0,.7,homeDistance),t);
         orbit.target.lerpVectors(journey.focus,new Vector3(0,0,-.4),t);
         orbit.update();
         if(t>=1){orbit.enableDamping=journey.damping;cameraReset.current=null;}
         invalidate();
-      }else orbit?.update();
+      }else if(orbit){
+        // OrbitControls autoRotate preserves the existing target, distance and
+        // zoom. Rotation is opt-in, frame-rate independent and temporarily
+        // pauses after a manual drag / pinch / wheel interaction.
+        const standby=settings.standby??standbyDefaults;
+        orbit.autoRotate=standby.enabled&&standby.cameraAutoRotate&&
+          settings.animation&&!exportingVideo.current&&!document.hidden&&
+          performance.now()>=cameraInteractionUntil.current;
+        orbit.autoRotateSpeed=standby.cameraRotateSpeed;
+        orbit.update(Math.min(.1,Math.max(0,delta)));
+      }
     }
     if (settings.animation && !document.hidden && !exportingVideo.current) invalidate();
     if(!exportingVideo.current&&transition && seconds.current>=transition.duration&&finishedTransition.current!==transition.id){
@@ -564,6 +582,8 @@ export default function ThreePreview(props: Props) {
     data-standby-mode={props.transition?.mode??'off'}
     data-standby-pairs={matches.length}
     data-standby-entrance-complete={props.skipEntrance?'true':'false'}
+    data-camera-auto-rotate={(props.settings.standby??standbyDefaults).enabled&&
+      (props.settings.standby??standbyDefaults).cameraAutoRotate?'on':'off'}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-floor-style={(props.settings.floorGrid??floorGridDefaults).style}
       data-celestial-count={celestialObjects.length}
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
