@@ -53,8 +53,8 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
       <ThreeRange id="three-sky-density" label={naturalDensity[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'水面模様の細かさ':sky.kind==='whiteout-snow'?'雪粒子の量':'草の密度'):'星・粒子・模様の密度')} value={sky.density} min={0} max={200}
         step={10} unit="%" onChange={density=>update({density})}/>
       {sky.kind==='cosmic-void'&&<p className="help" role="status" data-testid="void-warning">
-        ⚠ 危険区域：VOID MODE — 宇宙の大規模構造を模した3D網目。図形が集まるフィラメントと巨大な空洞（ボイド）を作ります。
-        高品質では約{voidFigureCount(sky.density,false).toLocaleString('ja-JP')}個、軽量描画では約{voidFigureCount(sky.density,true).toLocaleString('ja-JP')}個の3D図形を表示。密度が高いほど処理が重くなる場合があります。
+        ⚠ 危険区域：VOID MODE — 通常の3D図形そのものを主役・補助・装飾の役割に分けて大量配置し、主役を網目の結び目に置き、フィラメントと巨大な空洞（ボイド）を作ります。
+        背景用の別図形は追加されません。高品質では約{voidFigureCount(sky.density,false).toLocaleString('ja-JP')}個、軽量描画では約{voidFigureCount(sky.density,true).toLocaleString('ja-JP')}個の3D図形に置き換わります。密度が高いほど処理が重くなる場合があります。
       </p>}
       <ThreeRange id="three-sky-motion" label={naturalMotion[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'波の動く速さ':sky.kind==='whiteout-snow'?'雪が舞う速さ':'風の速さ'):'背景が動く速さ')} value={sky.motion} min={0} max={300}
         step={10} unit="%" onChange={motion=>update({motion})}/>
