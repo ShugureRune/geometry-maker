@@ -14,7 +14,7 @@ import {threePose, threeSpacingFactor, visibleThreeObjects, type ThreeCompositio
 import {effectiveThreeQuality, themeMaterial, threeResolutionError, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './settings';
 import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
-import {NeonOutline,NetworkLines,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
+import {NeonOutline,NetworkLines,NeuralSignals,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
 import {skyDefaults} from './sky-settings';
@@ -25,6 +25,7 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
+import {neuralStartupFlash} from './neural-signals';
 import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
@@ -96,6 +97,15 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
   const updateSolid=()=>{
     if (!mesh.current) return;
+    // The ignition begins only after the last entrance wire finishes.
+    // Update emissive intensity directly so pause/seek/export stay deterministic.
+    if(surfaceRef.current){
+      const circuit=settings.network??networkDefaults;
+      const ignition=circuit.enabled&&circuit.mode==='neural'&&!standby&&
+        !skipEntrance&&entrance.enabled
+        ?neuralStartupFlash(seconds.current,entrance.duration):0;
+      surfaceRef.current.emissiveIntensity=emissive*(material==='glass'?.45:1)+ignition*1.35;
+    }
     if(standby){
       const {transition,variant}=standby;
       const {position,rotation,radius,opacity:alpha,colorMix}=standbyObjectPose(
@@ -614,7 +624,9 @@ export default function ThreePreview(props: Props) {
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
   return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
-    data-network-count={edges.length} data-network-mode={network.mode} data-neon-mode={neon.enabled?neon.display:'off'}
+    data-network-count={edges.length} data-network-mode={network.mode}
+    data-neural-signals={network.enabled&&network.mode==='neural'&&network.animation==='signal'?'on':'off'}
+    data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
      data-entrance-enabled={(props.settings.entrance??entranceDefaults).enabled?'true':'false'}
@@ -686,6 +698,9 @@ export default function ThreePreview(props: Props) {
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
+      {!props.transition&&edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
+        <NeuralSignals objects={objects} edges={edges} settings={props.settings}
+          background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}/>}
       <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
