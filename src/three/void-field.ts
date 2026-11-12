@@ -1,13 +1,13 @@
 import {seededRandom} from '../scene';
 
-/** Cosmic-web VOID MODE: densely populated filaments around genuinely empty
- * volumes. Position buffers are deterministic and independent of frame time.
- * Instancing keeps the tens of thousands of actual 3D solids to 3 draw calls.
+/** Cosmic-web VOID MODE: hundreds to a few thousand geometric solids follow
+ * 3D filaments around genuinely empty volumes. Positions are deterministic;
+ * GPU instancing batches the actual 3D solids into just three draw calls.
  */
-export const VOID_LOW_BASE_COUNT=7000;
-export const VOID_HIGH_BASE_COUNT=24000;
-export const VOID_LOW_MAX_COUNT=14000;
-export const VOID_HIGH_MAX_COUNT=48000;
+export const VOID_LOW_BASE_COUNT=400;
+export const VOID_HIGH_BASE_COUNT=1400;
+export const VOID_LOW_MAX_COUNT=800;
+export const VOID_HIGH_MAX_COUNT=2800;
 export const VOID_KNOT_COUNT=56;
 export const VOID_EMPTY_CENTER:[number,number,number]=[0,0,-115];
 export const VOID_EMPTY_RADII:[number,number,number]=[23,19,35];
@@ -60,7 +60,7 @@ export function generateVoidField(seed:string,count:number):VoidField{
   const random=seededRandom('cosmic-void-v1:'+seed);
   const knots:Point[]=[];
   // A few dozen separated knots span a volume much deeper than the main 3D
-  // composition. Even a maximum-density field never fills the central void.
+  // composition. Even at maximum density the central region remains empty.
   for(let i=0;i<VOID_KNOT_COUNT;i++){
     let p:Point=[0,0,-150];
     for(let attempt=0;attempt<100;attempt++){
@@ -106,8 +106,8 @@ export function generateVoidField(seed:string,count:number):VoidField{
     let p:Point=[0,0,-150];
     let radius=.2;
     // Place 84% of figures along filament threads and the rest near knots.
-    // Keep retries bounded and deterministic without accumulating millions
-    // of scene objects or allocating per-figure geometries.
+    // Keep retries bounded and deterministic without thousands of React
+    // components or allocating geometry for every figure.
     for(let attempt=0;attempt<36;attempt++){
       const nearKnot=random()<.16;
       const knot=knots[Math.floor(random()*knots.length)];
@@ -128,7 +128,7 @@ export function generateVoidField(seed:string,count:number):VoidField{
     radius=.13+Math.pow(random(),3)*.55;
     const type=i%3;
     const offset=i*4;
-    figures.set([p[0],p[1],p[2]+115,radius],offset);
+    figures.set([p[0],p[1],p[2],radius],offset);
     shapes[i]=type;
     colorMix[i]=Math.min(1,.08+random()*.92);
     shapeCounts[type]++;
