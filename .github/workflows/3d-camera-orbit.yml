@@ -1,0 +1,45 @@
+name: Standby camera orbit checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/three/standby.ts'
+      - 'src/three/ThreeStandbyControls.tsx'
+      - 'src/three/ThreePreview.tsx'
+      - 'src/three/standby.test.ts'
+      - 'tests/three-camera-orbit.spec.ts'
+      - '.github/workflows/3d-camera-orbit.yml'
+  pull_request:
+    paths:
+      - 'src/three/standby.ts'
+      - 'src/three/ThreeStandbyControls.tsx'
+      - 'src/three/ThreePreview.tsx'
+      - 'src/three/standby.test.ts'
+      - 'tests/three-camera-orbit.spec.ts'
+      - '.github/workflows/3d-camera-orbit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Check orbit motion and reload behavior
+        run: npx playwright test tests/three-camera-orbit.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: 3d-camera-orbit-failures
+          path: test-results/
+          retention-days: 7
