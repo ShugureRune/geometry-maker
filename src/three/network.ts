@@ -96,7 +96,6 @@ export type RootedWireStep={
 };
 export function rootedWireSteps(
   objects:readonly ThreeObject[],edges:readonly NetworkEdge[],
-  parallelComponents=false,
 ):RootedWireStep[]{
   if(edges.length===0)return [];
   const byId=new Map(objects.map(o=>[o.id,o]));
@@ -149,9 +148,7 @@ export function rootedWireSteps(
   groups.forEach((group,component)=>{
     const root=groupRoot(group);
     const isHeroTree=root.role==='primary';
-    // In VOID, independent cosmic filaments must grow/retract together.
-    // The legacy mode preserves sequential scheduling for ordinary 3D.
-    const componentOffset=parallelComponents?0:isHeroTree?0:offset;
+    const componentOffset=isHeroTree?0:offset;
     const dist=new Map<string,number>(group.ids.map(id=>[id,Infinity]));
     const processed=new Set<string>();dist.set(root.id,0);
     // Dijkstra gives the earliest time each node can be reached from the
@@ -178,24 +175,12 @@ export function rootedWireSteps(
         start:componentOffset+start,end:componentOffset+end};
       extent=Math.max(extent,end);
     }
-    if(parallelComponents){
-      // Use EACH independent component's own longest rooted path as its
-      // timeline. Using one global maximum compresses short components
-      // into imperceptible flashes, even if all groups start at zero.
-      const duration=Math.max(.001,extent);
-      for(const index of group.links){
-        const step=absolute[index]!;
-        step.start/=duration;
-        step.end/=duration;
-      }
-    }else{
-      // Preserve normal-mode scheduling exactly: hero trees launch together,
-      // then unrelated islands follow the longest existing wave.
-      const after=componentOffset+extent+Math.max(.05,extent*.03);
-      offset=isHeroTree?Math.max(offset,after):after;
-    }
+    // Two independent hero trees share the SAME starting clock. Keep the
+    // longest hero wave as the boundary before any unrelated nearest-mode
+    // islands. Non-hero islands retain their original sequential staging.
+    const after=componentOffset+extent+Math.max(.05,extent*.03);
+    offset=isHeroTree?Math.max(offset,after):after;
   });
-  if(parallelComponents)return absolute.map(step=>step!);
   const total=Math.max(.001,...absolute.map(step=>step?.end??0));
   return absolute.map(step=>({
     ...step!,start:step!.start/total,end:step!.end/total,

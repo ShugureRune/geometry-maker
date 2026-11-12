@@ -37,28 +37,19 @@ export type NeuralSignalPlan={routes:NeuralSignalRoute[];cycle:number};
  */
 export function neuralSignalPlan(
   objects:readonly ThreeObject[],edges:readonly NetworkEdge[],
-  parallelComponents=false,
 ):NeuralSignalPlan{
-  const rooted=rootedWireSteps(objects,edges,parallelComponents);
+  const rooted=rootedWireSteps(objects,edges);
   if(rooted.length===0)return {routes:[],cycle:1};
-  // Animating independent VOID filaments in parallel must NOT speed up
-  // electrical packets. Recover each component's OWN world-distance scale;
-  // the normal 3D mode still uses its original single global scale.
-  const scaleByComponent=new Map<number,number>();
-  for(let i=0;i<rooted.length;i++){
-    const route=rooted[i];
-    const scale=Math.max(.001,edges[i].distance)/
-      Math.max(1e-12,route.end-route.start);
-    scaleByComponent.set(route.component,Math.max(
-      scaleByComponent.get(route.component)??0,scale));
-  }
-  const distanceScale=parallelComponents?0:Math.max(...scaleByComponent.values());
-  const routes=rooted.map(route=>{
-    const secondsPerNormalized=(parallelComponents?
-      scaleByComponent.get(route.component)!:distanceScale)/NEURAL_SIGNAL_SPEED;
-    return {...route,start:route.start*secondsPerNormalized,
-      end:route.end*secondsPerNormalized};
-  });
+  // rootedWireSteps expresses cumulative *distance* as normalized windows.
+  // Recover the shared distance scale from any edge, then convert to seconds.
+  // .001 also matches the minimum length used for a zero-distance edge.
+  const distanceScale=Math.max(...rooted.map((route,i)=>
+    Math.max(.001,edges[i].distance)/Math.max(1e-12,route.end-route.start)));
+  const secondsPerNormalized=distanceScale/NEURAL_SIGNAL_SPEED;
+  const routes=rooted.map(route=>({
+    ...route,start:route.start*secondsPerNormalized,
+    end:route.end*secondsPerNormalized,
+  }));
   const lastArrival=Math.max(...routes.map(route=>route.end));
   return {routes,cycle:lastArrival+NEURAL_SIGNAL_REST};
 }

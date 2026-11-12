@@ -3,7 +3,6 @@ import {generateThreeComposition,visibleThreeObjects} from './model';
 import {networkConnections,neuralConnectionScore,visibleNetworkSegment,rootedWireSteps} from './network';
 import {threePose} from './model';
 import {visibilityDefaults} from './visibility';
-import {standbyMorphWireProgress,MORPH_WIRE_ATTACH_START,MORPH_WIRE_RELEASE_END} from './standby';
 it('resolves exact distance ties by object ID regardless of generation order',()=>{
  const base=generateThreeComposition('ties','1:1').objects[0];
  const objects=[{...base,id:'b',position:[1,0,0] as [number,number,number]},{...base,id:'c',position:[0,1,0] as [number,number,number]},{...base,id:'a',position:[0,0,0] as [number,number,number]}];
@@ -268,63 +267,4 @@ it('stages isolated components after the main figure rather than launching dista
  expect(steps[0].start).toBeGreaterThan(steps[1].end);
  expect(steps.every(s=>s.start>=0&&s.end<=1&&s.end>s.start)).toBe(true);
  expect(rootedWireSteps(objects,[])).toEqual([]);
-});
-
-
-it('animates disconnected cosmic filaments concurrently, without compressed flashes or reversing local parent order',()=>{
- const base=generateThreeComposition('void-parallel-wiring','16:9').objects[0];
- const node=(id:string,role:'primary'|'support'|'accent',x:number)=>({
-   ...base,id,role,position:[x,0,0] as [number,number,number],
- });
- const objects=[
-   node('hero','primary',0),node('relay','support',2),node('leaf','accent',3),
-   node('remote-relay','support',100),node('remote-leaf','accent',101),
-   node('third-a','accent',200),node('third-b','accent',201),
- ];
- const edges=[
-   {a:'hero',b:'relay',distance:2},
-   {a:'relay',b:'leaf',distance:1},
-   {a:'remote-relay',b:'remote-leaf',distance:1},
-   {a:'third-a',b:'third-b',distance:1},
- ];
- const legacy=rootedWireSteps(objects,edges);
- // Preserve the original (sequential) graph schedule for normal 3D.
- expect(rootedWireSteps(objects,edges,false)).toEqual(legacy);
- expect(legacy[2].start).toBeGreaterThan(0);
- expect(legacy[3].start).toBeGreaterThan(legacy[2].start);
- const parallel=rootedWireSteps(objects,edges,true);
- expect(parallel).toHaveLength(edges.length);
- expect(parallel[0].sourceId).toBe('hero');
- expect(parallel[1].sourceId).toBe('relay');
- expect(parallel[0].start).toBe(0);
- expect(parallel[0].end).toBeCloseTo(2/3,10);
- expect(parallel[1].start).toBeCloseTo(2/3,10);
- expect(parallel[1].end).toBeCloseTo(1,10);
- // Even a one-wire isolated clump takes the FULL local growth interval:
- // it does not blink into existence at the end of one global timeline.
- for(const i of [2,3]){
-   expect(parallel[i].start).toBe(0);
-   expect(parallel[i].end).toBe(1);
- }
- const duration=4;
- const duringAttach=duration*(MORPH_WIRE_ATTACH_START+(1-MORPH_WIRE_ATTACH_START)*.08);
- expect(standbyMorphWireProgress(duringAttach,duration,'new',0,1,parallel[0])).toBeGreaterThan(0);
- expect(standbyMorphWireProgress(duringAttach,duration,'new',0,1,parallel[2])).toBeGreaterThan(0);
- expect(standbyMorphWireProgress(duringAttach,duration,'new',0,1,parallel[3])).toBeGreaterThan(0);
- expect(standbyMorphWireProgress(duringAttach,duration,'new',0,1,parallel[1])).toBe(0);
- const duringRelease=duration*MORPH_WIRE_RELEASE_END*.08;
- expect(standbyMorphWireProgress(duringRelease,duration,'old',0,1,parallel[0])).toBe(1);
- expect(standbyMorphWireProgress(duringRelease,duration,'old',0,1,parallel[1])).toBeLessThan(1);
- expect(parallel.every(route=>route.start>=0&&route.end>route.start&&route.end<=1)).toBe(true);
- // Reordering the object or edge array must not change physical routing.
- const reversedEdges=[...edges].reverse();
- const reversed=rootedWireSteps([...objects].reverse(),reversedEdges,true);
- const lookup=new Map(reversedEdges.map((edge,i)=>
-   [[edge.a,edge.b].sort().join(':'),reversed[i]] as const));
- edges.forEach((edge,i)=>{
-   const same=lookup.get([edge.a,edge.b].sort().join(':'))!;
-   expect(same.sourceId).toBe(parallel[i].sourceId);
-   expect(same.start).toBeCloseTo(parallel[i].start,10);
-   expect(same.end).toBeCloseTo(parallel[i].end,10);
- });
 });

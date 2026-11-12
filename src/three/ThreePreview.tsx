@@ -17,7 +17,7 @@ import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,NeuralSignals,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
-import {voidSceneObjects,voidSceneConnections,matchVoidObjects} from './void-objects';
+import {voidSceneObjects,voidSceneConnections} from './void-objects';
 import {VoidRenderer} from './VoidRenderer';
 import {skyDefaults} from './sky-settings';
 import {worldDefaults,sunlightAtHour} from './world-settings';
@@ -638,32 +638,21 @@ export default function ThreePreview(props: Props) {
       visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
     [props.transition,isVoid,voidDensity,low,props.density,props.settings.enabledKinds,
       props.settings.spacingPercent]);
-  // Generic min-cost matching is quadratic; VOID has stable figure IDs.
-  // Match the thousands of existing nodes in linear time, so standby morph
-  // and the moving wire endpoints share exactly the same old/new pairs.
-  const matches=useMemo<MorphMatch[]>(()=>props.transition?.mode==='morph'?
-    isVoid?matchVoidObjects(previousObjects,objects):
-      matchThreeObjects(previousObjects,objects):[],
-    [isVoid,props.transition,previousObjects,objects]);
+  // Matching 2,800 independent nodes would be prohibitively expensive.
+  // VOID instead crossfades two complete instanced networks as seeded webs.
+  const matches=useMemo<MorphMatch[]>(()=>!isVoid&&props.transition?.mode==='morph'?
+    matchThreeObjects(previousObjects,objects):[],[isVoid,props.transition,previousObjects,objects]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
   const edges=useMemo(()=>network.enabled?
-    isVoid?voidSceneConnections(objects,spacingFactor):
+    isVoid?voidSceneConnections(objects):
       networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [objects,isVoid,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const previousEdges=useMemo(()=>props.transition&&network.enabled?
-    isVoid?voidSceneConnections(previousObjects,spacingFactor):
+    isVoid?voidSceneConnections(previousObjects):
       networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [props.transition,previousObjects,isVoid,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
-  // VOID reuses EXACTLY the normal NetworkLines renderer (including its
-  // distance-dependent world-space thickness). Its much denser, larger 3D
-  // scene needs thinner cables: adjust only the submitted width, never the
-  // shader, worldUnits mode, glow, opacity or saved user preferences.
-  // In particular, no CSS/pixel-fixed size or second additive halo.
-  const voidWireSettings=useMemo(()=>isVoid?{...props.settings,
-    network:{...network,width:Math.max(.08,network.width*.28)}}:props.settings,
-    [isVoid,props.settings,network]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -716,12 +705,11 @@ export default function ThreePreview(props: Props) {
       {isVoid?<>
         {props.transition&&<VoidRenderer objects={previousObjects} settings={props.settings}
           background={props.transition.fromBackground} visualTheme={props.transition.fromTheme}
-          low={low} seconds={seconds} seed={props.transition.fromSeed} matches={matches}
+          low={low} seconds={seconds} seed={props.transition.fromSeed}
           standby={{transition:props.transition,layer:'old'}}/>}
         <VoidRenderer objects={objects} settings={props.settings}
           background={props.background} visualTheme={props.visualTheme}
           low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance}
-          matches={matches}
           standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>
       </>:<>
       {props.transition ? props.transition.mode==='morph'?
@@ -762,18 +750,17 @@ export default function ThreePreview(props: Props) {
         standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
         skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
-        settings={voidWireSettings} background={props.transition.fromBackground} low={low} seconds={seconds}
-        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}
-        parallelComponents={isVoid}/>}
+        settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
+        seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}/>}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges}
-        settings={voidWireSettings} background={props.background} low={low} seconds={seconds}
+        settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
-        skipEntrance={props.skipEntrance} parallelComponents={isVoid}/>}
+        skipEntrance={props.skipEntrance}/>}
       {edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
         <NeuralSignals objects={objects} edges={edges} settings={props.settings}
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
-          completionOverride={signalCompletionOverride} parallelComponents={isVoid}/>}
+          completionOverride={signalCompletionOverride}/>}
       <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
