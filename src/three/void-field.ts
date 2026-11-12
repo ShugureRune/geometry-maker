@@ -27,6 +27,8 @@ export type VoidField={
   colorMix:Float32Array;
   /** Individual physical segments of the cosmic filaments. */
   filaments:Float32Array;
+  /** 3D junctions; primary figures are moved onto these knots. */
+  knots:Float32Array;
   shapeCounts:[number,number,number];
 };
 type Point=[number,number,number];
@@ -55,7 +57,7 @@ export function generateVoidField(seed:string,count:number):VoidField{
   const safeCount=Number.isFinite(count)?Math.max(0,Math.min(VOID_HIGH_MAX_COUNT,Math.floor(count))):0;
   const empty:VoidField={count:0,figures:new Float32Array(0),
     shapes:new Uint8Array(0),colorMix:new Float32Array(0),
-    filaments:new Float32Array(0),shapeCounts:[0,0,0]};
+    filaments:new Float32Array(0),knots:new Float32Array(0),shapeCounts:[0,0,0]};
   if(safeCount===0)return empty;
   const random=seededRandom('cosmic-void-v1:'+seed);
   const knots:Point[]=[];
@@ -134,5 +136,5 @@ export function generateVoidField(seed:string,count:number):VoidField{
     shapeCounts[type]++;
   }
   return {count:safeCount,figures,shapes,colorMix,
-    filaments:new Float32Array(lines),shapeCounts};
+    filaments:new Float32Array(lines),knots:new Float32Array(knots.flat()),shapeCounts};
 }
