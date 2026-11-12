@@ -97,8 +97,6 @@ describe('live moving endpoints while neural cables grow or retract',()=>{
   it('respects float amount zero, and never snaps when morph movement begins or ends',()=>{
     const prior={...from.objects[0],phase:0,floatRate:1};
     const next={...to.objects[0],kind:prior.kind,phase:.5,floatRate:1.2};
-    const still={...settings,floatAmount:0};
-    const active={...settings,floatAmount:1};
     const at=(time:number,amount:number)=>standbyObjectPose(prior,next,time,transition,
       'shared',amount,1,entranceDefaults,'wire-new',true);
     for(const time of [0,.12,.5,3.2,3.5,4]){
