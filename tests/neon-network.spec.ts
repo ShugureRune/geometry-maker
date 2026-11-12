@@ -64,8 +64,8 @@ test('all neon modes, custom colors, thickness, opacity and glow affect real PNG
   expect(hash(await savePNG(page))).not.toBe(colored);
   await category(page,'装飾');await page.getByLabel('接続線の不透明度',{exact:true}).fill('0');const hiddenLinks=hash(await savePNG(page));
   await category(page,'装飾');await page.getByLabel('接続線の不透明度',{exact:true}).fill('1');expect(hash(await savePNG(page))).not.toBe(hiddenLinks);
-  await category(page,'装飾');await page.getByLabel('輪郭線の発光強度',{exact:true}).fill('0');await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
-  const noGlow=hash(await savePNG(page));await category(page,'装飾');await page.getByLabel('輪郭線の発光強度',{exact:true}).fill('200');await page.getByLabel('接続線の発光強度',{exact:true}).fill('200');
+  await category(page,'装飾');await page.getByLabel('輪郭線の発光強度',{exact:true}).fill('0');await page.locator('#network-glow').fill('0');
+  const noGlow=hash(await savePNG(page));await category(page,'装飾');await page.getByLabel('輪郭線の発光強度',{exact:true}).fill('200');await page.locator('#network-glow').fill('200');
   expect(hash(await savePNG(page))).not.toBe(noGlow);expect((await savePNG(page,1920,1080)).length).toBeGreaterThan(50_000);
 });
 
@@ -107,7 +107,7 @@ test('network-only edits refresh the paused live canvas without an export or ano
   const canvas=page.getByTestId('three-preview').locator('canvas');
   const before=hash(await canvas.screenshot());await page.locator('#network-hex').fill('#00ccff');
   await expect.poll(async()=>hash(await canvas.screenshot())).not.toBe(before);
-  const colored=hash(await canvas.screenshot());await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
+  const colored=hash(await canvas.screenshot());await page.locator('#network-glow').fill('0');
   await expect.poll(async()=>hash(await canvas.screenshot())).not.toBe(colored);
   await page.getByLabel('ネオン線画を有効化').check();await page.getByLabel('ネオン表示方式').selectOption('lines');
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-neon-mode','lines');
@@ -119,7 +119,7 @@ test('fully disappeared figures leave no black ghost connections in exported PNG
   await page.getByLabel('発光強度').fill('0');
   await page.getByLabel('図形の接続を有効化').check();
   await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
-  await page.getByLabel('接続線の発光強度',{exact:true}).fill('0');
+  await page.locator('#network-glow').fill('0');
   await category(page,'アニメーション');
   await page.getByLabel('出現・消失アニメーションを有効化').check();
   await page.getByLabel('図形ごとにタイミングをずらす').uncheck();
