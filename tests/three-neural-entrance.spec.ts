@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 
-test.setTimeout(160_000);
+test.setTimeout(95_000);
 
 async function category(page:Page,label:string){
   const tab=page.getByRole('navigation',{name:'設定カテゴリー'})
@@ -27,10 +27,10 @@ test('big → medium → small → neural wires is selectable and keeps saved pr
     .toBeGreaterThan(0);
   await category(page,'アニメーション');
   await page.getByLabel('3D図形を順番に登場させる').check();
-  await page.getByLabel('3D登場演出の種類').selectOption('neural-grow');
+  await page.locator('#three-entrance-mode').selectOption('neural-grow');
   await expect(page.getByTestId('three-entrance-style'))
     .toContainText('大きい図形 → 中くらい → 小さい図形 → ワイヤー');
-  await page.getByLabel('登場アニメーションの時間').fill('4');
+  await page.locator('#three-entrance-duration').fill('4');
   await expect(page.getByLabel('主役から順番に登場')).toHaveCount(0);
   await page.getByRole('button',{name:'3D登場演出を最初から再生'}).click();
   await expect(preview).toHaveAttribute('data-entrance-mode','neural-grow');
@@ -51,20 +51,20 @@ test('big → medium → small → neural wires is selectable and keeps saved pr
   })).toBe('neural-grow');
   await page.reload();
   await category(page,'アニメーション');
-  await expect(page.getByLabel('3D登場演出の種類')).toHaveValue('neural-grow');
-  await expect(page.getByLabel('登場アニメーションの時間')).toHaveValue('4');
+  await expect(page.locator('#three-entrance-mode')).toHaveValue('neural-grow');
+  await expect(page.locator('#three-entrance-duration')).toHaveValue('4');
   await category(page,'装飾');
   await expect(page.locator('#network-mode')).toHaveValue('neural');
 
   await page.locator('#network-mode').selectOption('nearest');
   await category(page,'アニメーション');
-  await page.getByLabel('3D登場演出の種類').selectOption('spiral');
+  await page.locator('#three-entrance-mode').selectOption('spiral');
   await category(page,'書き出し');
   await page.getByLabel('保存した3D設定ファイル',{exact:true}).setInputFiles({
     name:'size-ordered-entrance.json',mimeType:'application/json',buffer:json,
   });
   await category(page,'アニメーション');
-  await expect(page.getByLabel('3D登場演出の種類')).toHaveValue('neural-grow');
+  await expect(page.locator('#three-entrance-mode')).toHaveValue('neural-grow');
   await category(page,'装飾');
   await expect(page.locator('#network-mode')).toHaveValue('neural');
   expect(errors).toEqual([]);
@@ -82,7 +82,7 @@ test('new entrance animation remains stable with seed auto-switch and repeating 
   await page.locator('#network-mode').selectOption('neural');
   await category(page,'アニメーション');
   await page.getByLabel('3D図形を順番に登場させる').check();
-  await page.getByLabel('3D登場演出の種類').selectOption('neural-grow');
+  await page.locator('#three-entrance-mode').selectOption('neural-grow');
   await page.getByLabel('出現・消失アニメーションを有効化').check();
   await page.getByLabel('3D待機画面モードを有効化').check();
   await page.locator('#three-standby-transition').fill('3');
