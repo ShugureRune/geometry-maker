@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,threePose,type ThreeObject} from './model';
 import {entranceDefaults} from './entrance';
 import {threeDefaults} from './settings';
-import {matchThreeObjects,morphPose,splitExitEnter,type ThreeStandbyTransition} from './standby';
+import {matchThreeObjects,morphPose,splitExitEnter,standbyMeshVisibility,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {threeVisibility,visibilityDefaults} from './visibility';
 
@@ -82,6 +82,24 @@ describe('3D standby wire endpoint synchronization',()=>{
     const hiddenPair={...pair,to:hiddenNew};
     const wire=standbyWirePose(older,'old',hiddenPair,transition,0,combined,'wire-new');
     expect(wire.opacity).toBe(0);
+  });
+  it('begins from the old appearance and ends at the new appearance without a one-frame pop',()=>{
+    const previous={...from.objects[0],role:'support' as const,phase:Math.PI*2*.2};
+    const target={...to.objects[0],role:'support' as const,phase:Math.PI*2*.3};
+    const appearance={...visibilityDefaults,enabled:true,keepPrimaryVisible:false};
+    expect(threeVisibility(previous,transition.fromTime,appearance)).toBe(0);
+    expect(threeVisibility(target,0,appearance)).toBe(1);
+    const phase=(time:number)=>standbyMeshVisibility(previous,target,'shared',time,transition,appearance);
+    expect(phase(0)).toBe(0);
+    expect(phase(.001)).toBeLessThan(.01);
+    expect(phase(.1)).toBeLessThan(.05);
+    expect(phase(transition.duration)).toBeCloseTo(
+      threeVisibility(target,transition.duration,appearance),10);
+    for(let t=0;t<transition.duration;t+=.01){
+      // A renderer running at 60fps must never reveal a figure all at once
+      // just because the new seed's staggered loop starts at a different phase.
+      expect(Math.abs(phase(t+.01)-phase(t))).toBeLessThan(.08);
+    }
   });
   it('hides transition wires whenever the exact old/new drawn mesh is invisible',()=>{
     const older={...from.objects[0],role:'support' as const,phase:Math.PI*2*.2};
