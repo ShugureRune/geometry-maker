@@ -105,18 +105,23 @@ describe('3D seeded one-shot entrance',()=>{
     expect(threeEntranceProgress(medium,3,unstaggered))
       .toBeGreaterThan(threeEntranceProgress(small,3,unstaggered));
   });
-  it('grows and erases a cable FROM the primary even when the opposite node is larger',()=>{
+  it('grows outward from the primary and shrinks inward to it regardless of relative node size',()=>{
     const hero={radius:.4},largeRelay={radius:2};
     const heroPosition:[number,number,number]=[0,0,0];
     const relayPosition:[number,number,number]=[4,0,0];
-    const at=.25;
-    const joining=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,at,'a');
+    const joining=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,.25,'a');
     expect(joining).toEqual({start:heroPosition,end:[1,0,0],reverse:false});
-    // During removal, the missing part starts at the SAME primary endpoint.
-    const removing=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,.75,'a',true);
-    expect(removing).toEqual({start:[1,0,0],end:relayPosition,reverse:false});
-    const reverse=neuralWireEndpoints(largeRelay,hero,relayPosition,heroPosition,.75,'b',true);
-    expect(reverse).toEqual({start:[1,0,0],end:relayPosition,reverse:true});
+    // Backward time rewinds the free tip from relay -> hero, while the
+    // anchored end remains the hero. Never leave a disconnected tail.
+    const retracted=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,.25,'a');
+    expect(retracted).toEqual(joining);
+    const reversedInput=neuralWireEndpoints(largeRelay,hero,relayPosition,heroPosition,.25,'b');
+    expect(reversedInput).toEqual({start:heroPosition,end:[1,0,0],reverse:true});
+    for(const fraction of [1,.75,.5,.25,.01,0]){
+      const short=neuralWireEndpoints(hero,largeRelay,heroPosition,relayPosition,fraction,'a');
+      expect(short.start).toEqual(heroPosition);
+      expect(short.end).toEqual([4*fraction,0,0]);
+    }
     expect(neuralWireWindowProgress(0,0,.4)).toBe(0);
     expect(neuralWireWindowProgress(.4,0,.4)).toBe(1);
     expect(neuralWireWindowProgress(.5,.5,.8)).toBe(0);
