@@ -116,9 +116,10 @@ describe('lightweight position morph for standby VOID',()=>{
     expect(voidSeedMixAngle(from,to,1)).toBe(to);
   });
   it('matches high-density 2,800-figure scenes using stable IDs, without quadratic pair matching',()=>{
-    const scene=generateThreeComposition('void-positional-standby','16:9');
-    const old=voidSceneObjects(scene,'web-seed-before',200,false);
-    const next=voidSceneObjects(scene,'web-seed-after',200,false);
+    const old=voidSceneObjects(
+      generateThreeComposition('web-seed-before','16:9'),'web-seed-before',200,false);
+    const next=voidSceneObjects(
+      generateThreeComposition('web-seed-after','16:9'),'web-seed-after',200,false);
     expect(old.length).toBe(2800);
     expect(next.length).toBe(2800);
     const byId=new Map(old.map(o=>[o.id,o]));
