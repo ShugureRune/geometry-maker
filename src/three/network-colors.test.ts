@@ -62,7 +62,7 @@ describe('neural signal color always matches the network wire underneath',()=>{
     for(const role of roles){
       const receiver=networkReceiverColor(role,background);
       expect(receiver.equals(new Color(background.figureColors![role]))).toBe(true);
-      expect(receiver.getHexString()).toBe(background.figureColors![role].slice(1));
+      expect(receiver.getHexString()).toBe(background.figureColors![role]!.slice(1));
     }
     for(const mode of ['auto','custom','primary'] as const){
       const network={...networkDefaults,colorMode:mode,customColor:'#ffffff',
