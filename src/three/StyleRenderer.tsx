@@ -11,7 +11,7 @@ import type {ThreeSettings} from './settings';
 import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
-import {networkEndpointColor,networkReceiverColor,neuralWireColorAt} from './network-colors';
+import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './network-colors';
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
@@ -277,8 +277,9 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
       const target=route.source==='a'?b:a;
       const sourceColor=networkEndpointColor(source.role,network,background,low);
       const targetColor=networkEndpointColor(target.role,network,background,low);
-      // The receiver halo belongs to the SOLID, not to the network tint.
-      const receiverColor=networkReceiverColor(target.role,background);
+      // Keep the receiver's own hue, but lift very dark halo colors so
+      // additive arrival flashes remain visible even for near-black nodes.
+      const receiverColor=networkArrivalGlowColor(target.role,background);
       return {a,b,route,window:wireRoutes[index],target,
         sourceColor,targetColor,receiverColor};
     });
