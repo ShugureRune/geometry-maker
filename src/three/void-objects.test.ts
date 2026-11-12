@@ -151,7 +151,7 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
       const figures=voidSceneObjects(comp,'three-stage-space',density,false);
       const byId=new Map(figures.map(o=>[o.id,o]));
       const edges=voidSceneConnections(figures);
-      const pairs=new Set(edges.map(edge=>[edge.a,edge.b].sort().join('|'));
+      const pairs=new Set(edges.map(edge=>[edge.a,edge.b].sort().join('|')));
       const mains=figures.filter(o=>o.voidTier==='primary');
       expect(mains.length).toBeGreaterThan(0);
       expect(mains.every(o=>o.radius<1.5)).toBe(true);
