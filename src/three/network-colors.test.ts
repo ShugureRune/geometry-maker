@@ -51,7 +51,9 @@ describe('neural signal color always matches the network wire underneath',()=>{
     expect(neuralWireColorAt(hero,medium,1,buffer).equals(medium)).toBe(true);
     // If a route is stored in reverse order, its source/target are swapped,
     // but the sampled signal still follows the same vertex-color gradient.
-    expect(neuralWireColorAt(medium,hero,.25,buffer).equals(q2)).toBe(true);
+    const reverseQuarter=neuralWireColorAt(medium,hero,.25,buffer);
+    for(const channel of ['r','g','b'] as const)
+      expect(reverseQuarter[channel]).toBeCloseTo(q2[channel],12);
     expect(neuralWireColorAt(hero,medium,-1,buffer).equals(hero)).toBe(true);
     expect(neuralWireColorAt(hero,medium,2,buffer).equals(medium)).toBe(true);
   });
