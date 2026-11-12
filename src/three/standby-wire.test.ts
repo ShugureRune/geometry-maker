@@ -50,6 +50,60 @@ describe('detached neural wiring during automatic seed morph',()=>{
   });
 });
 
+describe('neural entrance animation reused for automatic rewiring',()=>{
+  it('uses identical size-staggered easing when reconnecting and reverse-playback when disconnecting',()=>{
+    for(const duration of [1,4,8]){
+      for(const count of [1,3,9]){
+        for(let rank=0;rank<count;rank++){
+          for(const part of [0,.05,.2,.35,.5,.65,.8,.95,1]){
+            const forwardTime=duration*(MORPH_WIRE_ATTACH_START+
+              (1-MORPH_WIRE_ATTACH_START)*part);
+            const backwardTime=duration*MORPH_WIRE_RELEASE_END*(1-part);
+            const joining=standbyMorphWireProgress(forwardTime,duration,'new',rank,count);
+            const leaving=standbyMorphWireProgress(backwardTime,duration,'old',rank,count);
+            // Reversing time must return the exact same visible length.
+            expect(leaving).toBeCloseTo(joining,10);
+            expect(joining).toBeGreaterThanOrEqual(0);
+            expect(joining).toBeLessThanOrEqual(1);
+          }
+        }
+      }
+    }
+  });
+  it('connects large junctions first and disconnects small junctions first',()=>{
+    const count=10,duration=4;
+    for(const part of [.2,.35,.5,.65,.8]){
+      const arrival=duration*(MORPH_WIRE_ATTACH_START+
+        (1-MORPH_WIRE_ATTACH_START)*part);
+      const departure=duration*MORPH_WIRE_RELEASE_END*part;
+      // Rank 0 = largest nodes, rank count-1 = smallest nodes.
+      expect(standbyMorphWireProgress(arrival,duration,'new',0,count))
+        .toBeGreaterThanOrEqual(standbyMorphWireProgress(arrival,duration,'new',count-1,count));
+      expect(standbyMorphWireProgress(departure,duration,'old',0,count))
+        .toBeGreaterThanOrEqual(standbyMorphWireProgress(departure,duration,'old',count-1,count));
+    }
+    expect(standbyMorphWireProgress(duration*.88,duration,'new',0,count))
+      .toBeGreaterThan(0);
+    expect(standbyMorphWireProgress(duration*.88,duration,'new',count-1,count)).toBe(0);
+    expect(standbyMorphWireProgress(duration*.04,duration,'old',0,count)).toBe(1);
+    expect(standbyMorphWireProgress(duration*.04,duration,'old',count-1,count)).toBeLessThan(1);
+  });
+  it('retains the disconnect/move/reconnect gap with no premature wires at any rank',()=>{
+    for(const duration of [1,2,4,8]){
+      for(const timeFraction of [.18,.3,.5,.72,.8]){
+        for(const rank of [0,4,9]){
+          expect(standbyMorphWireProgress(duration*timeFraction,duration,'old',rank,10)).toBe(0);
+          expect(standbyMorphWireProgress(duration*timeFraction,duration,'new',rank,10)).toBe(0);
+        }
+      }
+      for(const rank of [0,4,9]){
+        expect(standbyMorphWireProgress(0,duration,'old',rank,10)).toBe(1);
+        expect(standbyMorphWireProgress(duration,duration,'new',rank,10)).toBe(1);
+      }
+    }
+  });
+});
+
 describe('3D standby wire endpoint synchronization',()=>{
   it('tracks the exact same camera-safe morph path as solid objects in both layers',()=>{
     const pairs=matchThreeObjects(from.objects.slice(0,8),to.objects.slice(0,9));
