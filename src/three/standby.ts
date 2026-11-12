@@ -83,11 +83,11 @@ export function standbyMorphMotionProgress(seconds:number,duration:number,rewire
     clamp01((fraction-MORPH_WIRE_RELEASE_END)/(MORPH_WIRE_ATTACH_START-MORPH_WIRE_RELEASE_END)):
     fraction;
 }
-/** Both release and attachment launch at the main figure and travel
- * OUTWARD along the SAME rooted network route. Removal leaves the untouched
- * outer part of a cable visible until the advancing eraser reaches it.
- * Optional routed time windows enforce parent-before-child propagation.
- * Without a plan, retain the original rank stagger as a fallback. */
+/** Attach from the primary outwards; retract BACK to it in exact reverse
+ * order. A distant child cable shrinks to its parent before the parent cable
+ * retracts, so no floating disconnected segment is left on screen.
+ * Optional routed windows propagate through the rooted network; without a
+ * route, use the legacy size-ranked neural entrance animation. */
 export function standbyMorphWireProgress(
   seconds:number,duration:number,layer:'old'|'new',rank=0,count=1,
   window?:{start:number;end:number},
@@ -96,12 +96,16 @@ export function standbyMorphWireProgress(
   const local=layer==='old'
     ?clamp01(fraction/MORPH_WIRE_RELEASE_END)
     :clamp01((fraction-MORPH_WIRE_ATTACH_START)/(1-MORPH_WIRE_ATTACH_START));
-  const outward=window
-    ?neuralWireWindowProgress(local,window.start,window.end)
+  // The outgoing network must literally rewind the incoming animation:
+  // small/far branches retract first, then their parents, ending at primary.
+  // "1 - forward(local)" instead erases from the primary and leaves detached
+  // fragments at the remote ends until the very last frame.
+  const wireTime=layer==='old'?1-local:local;
+  return window
+    ?neuralWireWindowProgress(wireTime,window.start,window.end)
     :neuralWireProgress(NEURAL_WIRE_START_FRACTION+
-      (1-NEURAL_WIRE_START_FRACTION)*local,
+      (1-NEURAL_WIRE_START_FRACTION)*wireTime,
       {enabled:true,mode:'neural-grow',duration:1,stagger:true},rank,count);
-  return layer==='old'?1-outward:outward;
 }
 
 /** One continuous visibility envelope for a seed change.
