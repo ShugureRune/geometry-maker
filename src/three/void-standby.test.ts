@@ -1,7 +1,8 @@
 import {describe,expect,it} from 'vitest';
 import {threePose,generateThreeComposition} from './model';
 import {MORPH_WIRE_ATTACH_START,MORPH_WIRE_RELEASE_END} from './standby';
-import {voidSeedFigureTime,voidSeedReveal} from './void-standby';
+import {voidSeedFigureTime,voidSeedReveal,voidSeedTravel,voidSeedMix,voidSeedMixAngle,voidSeedKindVisibility} from './void-standby';
+import {voidSceneObjects} from './void-objects';
 
 describe('VOID standby seed change visual-only animation',()=>{
   it('preserves the complete old web while old cables retract, and reveals the new web before wiring starts',()=>{
@@ -68,5 +69,75 @@ describe('VOID standby seed change visual-only animation',()=>{
       expect(oldPose.rotation).toEqual(expected.rotation);
     }
     expect(voidSeedFigureTime(4)).toBe(4);
+  });
+});
+
+describe('lightweight position morph for standby VOID',()=>{
+  it('keeps old location through cable retraction and finishes at the new position before reconnection',()=>{
+    for(const duration of [1,2,4,8]){
+      expect(voidSeedTravel(0,duration)).toBe(0);
+      expect(voidSeedTravel(duration*MORPH_WIRE_RELEASE_END,duration)).toBe(0);
+      expect(voidSeedTravel(duration*MORPH_WIRE_ATTACH_START,duration)).toBe(1);
+      expect(voidSeedTravel(duration,duration)).toBe(1);
+      expect(voidSeedTravel(duration*.5,duration)).toBeGreaterThan(0);
+      expect(voidSeedTravel(duration*.5,duration)).toBeLessThan(1);
+      const from=12.5,to=-47.75;
+      expect(voidSeedMix(from,to,voidSeedTravel(0,duration))).toBe(from);
+      expect(voidSeedMix(from,to,voidSeedTravel(duration,duration))).toBe(to);
+      let previous=from;
+      for(let i=1;i<=100;i++){
+        const t=duration*i/100;
+        const next=voidSeedMix(from,to,voidSeedTravel(t,duration));
+        expect(next).toBeLessThanOrEqual(previous+1e-8);
+        expect(Math.abs(next-previous)).toBeLessThan(2.5);
+        previous=next;
+      }
+    }
+  });
+  it('keeps unchanged shapes on one instance, fading only genuinely changed geometry',()=>{
+    for(const duration of [1,2,4,8]){
+      expect(voidSeedKindVisibility(0,duration,'old')).toBe(1);
+      expect(voidSeedKindVisibility(0,duration,'new')).toBe(0);
+      expect(voidSeedKindVisibility(duration*MORPH_WIRE_RELEASE_END,duration,'old')).toBe(1);
+      expect(voidSeedKindVisibility(duration*MORPH_WIRE_ATTACH_START,duration,'new')).toBe(1);
+      expect(voidSeedKindVisibility(duration,duration,'old')).toBe(0);
+      const midpointOld=voidSeedKindVisibility(duration*.5,duration,'old');
+      const midpointNew=voidSeedKindVisibility(duration*.5,duration,'new');
+      expect(midpointOld).toBeGreaterThan(0);
+      expect(midpointNew).toBeGreaterThan(0);
+      expect(midpointOld).toBeLessThan(1);
+      expect(midpointNew).toBeLessThan(1);
+    }
+    expect(voidSeedMix(1,2,.5)).toBe(1.5);
+    const from=Math.PI-.1,to=-Math.PI+.1;
+    const middle=voidSeedMixAngle(from,to,.5);
+    expect(Math.abs(middle-from)).toBeLessThan(.2);
+    expect(voidSeedMixAngle(from,to,0)).toBe(from);
+    expect(voidSeedMixAngle(from,to,1)).toBe(to);
+  });
+  it('matches high-density 2,800-figure scenes using stable IDs, without quadratic pair matching',()=>{
+    const scene=generateThreeComposition('void-positional-standby','16:9');
+    const old=voidSceneObjects(scene,'web-seed-before',200,false);
+    const next=voidSceneObjects(scene,'web-seed-after',200,false);
+    expect(old.length).toBe(2800);
+    expect(next.length).toBe(2800);
+    const byId=new Map(old.map(o=>[o.id,o]));
+    expect(byId.size).toBe(old.length);
+    const matched=next.map(o=>byId.get(o.id));
+    expect(matched.every(Boolean)).toBe(true);
+    expect(matched.some((o,i)=>o!.kind===next[i].kind)).toBe(true);
+    expect(matched.some((o,i)=>o!.kind!==next[i].kind)).toBe(true);
+    expect(matched.some((o,i)=>o!.position.some((v,j)=>v!==next[i].position[j]))).toBe(true);
+    // No intermediate scene generation or matching all possible object pairs.
+    const sample=matched[120]!;
+    const target=next[120];
+    for(const fraction of [0,.1,.4,.7,1]){
+      for(let k=0;k<3;k++){
+        const value=voidSeedMix(sample.position[k],target.position[k],fraction);
+        expect(Number.isFinite(value)).toBe(true);
+        if(fraction===0)expect(value).toBe(sample.position[k]);
+        if(fraction===1)expect(value).toBe(target.position[k]);
+      }
+    }
   });
 });
