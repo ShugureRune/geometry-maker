@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {generateThreeComposition,spaceThreeComposition,THREE_KINDS} from './model';
-import {voidSceneObjects,voidSceneConnections,voidConnectionReach,voidKnotGravityScores,selectVoidGravityCoreKnots} from './void-objects';
+import {voidSceneObjects,voidSceneConnections,voidConnectionReach,voidKnotGravityScores,selectVoidGravityPrimaryKnots} from './void-objects';
 import {VOID_EMPTY_CENTER,VOID_EMPTY_RADII,voidFigureCount,generateVoidField,type VoidField} from './void-field';
 
 const comp=spaceThreeComposition(generateThreeComposition('native-void-web','16:9'));
@@ -23,16 +23,14 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
   it('keeps native figure roles, 3D kinds, rotations and floating motion metadata',()=>{
     const figures=voidSceneObjects(comp,'cosmos',100,false);
     const primary=figures.filter(o=>o.voidTier==='primary');
-    const cores=figures.filter(o=>o.voidTier==='core');
     const support=figures.filter(o=>o.role==='support');
     const accent=figures.filter(o=>o.role==='accent');
-    expect(cores.length).toBeGreaterThanOrEqual(2);
-    expect(primary.length).toBeGreaterThan(cores.length);
-    expect(cores.every(o=>o.role==='primary')).toBe(true);
-    expect(Math.min(...cores.map(o=>o.radius))).toBeGreaterThan(
-      Math.max(...primary.map(o=>o.radius))*1.5);
+    expect(primary.length).toBeGreaterThan(2);
+    expect(figures.every(o=>!o.id.startsWith('void-core-'))).toBe(true);
+    expect(figures.every(o=>o.voidTier===o.role)).toBe(true);
+    expect(Math.max(...primary.map(o=>o.radius))).toBeLessThan(1.5);
     expect(new Set(figures.map(o=>o.voidTier))).toEqual(
-      new Set(['core','primary','support','accent']));
+      new Set(['primary','support','accent']));
     expect(support.length).toBeGreaterThan(primary.length);
     expect(accent.length).toBeGreaterThan(support.length);
     expect(new Set(figures.map(o=>o.kind)).size).toBeGreaterThan(7);
@@ -83,14 +81,12 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
       expect(a).toBeDefined();
       expect(b).toBeDefined();
       expect(link.distance).toBeGreaterThan(0);
-      const coreLink=a.voidTier==='core'||b.voidTier==='core';
       expect(link.distance).toBeLessThanOrEqual(
-        (coreLink?Math.max(4.25,voidConnectionReach(figures.length)):
-          voidConnectionReach(figures.length))+1e-8);
-      const tier={core:0,primary:1,support:2,accent:3};
+        voidConnectionReach(figures.length)+1e-8);
+      const tier={primary:0,support:1,accent:2};
       const rankA=tier[a.voidTier],rankB=tier[b.voidTier];
       expect(Math.abs(rankA-rankB)===1||
-        (rankA===rankB&&rankA>=2)).toBe(true);
+        (rankA===rankB&&rankA>=1)).toBe(true);
       expect(Math.hypot(...a.position.map((v,i)=>v-b.position[i]))).toBeCloseTo(link.distance,8);
       const pair=[link.a,link.b].sort().join('|');
       expect(pairs.has(pair)).toBe(false);
@@ -109,12 +105,11 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
     }
     for(const figure of figures){
       expect(degree.get(figure.id)??0).toBeLessThanOrEqual(
-        figure.voidTier==='core'?8:figure.role==='primary'?8:
-          figure.role==='support'?5:3);
+        figure.role==='primary'?7:figure.role==='support'?5:3);
     }
     expect(voidSceneConnections([])).toEqual([]);
   });
-  it('places the first corestone in the deepest local mass well, not the farthest knot',()=>{
+  it('ranks native primary positions by gravitational well rather than remoteness',()=>{
     const positions:number[]=[];
     for(let i=0;i<20;i++)positions.push(
       10+(i%5)-2,15+Math.floor(i/5)-2,-70+(i%3)-1,.4);
@@ -127,44 +122,43 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
     const scores=voidKnotGravityScores(field);
     expect(scores[1]).toBeGreaterThan(scores[0]);
     expect(scores[1]).toBeGreaterThan(scores[2]);
-    expect(selectVoidGravityCoreKnots(field,2)[0]).toBe(1);
+    expect(selectVoidGravityPrimaryKnots(field,2)[0]).toBe(1);
   });
-  it('anchors real seeded corestones at high-potential filament junctions',()=>{
+  it('anchors ordinary primary figures at the most massive knots, without special objects',()=>{
     for(const [seed,density,low] of [
       ['cosmos',100,false],['dense-cosmos',200,false],['light-cosmos',100,true],
     ] as const){
       const field=generateVoidField(seed,voidFigureCount(density,low));
       const scores=voidKnotGravityScores(field);
       const figures=voidSceneObjects(comp,seed,density,low);
-      const cores=figures.filter(o=>o.voidTier==='core');
-      const selected=selectVoidGravityCoreKnots(field,cores.length);
+      const mains=figures.filter(o=>o.voidTier==='primary');
+      const selected=selectVoidGravityPrimaryKnots(field,mains.length);
       const highest=scores.indexOf(Math.max(...scores));
       expect(selected[0]).toBe(highest);
-      for(let i=0;i<cores.length;i++){
+      expect(mains.length).toBeLessThanOrEqual(24);
+      for(let i=0;i<mains.length;i++){
         const knot=selected[i]*3;
         for(let axis=0;axis<3;axis++)
-          expect(cores[i].position[axis]).toBeCloseTo(field.knots[knot+axis]*.255,7);
+          expect(mains[i].position[axis]).toBeCloseTo(field.knots[knot+axis]*.255,7);
       }
-      expect(cores.every(o=>!emptyRegion(...o.position))).toBe(true);
-      expect(selectVoidGravityCoreKnots(field,cores.length)).toEqual(selected);
+      expect(figures.some(o=>o.id.startsWith('void-core-'))).toBe(false);
+      expect(mains.every(o=>o.radius<1.5&&!emptyRegion(...o.position))).toBe(true);
+      expect(selectVoidGravityPrimaryKnots(field,mains.length)).toEqual(selected);
     }
   });
-  it('attaches corestone branches to their real corestones without remote spokes',()=>{
+  it('connects supporting branches to real native primaries, not giant hubs',()=>{
     for(const density of [10,100,200]){
-      const figures=voidSceneObjects(comp,'four-stage-space',density,false);
+      const figures=voidSceneObjects(comp,'three-stage-space',density,false);
       const byId=new Map(figures.map(o=>[o.id,o]));
       const edges=voidSceneConnections(figures);
       const pairs=new Set(edges.map(edge=>[edge.a,edge.b].sort().join('|')));
-      const cores=figures.filter(o=>o.voidTier==='core');
       const mains=figures.filter(o=>o.voidTier==='primary');
-      expect(cores.length).toBeGreaterThan(0);
-      expect(cores.length).toBeLessThanOrEqual(8);
-      expect(Math.min(...cores.map(o=>o.radius))).toBeGreaterThan(
-        Math.max(...mains.map(o=>o.radius)));
-      for(const main of mains.filter(o=>o.voidParentId)){
-        const parent=byId.get(main.voidParentId!)!;
-        expect(parent.voidTier).toBe('core');
-        expect(pairs.has([main.id,parent.id].sort().join('|'))).toBe(true);
+      expect(mains.length).toBeGreaterThan(0);
+      expect(mains.every(o=>o.radius<1.5)).toBe(true);
+      for(const support of figures.filter(o=>o.role==='support'&&o.voidParentId)){
+        const parent=byId.get(support.voidParentId!)!;
+        expect(parent.role).toBe('primary');
+        expect(pairs.has([support.id,parent.id].sort().join('|'))).toBe(true);
       }
       for(const edge of edges){
         const a=byId.get(edge.a)!,b=byId.get(edge.b)!;

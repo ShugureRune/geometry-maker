@@ -16,7 +16,7 @@ type Props={
   skipEntrance?:boolean;
   standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};
 };
-type BatchProps=Props&{kind:ThreeKind;group:ThreeObject[];core?:boolean};
+type BatchProps=Props&{kind:ThreeKind;group:ThreeObject[]};
 
 function geometry(kind:ThreeKind,low:boolean){
   switch(kind){
@@ -40,7 +40,7 @@ function geometry(kind:ThreeKind,low:boolean){
  * A few thousand objects create just 13 React meshes, not 2,800 components.
  */
 function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
-  core=false,skipEntrance=false,standby}:BatchProps){
+  skipEntrance=false,standby}:BatchProps){
   const mesh=useRef<InstancedMesh>(null);
   const material=useRef<MeshStandardMaterial>(null);
   const dummy=useMemo(()=>new Object3D(),[]);
@@ -100,8 +100,7 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
       dummy.scale.setScalar(Math.max(.00001,scale));
       dummy.updateMatrix();
       instance.setMatrixAt(i,dummy.matrix);
-      // Corestones retain the selected primary color but shine a little more.
-      tint.copy(palette[object.role]).multiplyScalar(Math.max(0,alpha)*(core?1.12:1));
+      tint.copy(palette[object.role]).multiplyScalar(Math.max(0,alpha));
       instance.setColorAt(i,tint);
     }
     instance.instanceMatrix.needsUpdate=true;
@@ -114,39 +113,29 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
   useFrame(update);
   if(group.length===0)return null;
   return <instancedMesh ref={mesh} args={[undefined,undefined,group.length]}
-    name={core?`void-corestone-${kind}`:`void-regular-3d-${kind}`} frustumCulled={false}
+    name={`void-regular-3d-${kind}`} frustumCulled={false}
     castShadow={false} receiveShadow={false}>
     {geometry(kind,low)}
     <meshStandardMaterial ref={material} color="#ffffff"
-      roughness={core?Math.min(.38,settings.roughness):kindMaterial==='matte'?Math.max(.65,settings.roughness):settings.roughness}
-      metalness={core?Math.max(.45,settings.metalness):kindMaterial==='matte'?0:settings.metalness}
+      roughness={kindMaterial==='matte'?Math.max(.65,settings.roughness):settings.roughness}
+      metalness={kindMaterial==='matte'?0:settings.metalness}
       transparent={translucent||kindMaterial==='glass'} opacity={1}
       depthWrite={!translucent&&kindMaterial!=='glass'}
       wireframe={wireframe} flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)}
-      emissive={core?"#363b88":"#080808"}
-      emissiveIntensity={core?.42+(background.glowIntensity??0)/100*.13:(background.glowIntensity??0)/100*.12}/>
+      emissive="#080808" emissiveIntensity={(background.glowIntensity??0)/100*.12}/>
   </instancedMesh>;
 }
 
-/** Separate corestone instances share the selected native geometry but have
- * a brighter mineral-like material. Only a few anchors exist; all remaining
- * figures still use the original inexpensive kind-instanced renderer.
- */
+/** All VOID figures use their existing kind-instanced material. */
 export function VoidRenderer(props:Props){
   const groups=useMemo(()=>{
-    const regular=new Map<ThreeKind,ThreeObject[]>();
-    const cores=new Map<ThreeKind,ThreeObject[]>();
-    for(const kind of THREE_KINDS){regular.set(kind,[]);cores.set(kind,[]);}
-    for(const object of props.objects){
-      (object.id.startsWith('void-core-')?cores:regular).get(object.kind)?.push(object);
-    }
-    return {regular,cores};
+    const byKind=new Map<ThreeKind,ThreeObject[]>();
+    for(const kind of THREE_KINDS)byKind.set(kind,[]);
+    for(const object of props.objects)byKind.get(object.kind)?.push(object);
+    return byKind;
   },[props.objects]);
-  return <group name="cosmic-void-web" userData={{figureCount:props.objects.length,
-    corestoneCount:props.objects.filter(object=>object.id.startsWith('void-core-')).length}}>
+  return <group name="cosmic-void-web" userData={{figureCount:props.objects.length}}>
     {THREE_KINDS.map(kind=><VoidBatch key={kind} {...props}
-      group={groups.regular.get(kind)!} kind={kind}/>)}
-    {THREE_KINDS.map(kind=><VoidBatch key={'core-'+kind} {...props}
-      group={groups.cores.get(kind)!} kind={kind} core/>)}
+      group={groups.get(kind)!} kind={kind}/>)}
   </group>;
 }
