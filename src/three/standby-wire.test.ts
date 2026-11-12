@@ -146,7 +146,9 @@ describe('3D standby wire endpoint synchronization',()=>{
     const t=1;
     expect(threeVisibility(older,transition.fromTime+t,combined.visibilityAnimation)).toBe(0);
     expect(standbyWirePose(older,'old',pair,transition,t,combined,'wire-new').opacity).toBe(0);
-    expect(standbyWirePose(newer,'new',pair,transition,t,combined,'wire-new').opacity).toBeGreaterThan(0);
+    // At 25% of a staged morph the new mesh is not fully faded in yet:
+    // a disconnected network must not force it to appear prematurely.
+    expect(standbyWirePose(newer,'new',pair,transition,t,combined,'wire-new').opacity).toBe(0);
   });
   it('matches reverse exit / new entrance without leading the solids',()=>{
     const exit={...transition,mode:'exit-enter' as const};
