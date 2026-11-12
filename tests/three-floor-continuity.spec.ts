@@ -33,14 +33,16 @@ for(const style of ['grid','circuit'] as const){
       const length=page.locator('#three-standby-transition');
       await length.fill('1');
       const floorTime=async()=>Number(await preview.getAttribute('data-floor-time'));
-      const floorOffset=async()=>Number(await preview.getAttribute('data-floor-offset'));
       await expect.poll(floorTime).toBeGreaterThan(0);
       for(const effect of ['morph','exit-enter'] as const){
         await mode.selectOption(effect);
         // Advance the floor long enough that resetting to 0 would be obvious.
         await page.waitForTimeout(900);
-        const before=await floorTime();
-        const beforeOffset=await floorOffset();
+        const {time:before,offset:beforeOffset,wall:beforeWall}=await preview.evaluate(element=>({
+          time:Number(element.getAttribute('data-floor-time')),
+          offset:Number(element.getAttribute('data-floor-offset')),
+          wall:performance.now(),
+        }));
         expect(before).toBeGreaterThan(0.7);
         expect(Number.isFinite(beforeOffset)).toBe(true);
         const oldSeed=await page.getByTestId('current-seed').textContent();
@@ -49,15 +51,18 @@ for(const style of ['grid','circuit'] as const){
         expect(await page.getByTestId('current-seed').textContent()).not.toBe(oldSeed);
         // Read both attributes atomically: WebGL may advance another frame
         // between two separate browser/Playwright DOM round-trips.
-        const {time:after,offset}=await preview.evaluate(element=>({
+        const {time:after,offset,wall:afterWall}=await preview.evaluate(element=>({
           time:Number(element.getAttribute('data-floor-time')),
           offset:Number(element.getAttribute('data-floor-offset')),
+          wall:performance.now(),
         }));
         const sceneElapsed=Number(await preview.getAttribute('data-standby-elapsed'));
         expect(sceneElapsed).toBeLessThan(.9);
         // Figures rewind to start their morph. The grid/PCB must not rewind.
         expect(after).toBeGreaterThanOrEqual(before);
-        expect(after-before).toBeLessThan(1.2);
+        // Slow CI/GPU frames can stretch clicks; bound clock growth by
+        // actual elapsed wall time rather than an arbitrary 1.2-second budget.
+        expect(after-before).toBeLessThanOrEqual((afterWall-beforeWall)/1000+.25);
         expect(Number.isFinite(offset)).toBe(true);
         // The moving floor phase is derived from the continuous clock.
         // Its modulo wrapping is seamless because the grid repeats each cell.
