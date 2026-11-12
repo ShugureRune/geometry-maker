@@ -43,6 +43,7 @@ export type ThreeView = {position: Vector3Tuple; target: Vector3Tuple};
 export type ThreePreviewHandle = {
   savePNG:(width:number,height:number)=>Promise<Blob>;
   resetView:()=>void;smoothResetView?:()=>void;getElapsedSeconds?:()=>number;
+  getFloorElapsedSeconds?:()=>number;
   /** Export frame times are in animation seconds; canvas is reused by the encoder. */
   beginVideoExport:()=>void;
   captureVideoFrame:(seconds:number,width:number,height:number,canvas:HTMLCanvasElement,signal:AbortSignal)=>Promise<void>;
