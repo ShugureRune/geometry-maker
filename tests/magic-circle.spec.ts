@@ -29,8 +29,8 @@ test('style, ring count, symmetry, rune families and preview alpha all respond',
   await page.getByLabel('魔法陣のスタイル').selectOption('star');
   await page.getByLabel('同心円の数').fill('8');
   await page.getByLabel('対称数').fill('12');
-  await page.getByLabel('紋様の複雑さ').fill('100');
-  await page.getByLabel('装飾密度').fill('100');
+  await page.locator('#magic-complexity').fill('100');
+  await page.locator('#magic-ornaments').fill('100');
   await page.getByLabel('円環の装飾').selectOption('dots');
   await expect(preview.locator('[data-shape-id^="stamp-dot"]')).not.toHaveCount(0);
   expect(await preview.locator('[data-shape-id]').count()).toBeGreaterThan(initial);
