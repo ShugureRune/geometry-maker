@@ -275,13 +275,13 @@ export function standbyObjectPose(
   newSeed:string,rewire=false,
 ):MorphPose{
   if(transition.mode==='morph'){
-    // Hold the outgoing configuration while wires retract and the incoming
-    // configuration while wires reconnect. Float/rotation match the exact
-    // normal 3D frame at the beginning and end; no jump at transition removal.
-    const oldTime=rewire?transition.fromTime:transition.fromTime+seconds;
-    const newTime=rewire?transition.duration:seconds;
-    const oldPose=from?threePose(from,oldTime,floatAmount,rotationAmount):undefined;
-    const newPose=to?threePose(to,newTime,floatAmount,rotationAmount):undefined;
+    // Only the BASE constellation/size/color morph pauses during cable
+    // release and attachment. Floating and spinning remain on the LIVE clock
+    // throughout all three phases, so every mesh keeps moving gently while
+    // the wire tips track its current center. At t=0 the outgoing pose is
+    // unchanged; at t=duration the incoming pose exactly matches normal play.
+    const oldPose=from?threePose(from,transition.fromTime+seconds,floatAmount,rotationAmount):undefined;
+    const newPose=to?threePose(to,seconds,floatAmount,rotationAmount):undefined;
     const motion=standbyMorphMotionProgress(seconds,transition.duration,rewire);
     return morphPose(from,to,motion,variant,oldPose,newPose,transition.cameraPosition);
   }
