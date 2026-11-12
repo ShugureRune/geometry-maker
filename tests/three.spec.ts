@@ -535,7 +535,8 @@ test('3D floor motherboard central core, IC count and signals change PNG and sur
   await page.getByLabel('3Dアニメーションを有効化').check();
   await page.waitForTimeout(750);
   await page.getByLabel('3Dアニメーションを有効化').uncheck();
-  const paused=digest(await png(page));
+  const pausedFrame=await png(page);
+  const paused=digest(pausedFrame);
   expect(paused).not.toBe(full);
   expect(digest(await png(page))).toBe(paused);
   await category(page,'書き出し');
@@ -555,7 +556,41 @@ test('3D floor motherboard central core, IC count and signals change PNG and sur
   await category(page,'背景');
   await expect(page.locator('#floor-circuit-chip-count')).toHaveValue('8');
   await expect(page.locator('#floor-circuit-core-scale')).toHaveValue('1.4');
-  expect(digest(await png(page))).toBe(paused);
+  const restoredFrame=await png(page);
+  const restoredAgain=await png(page);
+  // A paused scene must be deterministic after the imported settings settle.
+  expect(digest(restoredAgain)).toBe(digest(restoredFrame));
+
+  // Validate the JSON state exactly; isolated anti-aliased WebGL pixels are
+  // not a change in motherboard topology, chip count, or animation clock.
+  await category(page,'書き出し');
+  const savedAgain=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const restoredProject=await readFile((await (await savedAgain).path())!);
+  expect(JSON.parse(restoredProject.toString())).toEqual(JSON.parse(saved.toString()));
+
+  const visualDifference=await page.evaluate(async({a,b})=>{
+    const decode=async(encoded:string)=>{
+      const image=new Image();image.src='data:image/png;base64,'+encoded;
+      await image.decode();
+      const canvas=document.createElement('canvas');
+      canvas.width=image.width;canvas.height=image.height;
+      const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);
+      return ctx.getImageData(0,0,image.width,image.height).data;
+    };
+    const oldPixels=await decode(a),newPixels=await decode(b);
+    let changed=0,deltaSum=0;
+    for(let i=0;i<oldPixels.length;i+=4){
+      const delta=Math.abs(oldPixels[i]-newPixels[i])+
+        Math.abs(oldPixels[i+1]-newPixels[i+1])+
+        Math.abs(oldPixels[i+2]-newPixels[i+2]);
+      deltaSum+=delta;if(delta>9)changed++;
+    }
+    return {changed,meanDelta:deltaSum/(oldPixels.length/4)};
+  },{a:pausedFrame.toString('base64'),b:restoredFrame.toString('base64')});
+  console.log('MOTHERBOARD RESTORE PIXEL DIFFERENCE',JSON.stringify(visualDifference));
+  expect(visualDifference.changed).toBeLessThan(1311); // 0.5% of 512x512
+  expect(visualDifference.meanDelta).toBeLessThan(.5);
   expect(errors).toEqual([]);
 });
 

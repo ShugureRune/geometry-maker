@@ -111,19 +111,37 @@ export function neuralWireProgress(seconds:number,settings:ThreeEntranceSettings
   return smooth((fraction-(NEURAL_WIRE_START_FRACTION+.15*position))/.13);
 }
 
-/** The visible segment grows from the larger object CENTER to the smaller
- * object CENTER, staying attached to the already-animated mesh positions.
- * The renderer can swap its endpoint colors without changing connectivity.
+/** A routed cable grows after its source has been reached by the root
+ * wave. Both initial neural entrance and automatic rewire share this easing.
+ * Time is normalized to the wiring-only portion of the animation. */
+export function neuralWireWindowProgress(
+  wirePhase:number,start:number,end:number,
+):number{
+  return smooth((wirePhase-start)/Math.max(.000001,end-start));
+}
+
+/** Extend or erase a segment along a rooted route. The default remains
+ * larger-to-smaller for legacy callers; neural networks may override the
+ * origin so their cables always propagate away from the primary figure.
+ * Endpoints follow the actual animated node positions.
  */
 export function neuralWireEndpoints(
   a:Pick<ThreeObject,'radius'>,b:Pick<ThreeObject,'radius'>,
   positionA:Vector3Tuple,positionB:Vector3Tuple,progress:number,
+  origin?:'a'|'b',eraseFromOrigin=false,
 ):{start:Vector3Tuple;end:Vector3Tuple;reverse:boolean}{
-  const reverse=b.radius>a.radius;
+  // A routed neural wire can start at a smaller parent: connectivity, not
+  // radius, determines which end is connected to the main figure.
+  const reverse=origin?origin==='b':b.radius>a.radius;
   const source=reverse?positionB:positionA;
   const target=reverse?positionA:positionB;
   const t=bound(progress);
-  return {
+  // Removing a cable starts at the SAME main-figure end as creating it.
+  // The tip of the eraser travels OUTWARD rather than retracting inward.
+  return eraseFromOrigin?{
+    start:source.map((n,i)=>n+(target[i]-n)*(1-t)) as Vector3Tuple,
+    end:[...target],reverse,
+  }:{
     start:[...source],
     end:source.map((n,i)=>n+(target[i]-n)*t) as Vector3Tuple,
     reverse,

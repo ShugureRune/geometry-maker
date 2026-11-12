@@ -68,6 +68,111 @@ export function networkConnections(objects:readonly ThreeObject[],distance:numbe
 }
 
 
+
+/** Directed visual routes rooted at the most important primary figure.
+ * A line may only start after the route reaching its source has arrived,
+ * so smaller branches never start spontaneously away from the hero.
+ *
+ * Connection topology is unchanged: distance/degree settings still control
+ * which wires exist. Separate graph components (when those settings leave
+ * islands) are scheduled one at a time after the hero's component.
+ */
+export type RootedWireStep={
+  source:'a'|'b';
+  sourceId:string;
+  rootId:string;
+  component:number;
+  start:number;
+  end:number;
+};
+export function rootedWireSteps(
+  objects:readonly ThreeObject[],edges:readonly NetworkEdge[],
+):RootedWireStep[]{
+  if(edges.length===0)return [];
+  const byId=new Map(objects.map(o=>[o.id,o]));
+  const adjacency=new Map<string,{other:string;index:number;length:number}[]>();
+  for(const object of objects)adjacency.set(object.id,[]);
+  edges.forEach((edge,index)=>{
+    if(!byId.has(edge.a)||!byId.has(edge.b))throw Error('接続線の図形IDが不正です');
+    const length=Math.max(.001,edge.distance);
+    adjacency.get(edge.a)!.push({other:edge.b,index,length});
+    adjacency.get(edge.b)!.push({other:edge.a,index,length});
+  });
+  const importance=(a:ThreeObject,b:ThreeObject)=>
+    (a.role==='primary'?0:1)-(b.role==='primary'?0:1)||
+    b.radius-a.radius||a.id.localeCompare(b.id);
+  const primary=[...objects].sort(importance)[0];
+  const unvisited=new Set([...adjacency.keys()].filter(id=>adjacency.get(id)!.length>0));
+  const groups:{ids:string[];links:number[]}[]=[];
+  while(unvisited.size){
+    const first=[...unvisited].sort()[0],queue=[first],ids:string[]=[],links=new Set<number>();
+    unvisited.delete(first);
+    for(let q=0;q<queue.length;q++){
+      const id=queue[q];ids.push(id);
+      for(const neighbor of adjacency.get(id)!){
+        links.add(neighbor.index);
+        if(unvisited.delete(neighbor.other))queue.push(neighbor.other);
+      }
+    }
+    groups.push({ids,links:[...links]});
+  }
+  const groupRoot=(group:{ids:string[]})=>{
+    const members=group.ids.map(id=>byId.get(id)!);
+    if(primary&&group.ids.includes(primary.id))return primary;
+    return members.sort(importance)[0];
+  };
+  const distFromPrimary=(group:{ids:string[]})=>
+    primary?Math.min(...group.ids.map(id=>
+      Math.hypot(...byId.get(id)!.position.map((v,i)=>v-primary.position[i])))):0;
+  groups.sort((a,b)=>{
+    const aMain=primary&&a.ids.includes(primary.id)?0:1;
+    const bMain=primary&&b.ids.includes(primary.id)?0:1;
+    return aMain-bMain||distFromPrimary(a)-distFromPrimary(b)||
+      groupRoot(a).id.localeCompare(groupRoot(b).id);
+  });
+  const absolute:({source:'a'|'b';sourceId:string;rootId:string;component:number;
+    start:number;end:number}|undefined)[]=new Array(edges.length);
+  let offset=0;
+  groups.forEach((group,component)=>{
+    const root=groupRoot(group);
+    const dist=new Map<string,number>(group.ids.map(id=>[id,Infinity]));
+    const processed=new Set<string>();dist.set(root.id,0);
+    // Dijkstra gives the earliest time each node can be reached from the
+    // main figure. No child cable can launch before its parent is complete.
+    while(processed.size<group.ids.length){
+      const id=group.ids.filter(v=>!processed.has(v)).sort((a,b)=>
+        dist.get(a)!-dist.get(b)!||a.localeCompare(b))[0];
+      if(!id||!Number.isFinite(dist.get(id)!))break;
+      processed.add(id);
+      for(const item of adjacency.get(id)!){
+        const alternative=dist.get(id)!+item.length;
+        if(alternative<dist.get(item.other)!-1e-9)dist.set(item.other,alternative);
+      }
+    }
+    let extent=0;
+    for(const index of group.links){
+      const edge=edges[index],da=dist.get(edge.a)!,db=dist.get(edge.b)!;
+      const source=da<db-1e-9?'a':db<da-1e-9?'b':
+        importance(byId.get(edge.a)!,byId.get(edge.b)!)<=0?'a':'b';
+      const sourceId=source==='a'?edge.a:edge.b;
+      const start=dist.get(sourceId)!;
+      const end=start+Math.max(.001,edge.distance);
+      absolute[index]={source,sourceId,rootId:root.id,component,
+        start:offset+start,end:offset+end};
+      extent=Math.max(extent,end);
+    }
+    // Disconnected subgraphs cannot physically grow from the main figure.
+    // Delay the next component until all visible cables in this one are
+    // complete, never ignite multiple distant islands simultaneously.
+    offset+=extent+Math.max(.05,extent*.03);
+  });
+  const total=Math.max(.001,...absolute.map(step=>step?.end??0));
+  return absolute.map(step=>({
+    ...step!,start:step!.start/total,end:step!.end/total,
+  }));
+}
+
+
 /** All wire endpoints stay on the actual object centers while the visibility
  * envelope fades. Shrinking each wire toward its own midpoint detached it
  * from its meshes when the repeat loop overlapped a standby morph.

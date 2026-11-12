@@ -50,56 +50,44 @@ describe('detached neural wiring during automatic seed morph',()=>{
   });
 });
 
-describe('neural entrance animation reused for automatic rewiring',()=>{
-  it('uses identical size-staggered easing when reconnecting and reverse-playback when disconnecting',()=>{
-    for(const duration of [1,4,8]){
-      for(const count of [1,3,9]){
-        for(let rank=0;rank<count;rank++){
-          for(const part of [0,.05,.2,.35,.5,.65,.8,.95,1]){
-            const forwardTime=duration*(MORPH_WIRE_ATTACH_START+
-              (1-MORPH_WIRE_ATTACH_START)*part);
-            const backwardTime=duration*MORPH_WIRE_RELEASE_END*(1-part);
-            const joining=standbyMorphWireProgress(forwardTime,duration,'new',rank,count);
-            const leaving=standbyMorphWireProgress(backwardTime,duration,'old',rank,count);
-            // Reversing time must return the exact same visible length.
-            expect(leaving).toBeCloseTo(joining,10);
-            expect(joining).toBeGreaterThanOrEqual(0);
-            expect(joining).toBeLessThanOrEqual(1);
-          }
-        }
-      }
-    }
-  });
-  it('connects large junctions first and disconnects small junctions first',()=>{
-    const count=10,duration=4;
-    for(const part of [.2,.35,.5,.65,.8]){
-      const arrival=duration*(MORPH_WIRE_ATTACH_START+
-        (1-MORPH_WIRE_ATTACH_START)*part);
-      const departure=duration*MORPH_WIRE_RELEASE_END*part;
-      // Rank 0 = largest nodes, rank count-1 = smallest nodes.
-      expect(standbyMorphWireProgress(arrival,duration,'new',0,count))
-        .toBeGreaterThanOrEqual(standbyMorphWireProgress(arrival,duration,'new',count-1,count));
-      expect(standbyMorphWireProgress(departure,duration,'old',0,count))
-        .toBeGreaterThanOrEqual(standbyMorphWireProgress(departure,duration,'old',count-1,count));
-    }
-    expect(standbyMorphWireProgress(duration*.88,duration,'new',0,count))
-      .toBeGreaterThan(0);
-    expect(standbyMorphWireProgress(duration*.88,duration,'new',count-1,count)).toBe(0);
-    expect(standbyMorphWireProgress(duration*.04,duration,'old',0,count)).toBe(1);
-    expect(standbyMorphWireProgress(duration*.04,duration,'old',count-1,count)).toBeLessThan(1);
-  });
-  it('retains the disconnect/move/reconnect gap with no premature wires at any rank',()=>{
+describe('both standby wiring directions originate at the hero',()=>{
+  it('moves its growing and erasing fronts outward in the same parent-before-child order',()=>{
+    const parent={start:0,end:.4};
+    const child={start:.4,end:1};
     for(const duration of [1,2,4,8]){
-      for(const timeFraction of [.18,.3,.5,.72,.8]){
-        for(const rank of [0,4,9]){
-          expect(standbyMorphWireProgress(duration*timeFraction,duration,'old',rank,10)).toBe(0);
-          expect(standbyMorphWireProgress(duration*timeFraction,duration,'new',rank,10)).toBe(0);
+      for(const part of [0,.1,.25,.5,.75,1]){
+        const removingTime=duration*MORPH_WIRE_RELEASE_END*part;
+        const joiningTime=duration*(MORPH_WIRE_ATTACH_START+
+          (1-MORPH_WIRE_ATTACH_START)*part);
+        for(const route of [parent,child]){
+          const oldVisible=standbyMorphWireProgress(removingTime,duration,'old',0,1,route);
+          const newVisible=standbyMorphWireProgress(joiningTime,duration,'new',0,1,route);
+          // Both fronts advance from the parent: old loses precisely the
+          // portion of the cable that new would have just grown.
+          expect(oldVisible+newVisible).toBeCloseTo(1,10);
+          expect(oldVisible).toBeGreaterThanOrEqual(0);
+          expect(newVisible).toBeGreaterThanOrEqual(0);
         }
       }
-      for(const rank of [0,4,9]){
-        expect(standbyMorphWireProgress(0,duration,'old',rank,10)).toBe(1);
-        expect(standbyMorphWireProgress(duration,duration,'new',rank,10)).toBe(1);
+      const during=duration*.04;
+      expect(standbyMorphWireProgress(during,duration,'old',0,1,parent)).toBeLessThan(1);
+      expect(standbyMorphWireProgress(during,duration,'old',1,2,child)).toBe(1);
+      const reconnecting=duration*.85;
+      expect(standbyMorphWireProgress(reconnecting,duration,'new',0,1,parent)).toBeGreaterThan(0);
+      expect(standbyMorphWireProgress(reconnecting,duration,'new',1,2,child)).toBe(0);
+    }
+  });
+  it('hides every cable throughout the move phase without changing total transition time',()=>{
+    for(const duration of [1,2,4,8]){
+      for(const p of [MORPH_WIRE_RELEASE_END,.3,.5,.75,MORPH_WIRE_ATTACH_START]){
+        for(const rank of [0,3,9]){
+          const window={start:rank/10,end:(rank+1)/10};
+          expect(standbyMorphWireProgress(duration*p,duration,'old',rank,10,window)).toBe(0);
+          expect(standbyMorphWireProgress(duration*p,duration,'new',rank,10,window)).toBe(0);
+        }
       }
+      expect(standbyMorphWireProgress(0,duration,'old',0,1,{start:0,end:1})).toBe(1);
+      expect(standbyMorphWireProgress(duration,duration,'new',0,1,{start:0,end:1})).toBe(1);
     }
   });
 });
