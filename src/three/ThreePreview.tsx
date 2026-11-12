@@ -17,6 +17,7 @@ import {networkDefaults,neonDefaults} from './style-settings';
 import {NeonOutline,NetworkLines,NeuralSignals,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
+import {voidFigureCount} from './void-field';
 import {skyDefaults} from './sky-settings';
 import {worldDefaults,sunlightAtHour} from './world-settings';
 import {ExploreController} from './ExploreController';
@@ -655,7 +656,10 @@ export default function ThreePreview(props: Props) {
     data-camera-orbit-mode={(props.settings.standby??standbyDefaults).cameraOrbitMode}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-floor-style={(props.settings.floorGrid??floorGridDefaults).style}
       data-celestial-count={celestialObjects.length}
-    data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
+    data-sky-kind={(props.settings.sky??skyDefaults).kind}
+    data-void-count={(props.settings.sky??skyDefaults).kind==='cosmic-void'?
+      voidFigureCount((props.settings.sky??skyDefaults).density,low):0}
+    data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
