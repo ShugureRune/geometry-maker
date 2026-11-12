@@ -239,9 +239,10 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
 }
 
 
-/** A single instanced draw call for all traveling impulses; no per-wire meshes,
- * timers or allocations proportional to elapsed time. Signal heads track the
- * actual floating node centers, just like NetworkLines.
+/** A single instanced draw call for synchronized traveling impulses.
+ * Both heroes emit at once; each medium relays the wave into all its children
+ * only when the upstream pulse arrives. No timers or per-wire meshes.
+ * Signal heads follow their floating node centers, like NetworkLines.
  */
 export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false}:{
   objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;
