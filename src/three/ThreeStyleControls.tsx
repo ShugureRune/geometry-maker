@@ -40,7 +40,7 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         return <button type="button" key={preset} aria-pressed={JSON.stringify({network,neon})===JSON.stringify(value)} onClick={()=>onChange({...settings,...value})}>{['スタンダード','ネオンネットワーク','サイバーグリッド'][i]}</button>;
       })}
     </div>
-    <HelpInfo>プリセットは3Dスタイルだけを変更します。シード・配置・通常マテリアル・カメラは維持します。</HelpInfo>
+    <HelpInfo>プリセットは3Dスタイルだけを変更します。シード・配置・通常マテリアル・カメラは維持します。神経回路に切り替えると電気信号が自動で有効になります。</HelpInfo>
     <fieldset><legend>図形を線でつなぐ</legend>
       <label className="three-checkbox"><input type="checkbox" aria-label="図形の接続を有効化" checked={network.enabled} onChange={event=>net({enabled:event.target.checked})}/> 接続線を表示</label>
       {network.enabled&&<>
@@ -49,7 +49,7 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
           <HelpInfo>「近い順」は今までどおり、距離だけで接続します。「神経回路」は距離が近く、大きな図形を含む組み合わせほど高得点にして優先します。大きな図形が分岐点になり、同じ図形に線が集中しすぎないよう最大接続数を守ります。輪っかにならず木の枝のようにつながります。離れすぎた図形は接続しません。</HelpInfo>
         </div>
         <select id="network-mode" value={network.mode}
-          onChange={event=>net({mode:event.target.value as NetworkSettings['mode']})}>
+          onChange={event=>{const mode=event.target.value as NetworkSettings['mode'];net({mode,animation:mode==='neural'?'signal':network.animation==='signal'?'none':network.animation});}}>
           <option value="nearest">近い順（従来）</option>
           <option value="neural">神経回路（近さ＋大きさ）</option>
         </select>
@@ -61,8 +61,8 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         <ColorControls prefix="network" mode={network.colorMode} color={network.customColor} contrast={network.contrast}
           onMode={colorMode=>net({colorMode})} onColor={customColor=>net({customColor})} onContrast={contrast=>net({contrast})}/>
         <label htmlFor="network-animation">接続アニメーション</label>
-        <select id="network-animation" value={network.animation} onChange={event=>net({animation:event.target.value as 'none'|'pulse'})}>
-          <option value="none">なし</option><option value="pulse">パルス発光</option>
+        <select id="network-animation" value={network.animation} onChange={event=>net({animation:event.target.value as NetworkSettings['animation']})}>
+          <option value="none">なし</option><option value="pulse">パルス発光</option><option value="signal">電気信号が流れる</option>
         </select>
       </>}
     </fieldset>
