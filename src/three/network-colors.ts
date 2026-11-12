@@ -26,6 +26,23 @@ export function networkReceiverColor(
   return new Color(background.figureColors?.[role]??fallbackThreeColors[role]);
 }
 
+/** Arrival halos are additive and unlit, so the receiver's exact dark
+ * surface RGB can disappear against the background. Brighten ONLY the halo
+ * to a minimum peak intensity in linear RGB, preserving the ratios between
+ * channels (and thus the figure's hue). Bright nodes are left untouched.
+ * Pure black has no hue to preserve: use a neutral glow so it is still seen.
+ * The solid itself and the traveling wire/packet gradient stay unchanged.
+ */
+export const MIN_NEURAL_ARRIVAL_GLOW_PEAK=.85;
+export function networkArrivalGlowColor(
+  role:ThreeObject['role'],background:Background,
+):Color{
+  const color=networkReceiverColor(role,background);
+  const peak=Math.max(color.r,color.g,color.b);
+  if(peak<=1e-12)return new Color('#ededed');
+  return color.multiplyScalar(Math.max(1,MIN_NEURAL_ARRIVAL_GLOW_PEAK/peak));
+}
+
 /** Sample the same linear-RGB interpolation as a LineMaterial vertex-color
  * gradient. The reusable output avoids Color allocations on every frame.
  */
