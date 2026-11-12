@@ -9,6 +9,7 @@ export const SKY_KINDS = [
   'endless-desert','salt-flat','moonlit-flowers','forest-edge',
   'twilight-plain','cloud-sea','dark-mirror',
   'alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands',
+  'cosmic-void',
 ] as const;
 export type SkyKind = typeof SKY_KINDS[number];
 
@@ -37,6 +38,7 @@ export const SKY_LABELS: Record<SkyKind,string> = {
   'volcanic-field':'火山地帯',
   glacier:'氷河',
   'floating-islands':'浮遊島',
+  'cosmic-void':'⚠ 危険区域：VOID MODE（宇宙の網目構造）',
 };
 
 /** Three editable colors per preset: dark atmosphere, luminous midtone, and highlights.
@@ -67,6 +69,7 @@ export const SKY_PALETTES:Record<SkyKind,SkyPalette>={
   'volcanic-field':{base:'#140f16',accent:'#57302c',highlight:'#ff7d31'},
   glacier:{base:'#7ba9c0',accent:'#b7dce4',highlight:'#f4fdff'},
   'floating-islands':{base:'#7fa6b3',accent:'#86b5a5',highlight:'#f4f0cf'},
+  'cosmic-void':{base:'#010209',accent:'#5878c5',highlight:'#c2b5f7'},
 };
 export type SkyPaletteOverrides=Partial<Record<SkyKind,SkyPalette>>;
 export function validateSkyPalette(value:unknown):SkyPalette{

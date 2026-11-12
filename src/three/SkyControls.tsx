@@ -3,6 +3,7 @@ import {ThreeRange} from './ThreeControls';
 import {WEATHER_TYPES,worldDefaults,type WeatherType,type WorldSettings} from './world-settings';
 import {hasTerrainRelief,terrainDefaults,type TerrainSettings} from './terrain';
 import {hasOutdoorVisibility,outdoorVisibilityDefaults,SKY_KINDS,SKY_LABELS,SKY_PALETTES,skyDefaults,type SkySettings,type SkyKind,type SkyPalette,type OutdoorVisibilitySettings} from './sky-settings';
+import {voidFigureCount} from './void-field';
 
 export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:SkySettings)=>void}){
   const sky=value??skyDefaults;
@@ -17,12 +18,14 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
   const preset=SKY_PALETTES[sky.kind],palette=sky.colors?.[sky.kind]??preset;
   const outdoor=sky.kind==='shallow-water'||sky.kind==='whiteout-snow'||sky.kind==='foggy-grassland';
   const naturalDensity:Partial<Record<SkyKind,string>>={
+    'cosmic-void':'網目状の3D図形の密度',
     'endless-desert':'砂紋の細かさ','salt-flat':'塩の模様・水たまり',
     'moonlit-flowers':'花の密度','forest-edge':'木の密度',
     'twilight-plain':'地表の模様','cloud-sea':'雲の密度',
     'dark-mirror':'波紋の細かさ',
   };
   const naturalMotion:Partial<Record<SkyKind,string>>={
+    'cosmic-void':'網目のゆっくりした動き',
     'endless-desert':'砂の流れ','salt-flat':'水面の揺れ',
     'moonlit-flowers':'花の揺れ','forest-edge':'霧の流れ',
     'twilight-plain':'霞の流れ','cloud-sea':'雲の流れ',
@@ -38,7 +41,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
   return <section className="control-section three-controls" aria-labelledby="sky-heading">
     <div className="studio-setting-label studio-setting-heading">
       <h3 id="sky-heading">空と景色</h3>
-      <HelpInfo>23種類の3D背景に対応。時間帯・太陽光・天候・自然物・探索モードに対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</HelpInfo>
+      <HelpInfo>24種類の3D背景に対応。時間帯・太陽光・天候・自然物・探索モードに対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</HelpInfo>
     </div>
     <label htmlFor="three-sky-kind">3D背景の種類</label>
     <select id="three-sky-kind" value={sky.kind} onChange={e=>update({kind:e.target.value as SkyKind})}>
@@ -49,6 +52,10 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         step={5} unit="%" onChange={intensity=>update({intensity})}/>
       <ThreeRange id="three-sky-density" label={naturalDensity[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'水面模様の細かさ':sky.kind==='whiteout-snow'?'雪粒子の量':'草の密度'):'星・粒子・模様の密度')} value={sky.density} min={0} max={200}
         step={10} unit="%" onChange={density=>update({density})}/>
+      {sky.kind==='cosmic-void'&&<p className="help" role="status" data-testid="void-warning">
+        ⚠ 危険区域：VOID MODE — 宇宙の大規模構造を模した3D網目。図形が集まるフィラメントと巨大な空洞（ボイド）を作ります。
+        高品質では約{voidFigureCount(sky.density,false).toLocaleString('ja-JP')}個、軽量描画では約{voidFigureCount(sky.density,true).toLocaleString('ja-JP')}個の3D図形を表示。密度が高いほど処理が重くなる場合があります。
+      </p>}
       <ThreeRange id="three-sky-motion" label={naturalMotion[sky.kind]??(outdoor?(sky.kind==='shallow-water'?'波の動く速さ':sky.kind==='whiteout-snow'?'雪が舞う速さ':'風の速さ'):'背景が動く速さ')} value={sky.motion} min={0} max={300}
         step={10} unit="%" onChange={motion=>update({motion})}/>
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">

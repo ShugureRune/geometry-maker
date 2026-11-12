@@ -12,7 +12,7 @@ import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
 describe('six integrated 3D world building features',()=>{
   it('adds five new natural terrain biomes without removing the 18 original skies',()=>{
-    expect(SKY_KINDS.length).toBe(24);
+    expect(SKY_KINDS.length).toBe(25);
     for(const [id,label] of [
       ['alpine-peaks','山岳地帯'],['grand-canyon','巨大峡谷'],
       ['volcanic-field','火山地帯'],['glacier','氷河'],['floating-islands','浮遊島'],

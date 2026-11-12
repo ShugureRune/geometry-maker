@@ -9,6 +9,7 @@ import {cyberTunnelFrameCount,skySeedNumber,skyDefaults,SKY_KINDS,SKY_PALETTES,t
 import {makeSkyGlyphAtlas} from './sky-glyphs';
 import {worldDefaults} from './world-settings';
 import {OutdoorRenderer} from './OutdoorRenderer';
+import {VoidRenderer} from './VoidRenderer';
 import {floorGridPlacement} from './floor-grid';
 import type {ThreeView} from './settings';
 import {skyVertexShader,skyFragmentShader,retroFloorVertexShader,retroFloorFragmentShader} from './sky-shaders';
@@ -221,6 +222,7 @@ export function SkyRenderer({sky:maybeSky,seed,seconds,low,sceneHeight,floorGrid
     <OutdoorRenderer sky={sky} seed={seed} seconds={seconds} low={low}
       sceneHeight={sceneHeight} floorGridEnabled={floorGridEnabled} view={view}/>
     {particles&&<SkyParticles sky={sky} seed={seed} seconds={seconds} low={low}/>}
+    {sky.kind==='cosmic-void'&&<VoidRenderer sky={sky} seed={seed} seconds={seconds} low={low}/>}
     {sky.kind==='cyber-tunnel'&&<CyberTunnel sky={sky} seconds={seconds}/>}
     {sky.kind==='retrowave'&&<RetroFloor sky={sky} seconds={seconds} sceneHeight={sceneHeight}
       floorGridEnabled={floorGridEnabled} view={view}/>}

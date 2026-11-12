@@ -6,10 +6,10 @@ import {SKY_DIGITAL_GLYPHS,SKY_GLYPH_COLUMNS} from './sky-glyphs';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 
-describe('twenty-three procedural 3D sky presets',()=>{
-  it('contains twenty-three requested kinds and a backward-compatible classic option',()=>{
-    expect(SKY_KINDS).toEqual(['classic','starfield','galaxy','aurora','deep-sea','nebula','cyber-tunnel','retrowave','digital','shallow-water','whiteout-snow','foggy-grassland','endless-desert','salt-flat','moonlit-flowers','forest-edge','twilight-plain','cloud-sea','dark-mirror','alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands']);
-    expect(new Set(SKY_KINDS).size).toBe(24);
+describe('3D procedural sky presets including cosmic VOID',()=>{
+  it('contains the VOID mode and every older sky kind with a backward-compatible classic option',()=>{
+    expect(SKY_KINDS).toEqual(['classic','starfield','galaxy','aurora','deep-sea','nebula','cyber-tunnel','retrowave','digital','shallow-water','whiteout-snow','foggy-grassland','endless-desert','salt-flat','moonlit-flowers','forest-edge','twilight-plain','cloud-sea','dark-mirror','alpine-peaks','grand-canyon','volcanic-field','glacier','floating-islands','cosmic-void']);
+    expect(new Set(SKY_KINDS).size).toBe(25);
     expect(SKY_LABELS).toMatchObject({
       starfield:'無限の星空',galaxy:'銀河',aurora:'オーロラ',
       'deep-sea':'深海',nebula:'星雲','cyber-tunnel':'サイバートンネル',
@@ -22,6 +22,7 @@ describe('twenty-three procedural 3D sky presets',()=>{
       'dark-mirror':'黒い水面と霧',
       'alpine-peaks':'山岳地帯','grand-canyon':'巨大峡谷',
       'volcanic-field':'火山地帯',glacier:'氷河','floating-islands':'浮遊島',
+      'cosmic-void':'⚠ 危険区域：VOID MODE（宇宙の網目構造）',
     });
     expect(threeDefaults.sky).toEqual(skyDefaults);
     expect(skyDefaults.kind).toBe('classic');
