@@ -1,0 +1,50 @@
+name: 3D standby and repeated-entrance interaction checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/three/ThreePreview.tsx'
+      - 'src/three/StyleRenderer.tsx'
+      - 'src/three/standby-wire.ts'
+      - 'src/three/network.ts'
+      - 'src/three/visibility.ts'
+      - 'src/three/standby.ts'
+      - 'src/three/standby-wire.test.ts'
+      - 'src/three/network.test.ts'
+      - 'tests/three-standby-visibility.spec.ts'
+      - '.github/workflows/three-standby-visibility.yml'
+  pull_request:
+    paths:
+      - 'src/three/ThreePreview.tsx'
+      - 'src/three/StyleRenderer.tsx'
+      - 'src/three/standby-wire.ts'
+      - 'src/three/network.ts'
+      - 'src/three/visibility.ts'
+      - 'tests/three-standby-visibility.spec.ts'
+      - '.github/workflows/three-standby-visibility.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Test combined standby and repeated visibility animation
+        run: npx playwright test tests/three-standby-visibility.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: standby-repeat-entrance-failures
+          path: test-results/
+          retention-days: 7
