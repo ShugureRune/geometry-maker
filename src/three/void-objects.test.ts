@@ -62,18 +62,49 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
     }
     expect(voidSceneObjects(comp,'cosmos',100,false,[])).toHaveLength(0);
   });
-  it('connects only real figure IDs in the same primary-to-relay-to-accent hierarchy',()=>{
+  it('builds a bounded local web instead of remote hero starbursts',()=>{
     const figures=voidSceneObjects(comp,'cosmos',100,false);
     const edges=voidSceneConnections(figures);
     const byId=new Map(figures.map(o=>[o.id,o]));
-    expect(edges).toHaveLength(figures.filter(o=>o.role!=='primary').length);
+    const degree=new Map<string,number>();
+    const pairs=new Set<string>();
+    expect(edges.length).toBeGreaterThan(figures.length*.35);
+    expect(edges.length).toBeLessThanOrEqual(Math.floor(figures.length*.95));
+    expect(voidSceneConnections([...figures].reverse())).toEqual(edges);
     for(const link of edges){
-      expect(byId.has(link.a)).toBe(true);
-      expect(byId.has(link.b)).toBe(true);
-      const source=byId.get(link.a)!,target=byId.get(link.b)!;
-      expect(target.role==='support'?source.role==='primary':source.role==='support').toBe(true);
-      expect(link.distance).toBeGreaterThanOrEqual(0);
+      const a=byId.get(link.a)!,b=byId.get(link.b)!;
+      expect(a).toBeDefined();
+      expect(b).toBeDefined();
+      expect(link.distance).toBeGreaterThan(0);
+      expect(link.distance).toBeLessThanOrEqual(voidConnectionReach(figures.length)+1e-8);
+      expect(Math.hypot(...a.position.map((v,i)=>v-b.position[i]))).toBeCloseTo(link.distance,8);
+      const pair=[link.a,link.b].sort().join('|');
+      expect(pairs.has(pair)).toBe(false);
+      pairs.add(pair);
+      degree.set(link.a,(degree.get(link.a)??0)+1);
+      degree.set(link.b,(degree.get(link.b)??0)+1);
+      // The closest segment point to the central empty ellipsoid is outside.
+      const k=.255;
+      const p=a.position.map((v,i)=>(v/k-VOID_EMPTY_CENTER[i])/VOID_EMPTY_RADII[i]);
+      const q=b.position.map((v,i)=>(v/k-VOID_EMPTY_CENTER[i])/VOID_EMPTY_RADII[i]);
+      const d=q.map((v,i)=>v-p[i]);
+      const dot=d.reduce((total,v,i)=>total+v*p[i],0);
+      const size=d.reduce((total,v)=>total+v*v,0);
+      const t=size>0?Math.max(0,Math.min(1,-dot/size)):0;
+      expect(p.reduce((total,v,i)=>total+(v+d[i]*t)**2,0)).toBeGreaterThanOrEqual(1-1e-7);
+    }
+    for(const figure of figures){
+      expect(degree.get(figure.id)??0).toBeLessThanOrEqual(
+        figure.role==='primary'?6:figure.role==='support'?4:3);
     }
     expect(voidSceneConnections([])).toEqual([]);
+  });
+  it('scales connections with user spacing and keeps the low-density web local',()=>{
+    const small=voidSceneObjects(comp,'sparse-cosmos',100,true);
+    const spaced=voidSceneObjects(comp,'sparse-cosmos',100,true,THREE_KINDS,1.5);
+    const a=voidSceneConnections(small),b=voidSceneConnections(spaced,1.5);
+    expect(a.length).toBeGreaterThan(0);
+    expect(b.map(e=>[e.a,e.b])).toEqual(a.map(e=>[e.a,e.b]));
+    for(let i=0;i<a.length;i++)expect(b[i].distance).toBeCloseTo(a[i].distance*1.5,6);
   });
 });
