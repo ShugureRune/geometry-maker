@@ -9,7 +9,7 @@ import type {NetworkEdge} from './network';
  */
 export type VoidFigure=ThreeObject&{
   voidParentId?:string;
-  /** Sparse, void-safe cosmic trunk links between large junctions. */
+  /** Sparse, void-safe planned corridors, not extra neural network cables. */
   voidTrunkTargets?:readonly string[];
 };
 type Point=Vector3Tuple;
@@ -95,7 +95,7 @@ function placeSmall(hero:Point,medium:Point,sample:Point,variation:number):Point
 }
 
 /** A nearest-connection backbone between the large cosmic junctions.
- * Kruskal keeps the number of long cables small (at most heroes-1) and
+ * Kruskal keeps the number of long corridors small (at most heroes-1) and
  * rejects any edge whose straight wire would cut through the central void.
  * The few unconnectable knots remain independent rather than drawing through
  * empty space. Only the 12 hero positions are compared, never 2,800 figures.
@@ -253,18 +253,28 @@ export function voidSceneObjects(
     if(targets.length)result[i].voidTrunkTargets=targets;
     neighbors[i].sort((a,b)=>a-b);
   }
+  // Each long hub-to-hub corridor terminates at two MEDIUM relays just
+  // either side of the midpoint. Their visible tips nearly meet, making
+  // continuous-looking trunks without connecting 2,800 nodes into ONE
+  // expensive wire-timing component (the old per-hero animation stays intact).
+  const meetingRelays=trunks.flatMap(({a,b})=>[
+    {hero:a,neighbor:b},{hero:b,neighbor:a},
+  ]);
   // Medium relays cluster around the SAME long filaments between junctions.
   // Spread their attachment evenly among large hubs; the random clock controls
   // only their position/sideways wobble, not an unrelated world-space target.
   for(let i=0;i<supports;i++){
-    const hero=i%heroes;
+    const meeting=meetingRelays[i];
+    const hero=meeting?meeting.hero:i%heroes;
     const choices=neighbors[hero];
     const sample=pointFromField(field.figures,i);
-    const lane=choices.length?
-      placeTrunkMedium(heroLocations[hero],
-        heroLocations[choices[Math.floor(hierarchyRandom()*choices.length)]],
-        .13+.74*hierarchyRandom(),hierarchyRandom()*Math.PI*2,
-        .4+hierarchyRandom()*2.7):
+    const neighbor=meeting?.neighbor??(choices.length?
+      choices[Math.floor(hierarchyRandom()*choices.length)]:undefined);
+    const lane=neighbor!==undefined?
+      placeTrunkMedium(heroLocations[hero],heroLocations[neighbor],
+        meeting?.hero!==undefined?.492:.13+.74*hierarchyRandom(),
+        meeting?0:hierarchyRandom()*Math.PI*2,
+        meeting?0:.4+hierarchyRandom()*2.7):
       {point:placeMedium(heroLocations[hero],sample,hierarchyRandom()),
        direction:unit(diff(sample,heroLocations[hero]))};
     supportLocations.push(lane.point);
@@ -324,16 +334,9 @@ export function voidSceneConnections(objects:readonly ThreeObject[]):NetworkEdge
     // Backwards-compatible fallback for existing plain ThreeObject callers.
     return nearest(child,child.role==='support'?hero:support.length?support:hero);
   };
-  // Draw the backbone itself: one sparse large-to-large cable per trunk.
-  // Its geometry, glow, packet movement and wire animation still use the
-  // existing NetworkLines / NeuralSignals implementations unchanged.
-  const trunks=hero.flatMap(from=>
-    ((from as VoidFigure).voidTrunkTargets??[]).flatMap(id=>{
-      const to=byId.get(id);
-      return to?.role==='primary'?[{
-        a:from.id,b:to.id,distance:Math.sqrt(squared(from.position,to.position)),
-      }]:[];
-    }));
-  return [...trunks,...support.map(connect),...accent.map(connect)]
+  // Keep each hero's network independent for the existing O(components)
+  // neural wire entrance / standby schedules. The backbone is represented
+  // visually by two medium relays meeting halfway, not a hero-to-hero cable.
+  return [...support.map(connect),...accent.map(connect)]
     .filter((edge):edge is NetworkEdge=>edge!==null);
 }
