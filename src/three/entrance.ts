@@ -120,15 +120,15 @@ export function neuralWireWindowProgress(
   return smooth((wirePhase-start)/Math.max(.000001,end-start));
 }
 
-/** Extend or erase a segment along a rooted route. The default remains
- * larger-to-smaller for legacy callers; neural networks may override the
- * origin so their cables always propagate away from the primary figure.
+/** Grow from a rooted source, or shrink back to that SAME source as time
+ * rewinds. The default is larger-to-smaller for legacy callers; the neural
+ * network overrides the source using its path back to the primary figure.
  * Endpoints follow the actual animated node positions.
  */
 export function neuralWireEndpoints(
   a:Pick<ThreeObject,'radius'>,b:Pick<ThreeObject,'radius'>,
   positionA:Vector3Tuple,positionB:Vector3Tuple,progress:number,
-  origin?:'a'|'b',eraseFromOrigin=false,
+  origin?:'a'|'b',
 ):{start:Vector3Tuple;end:Vector3Tuple;reverse:boolean}{
   // A routed neural wire can start at a smaller parent: connectivity, not
   // radius, determines which end is connected to the main figure.
@@ -136,12 +136,9 @@ export function neuralWireEndpoints(
   const source=reverse?positionB:positionA;
   const target=reverse?positionA:positionB;
   const t=bound(progress);
-  // Removing a cable starts at the SAME main-figure end as creating it.
-  // The tip of the eraser travels OUTWARD rather than retracting inward.
-  return eraseFromOrigin?{
-    start:source.map((n,i)=>n+(target[i]-n)*(1-t)) as Vector3Tuple,
-    end:[...target],reverse,
-  }:{
+  // The anchored endpoint never moves. When progress is reversed from 1
+  // back to 0, the free tip returns physically to the rooted source.
+  return {
     start:[...source],
     end:source.map((n,i)=>n+(target[i]-n)*t) as Vector3Tuple,
     reverse,
