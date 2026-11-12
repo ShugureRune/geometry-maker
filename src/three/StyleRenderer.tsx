@@ -16,7 +16,7 @@ import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress} from './entrance';
 import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
-import {threePose} from './model';
+
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
   const geometries=useMemo(()=>enabled?new Map(THREE_KINDS.map(kind=>[kind,new LineSegmentsGeometry().setPositions(outlineSegments(kind,low))])):null,[enabled,low]);
