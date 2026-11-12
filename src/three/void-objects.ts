@@ -185,7 +185,7 @@ export function voidSceneObjects(
   const supports:VoidFigure[]=[];
   for(let i=0;i<supportCount;i++){
     const parent=heroes[i%Math.max(1,heroes.length)];
-    const anchored=i<Math.round(supportCount*.40)&&!!parent;
+    const anchored=i<Math.round(supportCount*.23)&&!!parent;
     const nearby=anchored?near(parent,1.35,2.15):null;
     supports.push(create('support',i,nearby??sample(i),.30+random()*.22,
       nearby?parent.id:undefined));
