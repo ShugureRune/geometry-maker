@@ -25,7 +25,7 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
-import {standbyDefaults,easeInOut,matchThreeObjects,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
 
@@ -83,8 +83,8 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   // New morph layers start invisible, including their neon outline. A line ref
   // initialized at 1 causes a single bright frame before the first useFrame.
   const standbyStartAlpha=standby?
-    (standby.variant==='new'?0:1)*threeVisibility(object,
-      standby.variant==='old'?standby.transition.fromTime:0,appearance):1;
+    (standby.variant==='new'?0:1)*standbyMeshVisibility(
+      standby.from,standby.to,standby.variant,0,standby.transition,appearance):1;
   const morphLineAlpha=useRef(standbyStartAlpha);
   useLayoutEffect(()=>{
     if(standby)morphLineAlpha.current=standbyStartAlpha;
@@ -102,7 +102,8 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
         standby.from,standby.to,seconds.current,transition,variant,
         settings.floatAmount,settings.rotationAmount,entrance,seed
       );
-      const visibility=threeVisibility(object,variant==='old'?transition.fromTime+seconds.current:seconds.current,appearance);
+      const visibility=standbyMeshVisibility(
+        standby.from,standby.to,variant,seconds.current,transition,appearance);
       const totalAlpha=alpha*visibility;
       mesh.current.position.set(...position);mesh.current.rotation.set(...rotation);
       mesh.current.scale.setScalar(Math.max(.0001,radius)*(scales?Math.max(.001,visibility):1));
