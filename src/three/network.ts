@@ -15,11 +15,36 @@ export function neuralConnectionScore(
   return (Math.max(0,a.radius)+Math.max(0,b.radius))/(distance+.75);
 }
 
-/** Stable global nearest-first matching, or a size-aware neural branching
- * forest. The latter picks high-scoring pairs first but avoids cycles, so
- * large nearby objects become junctions instead of creating a dense mesh.
- * Both modes honor the same maximum physical reach and per-object degree.
+/** Every object's position is fixed by the seeded 3D composition BEFORE
+ * wiring. Build a strict three-tier tree based on those final positions:
+ * accent (small) -> closest support (medium) -> closest primary (hero).
+ * Only these two adjacent tiers connect: never small-small, medium-medium,
+ * small-hero, or hero-hero. Each non-primary has exactly one parent when
+ * its required parent tier exists. Ties resolve by stable object ID.
+ *
+ * Unlike the "nearest" mode, degree and reach limits intentionally do not
+ * apply: otherwise a nearby medium or hero can fill up and leave an entire
+ * branch disconnected from its closest parent.
  */
+export function neuralHierarchyConnections(objects:readonly ThreeObject[]):NetworkEdge[]{
+  const byId=[...objects].sort((a,b)=>a.id.localeCompare(b.id));
+  const parents=(role:ThreeObject['role'])=>byId.filter(o=>o.role===role);
+  const heroes=parents('primary'),medium=parents('support'),small=parents('accent');
+  const distance=(a:ThreeObject,b:ThreeObject)=>
+    Math.hypot(...a.position.map((n,i)=>n-b.position[i]));
+  const connect=(children:readonly ThreeObject[],eligible:readonly ThreeObject[])=>{
+    if(eligible.length===0)return [] as NetworkEdge[];
+    return children.map(child=>{
+      const parent=eligible.reduce((best,other)=>
+        distance(child,other)<distance(child,best)-1e-10?other:best);
+      return {a:parent.id,b:child.id,distance:distance(parent,child)};
+    });
+  };
+  return [...connect(medium,heroes),...connect(small,medium)];
+}
+
+/** Keep classic nearest-first linking unchanged. Neural mode uses the strict
+ * size-tier hierarchy above, independently of classic max reach/degree. */
 export function networkConnections(objects:readonly ThreeObject[],distance:number,maximum:number,
   mode:NetworkConnectionMode='nearest'):NetworkEdge[]{
   if(!Number.isFinite(distance)||distance<0||!Number.isInteger(maximum)||
@@ -28,6 +53,7 @@ export function networkConnections(objects:readonly ThreeObject[],distance:numbe
   const sorted=[...objects].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
   if(new Set(sorted.map(object=>object.id)).size!==sorted.length)
     throw new Error('図形IDが重複しています');
+  if(mode==='neural')return neuralHierarchyConnections(sorted);
   const candidates:(NetworkEdge&{score:number})[]=[];
   for(let i=0;i<sorted.length;i++)for(let j=i+1;j<sorted.length;j++){
     const a=sorted[i],b=sorted[j];
@@ -37,29 +63,14 @@ export function networkConnections(objects:readonly ThreeObject[],distance:numbe
     });
   }
   candidates.sort((a,b)=>
-    (mode==='neural'?b.score-a.score:a.distance-b.distance)||
     a.distance-b.distance||
     (a.a<b.a?-1:a.a>b.a?1:a.b<b.b?-1:a.b>b.b?1:0)
   );
   const degrees=new Map<string,number>();
-  const parent=new Map(sorted.map(object=>[object.id,object.id]));
-  const find=(id:string):string=>{
-    let root=id;
-    while(parent.get(root)!==root)root=parent.get(root)!;
-    while(id!==root){const next=parent.get(id)!;parent.set(id,root);id=next;}
-    return root;
-  };
   const result:NetworkEdge[]=[];
   for(const candidate of candidates){
     const {a,b,distance:edgeDistance}=candidate;
     if((degrees.get(a)??0)>=maximum||(degrees.get(b)??0)>=maximum)continue;
-    // Neural circuit mode builds acyclic dendrites (a maximum-score forest).
-    // The old nearest mode intentionally keeps its original loops and count.
-    if(mode==='neural'){
-      const from=find(a),to=find(b);
-      if(from===to)continue;
-      parent.set(to,from);
-    }
     degrees.set(a,(degrees.get(a)??0)+1);
     degrees.set(b,(degrees.get(b)??0)+1);
     result.push({a,b,distance:edgeDistance});
@@ -70,12 +81,11 @@ export function networkConnections(objects:readonly ThreeObject[],distance:numbe
 
 
 /** Directed visual routes rooted at the most important primary figure.
- * A line may only start after the route reaching its source has arrived,
- * so smaller branches never start spontaneously away from the hero.
- *
- * Connection topology is unchanged: distance/degree settings still control
- * which wires exist. Separate graph components (when those settings leave
- * islands) are scheduled one at a time after the hero's component.
+ * A line may only start after its source is reached, so a child cable never
+ * ignites before its parent is connected. In neural three-tier mode, each
+ * support and accent has exactly one parent in the preceding size tier.
+ * Separate hero trees play sequentially to avoid simultaneous origins;
+ * classic nearest mode may additionally produce separate smaller islands.
  */
 export type RootedWireStep={
   source:'a'|'b';

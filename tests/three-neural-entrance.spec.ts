@@ -24,7 +24,8 @@ test('big → medium → small → neural wires is selectable and keeps saved pr
   await page.locator('#network-mode').selectOption('neural');
   await expect(page.locator('#network-animation')).toHaveValue('signal');
   await expect(preview).toHaveAttribute('data-neural-signals','on');
-  await page.locator('#network-distance').fill('15');
+  await expect(page.locator('#network-distance')).toHaveCount(0);
+  await expect(page.locator('#network-count')).toHaveCount(0);
   await expect.poll(async()=>Number(await preview.getAttribute('data-network-count')))
     .toBeGreaterThan(0);
   await category(page,'アニメーション');
