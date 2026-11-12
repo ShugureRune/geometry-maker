@@ -97,8 +97,11 @@ test('new entrance animation remains stable with seed auto-switch and repeating 
     await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
     await expect(preview).toHaveAttribute('data-standby-active','true');
     await expect(preview).toHaveAttribute('data-network-mode','neural');
+    await expect(preview).toHaveAttribute('data-neural-signals','on');
+    await expect(preview).toHaveAttribute('data-neural-signal-stage','rewiring');
     expect(await page.getByTestId('current-seed').textContent()).not.toBe(previous);
     await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:12000});
+    await expect(preview).toHaveAttribute('data-neural-signal-stage','resumed');
     await expect(preview.locator('canvas')).toBeVisible();
   }
   expect(errors).toEqual([]);
