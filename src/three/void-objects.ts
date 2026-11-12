@@ -272,7 +272,7 @@ export function voidSceneObjects(
       choices[Math.floor(hierarchyRandom()*choices.length)]:undefined);
     const lane=neighbor!==undefined?
       placeTrunkMedium(heroLocations[hero],heroLocations[neighbor],
-        meeting?.hero!==undefined?.492:.13+.74*hierarchyRandom(),
+        meeting?0.492:0.13+0.74*hierarchyRandom(),
         meeting?0:hierarchyRandom()*Math.PI*2,
         meeting?0:.4+hierarchyRandom()*2.7):
       {point:placeMedium(heroLocations[hero],sample,hierarchyRandom()),
