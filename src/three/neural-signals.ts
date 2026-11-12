@@ -105,7 +105,10 @@ export function neuralArrivalFlashAt(
     route.start<0||route.end<=route.start||cycle<=route.end||lane<0)return 0;
   const elapsed=seconds-completion-NEURAL_SIGNAL_LAUNCH_DELAY-lane*cycle*.5;
   if(elapsed<route.end)return 0;
-  const sinceArrival=(elapsed-route.end)%cycle;
+  // At exact cycle boundaries floating point rounding can return
+  // cycle-epsilon instead of zero, hiding a flash for one exported frame.
+  const remainder=(elapsed-route.end)%cycle;
+  const sinceArrival=cycle-remainder<1e-8?0:remainder;
   if(sinceArrival<0||sinceArrival>=NEURAL_ARRIVAL_FLASH_DURATION)return 0;
   return Math.pow(1-sinceArrival/NEURAL_ARRIVAL_FLASH_DURATION,2);
 }
