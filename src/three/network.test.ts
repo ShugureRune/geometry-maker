@@ -1,6 +1,6 @@
 import {it,expect} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {networkConnections,neuralConnectionScore,visibleNetworkSegment} from './network';
+import {networkConnections,neuralConnectionScore,visibleNetworkSegment,rootedWireSteps} from './network';
 import {threePose} from './model';
 import {visibilityDefaults} from './visibility';
 it('resolves exact distance ties by object ID regardless of generation order',()=>{
@@ -108,4 +108,57 @@ it('neural branches are an acyclic maximum-score forest with stable ties',()=>{
   expect(new Set(links.map(edge=>edge.a+'-'+edge.b)).size).toBe(links.length);
   expect(networkConnections([...objects].reverse(),5,limit,'neural')).toEqual(links);
  }
+});
+
+
+it('starts from the actual primary node, not from whichever branch happens to be larger',()=>{
+ const base=generateThreeComposition('rooted-test','16:9').objects[0];
+ const obj=(id:string,role:'primary'|'support'|'accent',radius:number,x:number)=>
+   ({...base,id,role,radius,position:[x,0,0] as [number,number,number]});
+ // The hero is smaller than an intermediate node: importance, not size,
+ // must decide where all cables originate.
+ const hero=obj('hero','primary',.7,0);
+ const big=obj('large-relay','support',2,1);
+ const middle=obj('relay','support',.5,2);
+ const leaf=obj('leaf','accent',.2,3);
+ const objects=[leaf,middle,hero,big];
+ const edges=[
+   {a:'leaf',b:'relay',distance:1},
+   {a:'large-relay',b:'hero',distance:1},
+   {a:'relay',b:'large-relay',distance:1},
+ ];
+ const steps=rootedWireSteps(objects,edges);
+ expect(steps.map(s=>s.sourceId)).toEqual(['relay','hero','large-relay']);
+ expect(steps.every(s=>s.rootId==='hero')).toBe(true);
+ expect(steps[1].start).toBe(0);
+ expect(steps[1].end).toBeLessThanOrEqual(steps[2].start);
+ expect(steps[2].end).toBeLessThanOrEqual(steps[0].start);
+ expect(rootedWireSteps(objects.slice().reverse(),edges)).toEqual(steps);
+ const sorted=[edges[2],edges[0],edges[1]];
+ const byKey=(e:{a:string;b:string})=>[e.a,e.b].sort().join(':');
+ const reordered=new Map(rootedWireSteps(objects,sorted).map((step,i)=>[byKey(sorted[i]),step]));
+ for(let i=0;i<edges.length;i++){
+   const same=reordered.get(byKey(edges[i]))!;
+   expect(same.sourceId).toBe(steps[i].sourceId);
+   expect(same.start).toBeCloseTo(steps[i].start,10);
+   expect(same.end).toBeCloseTo(steps[i].end,10);
+ }
+});
+
+it('stages isolated components after the main figure rather than launching distant wires together',()=>{
+ const base=generateThreeComposition('rooted-islands','16:9').objects[0];
+ const obj=(id:string,role:'primary'|'support',x:number)=>({
+   ...base,id,role,position:[x,0,0] as [number,number,number],
+ });
+ const objects=[obj('hero','primary',0),obj('near','support',1),
+   obj('remote-a','support',10),obj('remote-b','support',11)];
+ const edges=[{a:'remote-b',b:'remote-a',distance:1},
+   {a:'near',b:'hero',distance:1}];
+ const steps=rootedWireSteps(objects,edges);
+ expect(steps[1].rootId).toBe('hero');
+ expect(steps[1].sourceId).toBe('hero');
+ expect(steps[1].start).toBe(0);
+ expect(steps[0].start).toBeGreaterThan(steps[1].end);
+ expect(steps.every(s=>s.start>=0&&s.end<=1&&s.end>s.start)).toBe(true);
+ expect(rootedWireSteps(objects,[])).toEqual([]);
 });
