@@ -222,8 +222,8 @@ test('13 solid kinds are individually selectable, save to 3D JSON, and render wi
   await category(page,'図形');
   await page.getByRole('button',{name:'新しい6種類',exact:true}).click();
   await category(page,'装飾');
-  await page.getByLabel('ネオン線画を有効化').check();
-  await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await page.getByLabel('光る輪郭を表示').check();
+  await page.locator('#neon-display').selectOption('lines');
   await expect(preview).toHaveAttribute('data-neon-mode','lines');
   expect((await png(page)).length).toBeGreaterThan(10_000);
   await category(page,'書き出し');
@@ -268,8 +268,8 @@ test('3D figures fade, scale and disappear without changing IDs, and preserve pa
   await expect(preview).toHaveAttribute('data-visibility-mode','fade');
   await page.locator('#three-visibility-mode').selectOption('fade-scale');
   await category(page,'装飾');
-  await page.getByLabel('ネオン線画を有効化').check();
-  await page.getByLabel('ネオン表示方式').selectOption('lines');
+  await page.getByLabel('光る輪郭を表示').check();
+  await page.locator('#neon-display').selectOption('lines');
   await expect(preview).toHaveAttribute('data-neon-mode','lines');
   const paused=digest(await png(page));
   await page.waitForTimeout(180);
