@@ -25,8 +25,8 @@ import {CelestialObjectMesh} from './CelestialRenderer';
 import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
-import {neuralStartupFlash} from './neural-signals';
-import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {neuralStartupFlash,NEURAL_SIGNAL_LAUNCH_DELAY} from './neural-signals';
+import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
 
@@ -590,6 +590,15 @@ export default function ThreePreview(props: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
   const seconds = useRef(props.initialTime??0);
+  // A seed switch resets the scene clock to zero. Keep the same next-wave
+  // start time across the transition boundary so its electrical pulse never
+  // teleports/restarts when the old scene layer finally unmounts.
+  const signalRestartAt=useRef<number|null>(null);
+  if(props.transition){
+    signalRestartAt.current=props.transition.duration*MORPH_WIRE_ATTACH_START+.12;
+  }
+  const signalCompletionOverride=(props.transition||props.skipEntrance)&&signalRestartAt.current!==null
+    ?signalRestartAt.current-NEURAL_SIGNAL_LAUNCH_DELAY:undefined;
   // Independent from the seed/entrance clock. Never reset it when a standby
   // morph begins, otherwise animated grid lines and PCB signals teleport.
   const floorSeconds=useRef(props.initialFloorTime??props.initialTime??0);
@@ -630,6 +639,7 @@ export default function ThreePreview(props: Props) {
   return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
     data-network-count={edges.length} data-network-mode={network.mode}
     data-neural-signals={network.enabled&&network.mode==='neural'&&network.animation==='signal'?'on':'off'}
+    data-neural-signal-stage={props.transition?'rewiring':props.skipEntrance?'resumed':'normal'}
     data-neon-mode={neon.enabled?neon.display:'off'}
     data-visibility-enabled={(props.settings.visibilityAnimation??visibilityDefaults).enabled?'true':'false'}
     data-visibility-mode={(props.settings.visibilityAnimation??visibilityDefaults).mode}
@@ -703,9 +713,11 @@ export default function ThreePreview(props: Props) {
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
-      {!props.transition&&edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
+      {edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
         <NeuralSignals objects={objects} edges={edges} settings={props.settings}
-          background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}/>}
+          background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
+          standby={props.transition?{transition:props.transition,matches}:undefined}
+          completionOverride={signalCompletionOverride}/>}
       <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
       <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
         view={props.view} touchActions={touchActions}/>
