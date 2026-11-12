@@ -94,7 +94,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
   const standbyFade=!!standby;
   const baseOpacity=material==='glass'?(translucent?neon.faceOpacity:low?.65:.92):(translucent?neon.faceOpacity:1);
-  useFrame(() => {
+  const updateSolid=()=>{
     if (!mesh.current) return;
     if(standby){
       const {transition,variant}=standby;
@@ -135,7 +135,13 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
       // seed compositions keep their correct front/back occlusion.
       surfaceRef.current.depthWrite=!translucent&&!fades&&opacity>=.999;
     }
-  });
+  };
+  // A seed transition replaces the matched-mesh React keys. Set visibility,
+  // position, scale and opacity before paint so a newly mounted object cannot
+  // flash at its full default size for a single render frame.
+  useLayoutEffect(updateSolid,[object,settings,background,visualTheme,low,
+    seconds,seed,standby,skipEntrance,entrance,appearance,baseOpacity]);
+  useFrame(updateSolid);
   return <mesh ref={mesh} position={object.position} rotation={object.rotation} scale={object.radius} castShadow={!low&&surfaceVisible&&!translucent&&!fades&&!entranceFade} receiveShadow={!low}>
     {kind === 'sphere' && <sphereGeometry args={[1, segments, segments / 2]}/>}
     {kind === 'cube' && <boxGeometry args={[2 / Math.sqrt(3), 2 / Math.sqrt(3), 2 / Math.sqrt(3)]}/>}
