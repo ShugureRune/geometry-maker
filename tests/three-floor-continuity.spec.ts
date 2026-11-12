@@ -66,6 +66,19 @@ for(const style of ['grid','circuit'] as const){
       const frozen=await floorTime();
       await page.waitForTimeout(450);
       expect(await floorTime()).toBeCloseTo(frozen,4);
+      // After a morph, scene time and floor time differ. Both must be
+      // persisted independently or refreshing the app would teleport the PCB.
+      await expect.poll(async()=>page.evaluate(()=>{
+        try{return JSON.parse(localStorage.getItem('geometry-maker-studio-autosave-v1')??'null')
+          ?.threeD?.floorElapsedSeconds??-1;}
+        catch{return -1;}
+      })).toBeGreaterThan(frozen-.1);
+      await page.reload();
+      await expect(page.getByRole('button',{name:'3Dモード',exact:true}))
+        .toHaveAttribute('aria-pressed','true');
+      await expect(preview.locator('canvas')).toBeVisible();
+      await expect.poll(floorTime).toBeGreaterThan(frozen-.1);
+      expect(Math.abs((await floorTime())-frozen)).toBeLessThan(.11);
       expect(errors).toEqual([]);
     });
 }
