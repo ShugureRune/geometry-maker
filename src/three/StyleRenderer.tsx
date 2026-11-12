@@ -13,7 +13,7 @@ import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
-import {entranceDefaults,threeEntrancePose,threeEntranceProgress} from './entrance';
+import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireProgress} from './entrance';
 import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 
@@ -76,6 +76,20 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const byId=new Map(objects.map(object=>[object.id,object]));
     return edges.map(edge=>({a:byId.get(edge.a)!,b:byId.get(edge.b)!}));
   },[objects,edges]);
+  // Sort animation order by parent size rather than by arbitrary object ID.
+  // The largest junctions send out their branches first.
+  const wireOrder=useMemo(()=>{
+    const indexes=topology.map((_,i)=>i);
+    indexes.sort((left,right)=>{
+      const a=topology[left],b=topology[right];
+      return Math.max(b.a.radius,b.b.radius)-Math.max(a.a.radius,a.b.radius)||
+        Math.min(b.a.radius,b.b.radius)-Math.min(a.a.radius,a.b.radius)||
+        a.a.id.localeCompare(b.a.id)||a.b.id.localeCompare(b.b.id);
+    });
+    const rank=new Array<number>(topology.length);
+    indexes.forEach((index,i)=>{rank[index]=i;});
+    return rank;
+  },[topology]);
   const matchesById=useMemo(()=>{
     const byId=new Map<string,MorphMatch>();
     for(const pair of standby?.matches??[]){
@@ -122,48 +136,70 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const appearance=settings.visibilityAnimation??visibilityDefaults;
     const entrance=settings.entrance??entranceDefaults;
     const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
+    const neuralAppearance=entrance.enabled&&entrance.mode==='neural-grow'&&!skipEntrance;
+    // Exit/enter animates new lines after all new solids are visible.
+    // Morph mode keeps existing wire continuity instead of deleting links.
+    const growthTime=standby?.layer==='new'&&standby.transition.mode==='exit-enter'
+      ?splitExitEnter(seconds.current,standby.transition.duration).enter*entrance.duration
+      :seconds.current;
+    const growWires=neuralAppearance&&(appearing||
+      (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
     let active=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
       let perEdgeAlpha=1;
+      let positionA:readonly number[];
+      let positionB:readonly number[];
       if(standby){
-        // The wire and its solid MUST use the same pose and visibility phase.
-        // In particular, a shared (same-kind) mesh always uses the NEW
-        // seed's loop, even when this line belongs to the old network layer.
+        // Wire endpoint pose and alpha are sourced from the same rendered
+        // meshes, even when visibility loops overlap standby transitions.
         const pa=standbyWirePose(a,standby.layer,matchesById.get(a.id),standby.transition,
           seconds.current,settings,seed);
         const pb=standbyWirePose(b,standby.layer,matchesById.get(b.id),standby.transition,
           seconds.current,settings,seed);
         perEdgeAlpha=Math.min(pa.opacity,pb.opacity);
         if(perEdgeAlpha<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
-        // Never use a disappearing line's old midpoint: that would detach
-        // both ends and draw a wire out into empty space.
-        start.setXYZ(active,...pa.position);
-        end.setXYZ(active,...pb.position);
+        positionA=pa.position;positionB=pb.position;
       }else{
         const segment=visibleNetworkSegment(a,b,clock,appearance,
           settings.floatAmount,settings.rotationAmount);
         if(!segment)continue;
         const ap=appearing?threeEntrancePose(a,seconds.current,entrance,seed):null;
         const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
-        const reveal=appearing?
+        const reveal=appearing&&!growWires?
           Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
         perEdgeAlpha=Math.min(threeVisibility(a,clock,appearance),
           threeVisibility(b,clock,appearance))*reveal;
         if(perEdgeAlpha<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
-        // A fully/partially formed wire connects the actual moving meshes.
-        // Fade its brightness rather than moving endpoints toward a midpoint.
-        start.setXYZ(active,
+        positionA=[
           segment.start[0]+(ap?.offset[0]??0),
           segment.start[1]+(ap?.offset[1]??0),
-          segment.start[2]+(ap?.offset[2]??0));
-        end.setXYZ(active,
+          segment.start[2]+(ap?.offset[2]??0),
+        ];
+        positionB=[
           segment.end[0]+(bp?.offset[0]??0),
           segment.end[1]+(bp?.offset[1]??0),
-          segment.end[2]+(bp?.offset[2]??0));
+          segment.end[2]+(bp?.offset[2]??0),
+        ];
       }
+      let reverse=false;
+      if(growWires){
+        const progress=neuralWireProgress(growthTime,entrance,wireOrder[i],topology.length);
+        // Zero progress is a hidden connection (not an opaque dot at origin).
+        if(progress<=.001)continue;
+        const growing=neuralWireEndpoints(a,b,positionA as [number,number,number],
+          positionB as [number,number,number],progress);
+        reverse=growing.reverse;
+        start.setXYZ(active,...growing.start);
+        end.setXYZ(active,...growing.end);
+        perEdgeAlpha*=Math.min(1,progress*4);
+      }else{
+        start.setXYZ(active,...positionA as [number,number,number]);
+        end.setXYZ(active,...positionB as [number,number,number]);
+      }
+      if(perEdgeAlpha<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
       const pulse=network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1;
-      const [ca,cb]=colors[i];
+      const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
       colorStart.setXYZ(active,ca.r*pulse*perEdgeAlpha,
         ca.g*pulse*perEdgeAlpha,ca.b*pulse*perEdgeAlpha);
       colorEnd.setXYZ(active,cb.r*pulse*perEdgeAlpha,
