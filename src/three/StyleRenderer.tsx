@@ -16,7 +16,7 @@ import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
 import {splitExitEnter,standbyMorphWireProgress,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
-import {neuralStartupFlash,neuralPacketAt} from './neural-signals';
+import {neuralStartupFlash,neuralPacketAt,neuralSignalPlan} from './neural-signals';
 
 
 export function useOutlineGeometry(enabled:boolean,low:boolean){
@@ -239,9 +239,10 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
 }
 
 
-/** A single instanced draw call for all traveling impulses; no per-wire meshes,
- * timers or allocations proportional to elapsed time. Signal heads track the
- * actual floating node centers, just like NetworkLines.
+/** A single instanced draw call for synchronized traveling impulses.
+ * Both heroes emit at once; each medium relays the wave into all its children
+ * only when the upstream pulse arrives. No timers or per-wire meshes.
+ * Signal heads follow their floating node centers, like NetworkLines.
  */
 export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false}:{
   objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;
@@ -249,21 +250,25 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
 }){
   const network=settings.network??networkDefaults;
   const entrance=settings.entrance??entranceDefaults;
+  // All hero subtrees share a single pulse clock, and children inherit their
+  // launch time from the moment their upstream pulse reaches the relay.
+  const signalPlan=useMemo(()=>neuralSignalPlan(objects,edges),[objects,edges]);
   const lanes=low?1:2;
   const mesh=useRef<InstancedMesh>(null);
   const dummy=useMemo(()=>new Object3D(),[]);
   const packetColor=useMemo(()=>new Color(),[]);
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
-    return edges.map((edge,rank)=>{
+    return edges.map((edge,index)=>{
       const a=byId.get(edge.a)!,b=byId.get(edge.b)!;
-      const source=a.radius>=b.radius?a:b;
+      const route=signalPlan.routes[index];
+      const source=route.source==='a'?a:b;
       const color=new Color(styleColor(network.colorMode,network.customColor,
         source.role,background,network.contrast));
       color.multiplyScalar(radiance(color,network.glow,low));
-      return {a,b,rank,distance:edge.distance,color};
+      return {a,b,route,color};
     });
-  },[objects,edges,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
+  },[objects,edges,signalPlan,network.colorMode,network.customColor,network.contrast,network.glow,background,low]);
   const update=()=>{
     const instance=mesh.current;
     if(!instance)return;
@@ -275,11 +280,11 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
       const segment=visibleNetworkSegment(edge.a,edge.b,clock,visibility,
         settings.floatAmount,settings.rotationAmount);
       if(!segment)continue;
-      const reverse=edge.b.radius>edge.a.radius;
+      const reverse=edge.route.source==='b';
       const origin=reverse?segment.end:segment.start;
       const target=reverse?segment.start:segment.end;
       for(let lane=0;lane<lanes;lane++){
-        const packet=neuralPacketAt(clock,completion,edge.rank,edge.distance,lane);
+        const packet=neuralPacketAt(clock,completion,edge.route,signalPlan.cycle,lane);
         if(!packet)continue;
         dummy.position.set(
           origin[0]+(target[0]-origin[0])*packet.progress,
