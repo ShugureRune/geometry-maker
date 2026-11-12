@@ -31,6 +31,8 @@ describe('Cosmic VOID Mode: bounded 3D figures on a hollow cosmic web',()=>{
     expect(one.shapes).toEqual(again.shapes);
     expect(one.colorMix).toEqual(again.colorMix);
     expect(one.filaments).toEqual(again.filaments);
+    expect(one.knots).toEqual(again.knots);
+    expect(one.knots.length).toBe(56*3);
     expect(one.figures).not.toEqual(other.figures);
     expect(one.filaments).not.toEqual(other.filaments);
     expect(one.shapeCounts.reduce((a,b)=>a+b,0)).toBe(1300);
@@ -62,7 +64,8 @@ describe('Cosmic VOID Mode: bounded 3D figures on a hollow cosmic web',()=>{
   it('never creates background geometry at zero density or above the hard cap',()=>{
     expect(generateVoidField('empty',0)).toEqual({
       count:0,figures:new Float32Array(0),shapes:new Uint8Array(0),
-      colorMix:new Float32Array(0),filaments:new Float32Array(0),shapeCounts:[0,0,0],
+      colorMix:new Float32Array(0),filaments:new Float32Array(0),
+      knots:new Float32Array(0),shapeCounts:[0,0,0],
     });
     expect(generateVoidField('empty',-100).count).toBe(0);
     expect(generateVoidField('empty',Infinity).count).toBe(0);
