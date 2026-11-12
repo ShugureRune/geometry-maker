@@ -653,11 +653,9 @@ export default function ThreePreview(props: Props) {
     isVoid?voidSceneConnections(previousObjects,spacingFactor):
       networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [props.transition,previousObjects,isVoid,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
-  // Thousands of nearby lines otherwise stack into white-hot bloom. Keep
-  // the normal scene untouched and honor VOID user sliders proportionally.
-  const wireSettings=useMemo(()=>isVoid?{...props.settings,
-    network:{...network,glow:network.glow*.48,opacity:network.opacity*.68,
-      width:network.width*.78}}:props.settings,[isVoid,props.settings,network]);
+  // Use the exact user-configured glow, opacity and width in VOID too.
+  // The short, degree-bounded three-tier graph now prevents starburst hubs,
+  // so no special brightness reduction is needed.
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -755,14 +753,14 @@ export default function ThreePreview(props: Props) {
         standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
         skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
-        settings={wireSettings} background={props.transition.fromBackground} low={low} seconds={seconds}
+        settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
         seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}/>}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges}
-        settings={wireSettings} background={props.background} low={low} seconds={seconds}
+        settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
       {edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
-        <NeuralSignals objects={objects} edges={edges} settings={wireSettings}
+        <NeuralSignals objects={objects} edges={edges} settings={props.settings}
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}
