@@ -10,6 +10,8 @@ export type ThreeProject={
   kind:'geometry-maker-3d';schemaVersion:1;algorithmVersion:typeof THREE_ALGORITHM_VERSION;
   seed:string;aspectRatio:Ratio;density:number;visualTheme:VisualTheme;background:Background;
   colorSettings?:ColorSettings;settings:ThreeSettings;view?:ThreeView;elapsedSeconds:number;exportWidth:number;exportHeight:number;
+  /** Independent moving-floor/PCB clock; optional in projects saved before this feature. */
+  floorElapsedSeconds?:number;
   /** Persist whether a standby morph has completed, to restore its exact static pose. */
   standbyComplete?:boolean;
 };
@@ -45,7 +47,10 @@ export function validateThreeProject(value:unknown):ThreeProject {
   return {kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed:d.seed,aspectRatio,
     density:numberField(d.density,0,100,'密度',true),visualTheme:d.visualTheme,background,
     ...(d.colorSettings===undefined?{}:{colorSettings:validateColors(d.colorSettings)}),settings:validateThreeSettings(d.settings),
-    ...(view?{view}:{}),elapsedSeconds:numberField(d.elapsedSeconds??0,0,1e9,'経過時間'),exportWidth,exportHeight,
+    ...(view?{view}:{}),elapsedSeconds:numberField(d.elapsedSeconds??0,0,1e9,'経過時間'),
+    ...(d.floorElapsedSeconds===undefined?{}:
+      {floorElapsedSeconds:numberField(d.floorElapsedSeconds,0,1e9,'床の経過時間')}),
+    exportWidth,exportHeight,
     ...(d.standbyComplete===undefined?{}:{standbyComplete:d.standbyComplete as boolean})};
 }
 export function parseThreeProject(text:string):ThreeProject {
