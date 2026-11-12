@@ -46,15 +46,17 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
       {network.enabled&&<>
         <div className="studio-setting-label">
           <label htmlFor="network-mode">つなぎ方</label>
-          <HelpInfo>「近い順」は今までどおり、距離だけで接続します。「神経回路」は距離が近く、大きな図形を含む組み合わせほど高得点にして優先します。大きな図形が分岐点になり、同じ図形に線が集中しすぎないよう最大接続数を守ります。輪っかにならず木の枝のようにつながります。離れすぎた図形は接続しません。</HelpInfo>
+          <HelpInfo>「近い順」は距離順で接続します。「神経回路」は図形の配置を確定してから、小さい図形を最寄りの中くらいの図形へ、中くらいの図形を最寄りの主役図形へ接続します。輪っかにならない3階層の木構造です。すべての枝をつなげるため神経回路には最大接続数・接続距離の制限を適用しません。</HelpInfo>
         </div>
         <select id="network-mode" value={network.mode}
           onChange={event=>{const mode=event.target.value as NetworkSettings['mode'];net({mode,animation:mode==='neural'?'signal':network.animation==='signal'?'none':network.animation});}}>
           <option value="nearest">近い順（従来）</option>
-          <option value="neural">神経回路（近さ＋大きさ）</option>
+          <option value="neural">神経回路（小→中→主役）</option>
         </select>
-        <ThreeRange id="network-count" label="最大接続数" min={1} max={6} step={1} value={network.maxConnections} unit="本" onChange={maxConnections=>net({maxConnections})}/>
-        <ThreeRange id="network-distance" label="接続距離" min={.5} max={15} step={.25} value={network.distance} unit="単位" onChange={distance=>net({distance})}/>
+        {network.mode==='nearest'&&<>
+          <ThreeRange id="network-count" label="最大接続数" min={1} max={6} step={1} value={network.maxConnections} unit="本" onChange={maxConnections=>net({maxConnections})}/>
+          <ThreeRange id="network-distance" label="接続距離" min={.5} max={15} step={.25} value={network.distance} unit="単位" onChange={distance=>net({distance})}/>
+        </>}
         <ThreeRange id="network-width" label="接続線の太さ" min={.25} max={6} step={.25} value={network.width} unit="倍" onChange={width=>net({width})}/>
         <ThreeRange id="network-opacity" label="接続線の濃さ" min={0} max={1} step={.05} value={network.opacity} onChange={opacity=>net({opacity})}/>
         <ThreeRange id="network-glow" label="接続線の光り方" min={0} max={200} step={5} value={network.glow} unit="%" onChange={glow=>net({glow})}/>
