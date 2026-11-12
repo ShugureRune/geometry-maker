@@ -17,23 +17,20 @@ export function networkConnections(objects: readonly ThreeObject[], distance:num
 }
 
 
-/** A disappearing endpoint removes its entire connection, not just its color.
- * Darkening RGB on transparent LineMaterial leaves opaque black ghost edges.
- * During entrance/exit we shorten the fully colored segment; at zero visibility
- * it returns null and the batched renderer excludes the instance entirely.
- * No new connection topology is generated, so line IDs remain deterministic. */
+/** All wire endpoints stay on the actual object centers while the visibility
+ * envelope fades. Shrinking each wire toward its own midpoint detached it
+ * from its meshes when the repeat loop overlapped a standby morph.
+ * Returning null below the minimum removes black ghost lines from GPU buffers.
+ */
+export const MIN_NETWORK_ENDPOINT_VISIBILITY=.06;
 export function visibleNetworkSegment(
   a:ThreeObject,b:ThreeObject,seconds:number,appearance:ThreeVisibilitySettings=visibilityDefaults,
   floatAmount=1,rotationAmount=1,
 ):{start:Vector3Tuple;end:Vector3Tuple}|null {
   const amount=Math.min(threeVisibility(a,seconds,appearance),threeVisibility(b,seconds,appearance));
-  if(amount<=.001)return null;
-  const start=threePose(a,seconds,floatAmount,rotationAmount).position;
-  const end=threePose(b,seconds,floatAmount,rotationAmount).position;
-  if(amount>=1)return {start,end};
-  const middle:Vector3Tuple=[(start[0]+end[0])/2,(start[1]+end[1])/2,(start[2]+end[2])/2];
+  if(amount<=MIN_NETWORK_ENDPOINT_VISIBILITY)return null;
   return {
-    start:start.map((value,i)=>middle[i]+(value-middle[i])*amount) as Vector3Tuple,
-    end:end.map((value,i)=>middle[i]+(value-middle[i])*amount) as Vector3Tuple,
+    start:threePose(a,seconds,floatAmount,rotationAmount).position,
+    end:threePose(b,seconds,floatAmount,rotationAmount).position,
   };
 }
