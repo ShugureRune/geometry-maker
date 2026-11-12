@@ -1,7 +1,12 @@
 import {describe,it,expect} from 'vitest';
-import {generateThreeComposition,spaceThreeComposition,THREE_KINDS} from './model';
-import {voidSceneObjects,voidSceneConnections,voidConnectionReach,voidKnotGravityScores,selectVoidGravityPrimaryKnots} from './void-objects';
+import {generateThreeComposition,spaceThreeComposition,THREE_KINDS,threePose} from './model';
+import {voidSceneObjects,voidSceneConnections,voidConnectionReach,voidKnotGravityScores,selectVoidGravityPrimaryKnots,matchVoidObjects} from './void-objects';
 import {VOID_EMPTY_CENTER,VOID_EMPTY_RADII,voidFigureCount,generateVoidField,type VoidField} from './void-field';
+
+import {standbyObjectPose,type ThreeStandbyTransition} from './standby';
+import {standbyWirePose} from './standby-wire';
+import {entranceDefaults} from './entrance';
+import {threeDefaults} from './settings';
 
 const comp=spaceThreeComposition(generateThreeComposition('native-void-web','16:9'));
 const emptyRegion=(x:number,y:number,z:number,factor=1)=>{
@@ -174,5 +179,80 @@ describe('VOID replaces the normal scene with existing 13 figure types',()=>{
     expect(a.length).toBeGreaterThan(0);
     expect(b.map(e=>[e.a,e.b])).toEqual(a.map(e=>[e.a,e.b]));
     for(let i=0;i<a.length;i++)expect(b[i].distance).toBeCloseTo(a[i].distance*1.5,6);
+  });
+});
+
+
+describe('VOID standby seed morph at thousands-of-figure scale',()=>{
+  it('matches figures by stable native ID, including changed geometry and extra nodes',()=>{
+    const old=voidSceneObjects(comp,'void-before',100,true);
+    const next=voidSceneObjects(comp,'void-after',100,true);
+    const matches=matchVoidObjects(old,next);
+    expect(matches).toHaveLength(old.length);
+    expect(new Set(matches.map(m=>m.id)).size).toBe(matches.length);
+    expect(matches.every(m=>m.from?.id===m.to?.id)).toBe(true);
+    expect(matches.some(m=>m.from!.position.some((v,i)=>v!==m.to!.position[i]))).toBe(true);
+    const kinds=[...THREE_KINDS];
+    const changed={...next[0],kind:kinds.find(k=>k!==next[0].kind)!};
+    expect(matchVoidObjects(old,[changed,...next.slice(1)])[0].to.kind).toBe(changed.kind);
+    const extras=matchVoidObjects(old.slice(0,50),next.slice(0,60));
+    expect(extras).toHaveLength(60);
+    expect(extras.filter(m=>!m.from)).toHaveLength(10);
+    const reduced=matchVoidObjects(old.slice(0,60),next.slice(0,50));
+    expect(reduced.filter(m=>!m.to)).toHaveLength(10);
+  });
+  it('starts at the live old-seed pose, travels during rewire, and ends at the new pose',()=>{
+    const old=voidSceneObjects(comp,'old-space',100,true);
+    const next=voidSceneObjects(comp,'new-space',100,true);
+    const match=matchVoidObjects(old,next).find(m=>m.from&&m.to&&
+      m.from.kind===m.to.kind&&
+      Math.hypot(...m.from.position.map((v,i)=>v-m.to!.position[i]))>1)!;
+    expect(match).toBeDefined();
+    const transition:ThreeStandbyTransition={
+      id:81,mode:'morph',duration:4,fromSeed:'old-space',
+      fromComposition:comp,fromSourceComposition:comp,
+      fromBackground:{mode:'solid',solid:'#090914',colors:['#090914','#090914','#090914'],angle:0},
+      fromTheme:'standard',fromTime:7.5,
+    };
+    const settings={...threeDefaults,entrance:{...entranceDefaults,enabled:true}};
+    const at=(t:number)=>standbyObjectPose(match.from,match.to,t,transition,'shared',
+      settings.floatAmount,settings.rotationAmount,settings.entrance,'new-space',true);
+    expect(at(0).position).toEqual(threePose(match.from!,transition.fromTime,1,1).position);
+    expect(at(4).position).toEqual(threePose(match.to!,4,1,1).position);
+    const middle=at(2);
+    expect(middle.position).not.toEqual(at(0).position);
+    expect(middle.position).not.toEqual(at(4).position);
+    expect(middle.radius).toBeGreaterThan(0);
+    // Wire endpoints and instanced figures now receive the same MorphMatch.
+    for(const t of [0,.35,2,3.5,4]){
+      const prior=standbyWirePose(match.from!,'old',match,transition,t,settings,'new-space');
+      const latest=standbyWirePose(match.to!,'new',match,transition,t,settings,'new-space');
+      expect(prior.position).toEqual(at(t).position);
+      expect(latest.position).toEqual(at(t).position);
+    }
+  });
+  it('supports old/new geometry crossfades and full-quality 2800-figure matching',()=>{
+    const old=voidSceneObjects(comp,'full-old',200,false);
+    const next=voidSceneObjects(comp,'full-new',200,false);
+    const pairs=matchVoidObjects(old,next);
+    expect(pairs.length).toBe(2800);
+    const pair=pairs[0];
+    const transition:ThreeStandbyTransition={
+      id:10,mode:'morph',duration:4,fromSeed:'full-old',
+      fromComposition:comp,fromSourceComposition:comp,
+      fromBackground:{mode:'solid',solid:'#090914',colors:['#090914','#090914','#090914'],angle:0},
+      fromTheme:'standard',fromTime:3,
+    };
+    const to={...pair.to!,kind:THREE_KINDS.find(k=>k!==pair.from!.kind)!};
+    const settings=threeDefaults;
+    const oldPose=standbyObjectPose(pair.from!,to,2,transition,'old',
+      settings.floatAmount,settings.rotationAmount,entranceDefaults,'full-new',true);
+    const newPose=standbyObjectPose(pair.from!,to,2,transition,'new',
+      settings.floatAmount,settings.rotationAmount,entranceDefaults,'full-new',true);
+    expect(oldPose.position).toEqual(newPose.position);
+    expect(oldPose.opacity).toBeGreaterThan(0);
+    expect(newPose.opacity).toBeGreaterThan(0);
+    expect(oldPose.radius).toBeGreaterThan(0);
+    expect(newPose.radius).toBeGreaterThan(0);
   });
 });
