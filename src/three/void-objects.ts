@@ -43,9 +43,6 @@ const outward=(p:Point):Point=>unit([
   (p[1]-VOID_CENTER[1])/(VOID_RADII[1]**2),
   (p[2]-VOID_CENTER[2])/(VOID_RADII[2]**2),
 ]);
-const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
-const pointFromField=(figures:Float32Array,index:number):Point=>
-  [figures[index*4],figures[index*4+1],figures[index*4+2]];
 /** Each major filament is a smooth corridor between gravity knots. We
  * choose nearby unobstructed knot pairs so a trunk cannot cut the void.
  * These short corridors are seeded, stable and O(heroCount²), never O(n²).
