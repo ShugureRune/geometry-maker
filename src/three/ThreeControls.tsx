@@ -4,6 +4,7 @@ import {visibilityDefaults,type ThreeVisibilitySettings} from './visibility';
 import {entranceDefaults,threeEntranceStyle,type ThreeEntranceSettings} from './entrance';
 import {THREE_KINDS,THREE_CLASSIC_KINDS,THREE_NEW_KINDS,THREE_SPACING_DEFAULT,type ThreeKind} from './model';
 import {CELESTIAL_KINDS, CELESTIAL_LABELS, celestialDefaults} from './celestial';
+import {skyDefaults} from './sky-settings';
 
 export const THREE_KIND_LABELS: Record<ThreeKind,string> = {
   sphere:'球体',cube:'立方体',torus:'トーラス',
@@ -24,10 +25,17 @@ export function ThreeRange({id, label, value, min, max, step = .05, unit = '', o
 }
 export function ThreeShapeControls({settings, onChange}: Props) {
   const celestial = settings.celestial ?? celestialDefaults;
+  const voidEnabled=settings.sky?.kind==='cosmic-void';
   return <section className="control-section three-controls">
     <div className="studio-setting-label studio-setting-heading"><h3>3D図形</h3>
       <HelpInfo>13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</HelpInfo>
     </div>
+    <label className="three-checkbox"><input type="checkbox" aria-label="危険区域VOIDモード（大量の3D図形で宇宙の網目を作る）"
+      checked={voidEnabled} onChange={e=>onChange({...settings,
+        sky:{...(settings.sky??skyDefaults),kind:e.target.checked?'cosmic-void':'classic'}})}/>
+      ⚠ 危険区域：VOID MODE（コズミックウェブ）
+    </label>
+    {voidEnabled&&<HelpInfo>普段の3D図形13種類と主役・補助・装飾の役割をそのまま数百〜数千個に増やし、主役を宇宙の網目の結び目に配置します。背景に別の図形を足す方式ではありません。個数は「背景 → 景色の密度」で調整できます。高品質は最大2,800個、軽量は最大800個です。図形同士の接続線にも対応します。</HelpInfo>}
     <ThreeRange id="three-spacing" label="図形の間隔" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
       min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
     <HelpInfo>100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</HelpInfo>
