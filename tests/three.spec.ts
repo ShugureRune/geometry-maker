@@ -305,7 +305,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   const preview=page.getByTestId('three-preview');
   const shapeCount=await preview.getAttribute('data-object-count');
   await category(page,'背景');
-  await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'床の模様'})).toBeVisible();
   await expect(preview).toHaveAttribute('data-floor-grid','off');
   await page.getByLabel('3D床グリッドを有効化').check();
   await expect(preview).toHaveAttribute('data-floor-grid','on');
@@ -363,7 +363,7 @@ test('3D floor perspective grid renders in PNG, works with neon, and round-trips
   expect(digest(await png(page))).toBe(neonGrid);
   await page.getByRole('button',{name:'2Dモード',exact:true}).click();
   await expect(page.getByTestId('preview')).toBeVisible();
-  await expect(page.getByRole('heading',{name:'3D遠近グリッド（床）'})).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'床の模様'})).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
