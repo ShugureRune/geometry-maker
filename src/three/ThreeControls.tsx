@@ -118,15 +118,18 @@ export function ThreeAnimationControls({settings, onChange, seed, onReplay}: Pro
           <option value="rise">下から浮上</option>
           <option value="spiral">旋回して集合</option>
           <option value="scatter">散らばった図形が集合</option>
+          <option value="neural-grow">神経回路：大 → 中 → 小 → ワイヤー</option>
         </select>
         <p className="help" data-testid="three-entrance-style">今回のシードの演出：{({
-          'fade-scale':'フェード＋拡大',rise:'下から浮上',spiral:'旋回して集合',scatter:'散らばった図形が集合'
+          'fade-scale':'フェード＋拡大',rise:'下から浮上',spiral:'旋回して集合',scatter:'散らばった図形が集合',
+          'neural-grow':'大きい図形 → 中くらい → 小さい図形 → ワイヤー'
         } as const)[threeEntranceStyle(seed,entrance.mode)]}</p>
         <ThreeRange id="three-entrance-duration" label="登場にかかる時間" value={entrance.duration}
           min={2} max={15} step={1} unit="秒" onChange={duration=>onChange({...settings,entrance:{...entrance,duration}})}/>
-        <label className="three-checkbox"><input type="checkbox" aria-label="主役から順番に登場" checked={entrance.stagger}
+        {entrance.mode==='neural-grow'&&<HelpInfo>図形の実際の大きさで登場順を決めます。大→中→小の順に完成したあと、接続線が大きい図形から小さい図形へ伸びます。装飾の「接続線を表示」をONにするとワイヤー演出も見られます。入れ替え方式の自動切り替えでも再生されます。</HelpInfo>}
+        {entrance.mode!=='neural-grow'&&<label className="three-checkbox"><input type="checkbox" aria-label="主役から順番に登場" checked={entrance.stagger}
           onChange={e=>onChange({...settings,entrance:{...entrance,stagger:e.target.checked}})}/>
-          主役 → 補助 → 装飾の順に登場</label>
+          主役 → 補助 → 装飾の順に登場</label>}
         <button type="button" onClick={onReplay}>3D登場演出を最初から再生</button>
       </>}
       <HelpInfo>2Dと同様に最初の1回だけ登場し、完成後は消えません。ランダムシードを押すと再生し直します。3Dアニメーション停止時は現在の場面で静止します。既存の周期的な出現・消失とは別機能です。</HelpInfo>
