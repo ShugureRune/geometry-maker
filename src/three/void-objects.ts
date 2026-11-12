@@ -3,11 +3,17 @@ import {generateVoidField,voidFigureCount,VOID_KNOT_COUNT} from './void-field';
 import {THREE_KINDS,type ThreeComposition,type ThreeKind,type ThreeObject,type Vector3Tuple} from './model';
 import type {NetworkEdge} from './network';
 
-/** A directed cosmic branch has one larger parent and one smaller child.
+/** A directed cosmic branch has a larger parent and a smaller child.
  * Stored on the figure so rendering and cables use the SAME rooted tree.
  * Ordinary ThreeObject consumers can ignore this optional VOID metadata.
  */
-export type VoidFigure=ThreeObject&{voidParentId?:string};
+export type VoidFigure=ThreeObject&{
+  voidParentId?:string;
+  /** Native seeded filament corridor, shared by its trunk and branchlets. */
+  voidFilamentId?:number;
+  /** Target gravity knot of this trunk (its last relay approaches the knot). */
+  voidFilamentTargetId?:string;
+};
 type Point=Vector3Tuple;
 const VOID_CENTER:Point=[0,0,-115],VOID_RADII:Point=[23,19,35];
 const squared=(a:readonly number[],b:readonly number[])=>
@@ -37,57 +43,69 @@ const outward=(p:Point):Point=>unit([
   (p[1]-VOID_CENTER[1])/(VOID_RADII[1]**2),
   (p[2]-VOID_CENTER[2])/(VOID_RADII[2]**2),
 ]);
-const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
-const pointFromField=(figures:Float32Array,index:number):Point=>
-  [figures[index*4],figures[index*4+1],figures[index*4+2]];
-const nearestIndex=(point:Point,candidates:readonly Point[]):number=>{
-  let best=0,measure=Infinity;
-  for(let i=0;i<candidates.length;i++){
-    const d=squared(point,candidates[i]);
-    if(d<measure){measure=d;best=i;}
-  }
-  return best;
+/** Each major filament is a smooth corridor between gravity knots. We
+ * choose nearby unobstructed knot pairs so a trunk cannot cut the void.
+ * These short corridors are seeded, stable and O(heroCount²), never O(n²).
+ */
+type FilamentCorridor={from:number;to:number;start:Point;end:Point;bend:Point};
+const pointOnCorridor=(path:FilamentCorridor,t:number):Point=>{
+  const point=add(path.start,diff(path.end,path.start),t);
+  return add(point,path.bend,Math.sin(Math.PI*t));
 };
-/** Medium figures are planted outward from a hero toward seeded filament
- * samples; short bounded branches never pierce the central void.
- */
-function placeMedium(hero:Point,sample:Point,variation:number):Point{
-  let direction=diff(sample,hero);
-  if(length(direction)<.001)direction=outward(hero);
-  direction=unit(direction);
-  const distance=clamp(length(diff(sample,hero))*.40,7,35)*(0.86+variation*.28);
-  const proposed=add(hero,direction,distance);
-  return voidBranchCrossesCenter(hero,proposed)?
-    add(hero,outward(hero),distance):proposed;
-}
-/** Small figures extend BEYOND their medium parent along its hero-to-medium
- * direction, then bend sideways toward another seeded filament sample.
- * The outward projection always remains positive: big -> medium -> small.
- */
-function placeSmall(hero:Point,medium:Point,sample:Point,variation:number):Point{
-  const radial=unit(diff(medium,hero));
-  const toward=diff(sample,medium);
-  const projected=dot(toward,radial);
-  const forward=clamp(projected*.36+3+variation*4,3,16);
-  const lateral=diff(toward,radial.map(x=>x*projected) as Point);
-  const lateralSize=length(lateral);
-  const side=length(lateral)>0?
-    lateral.map(v=>v*Math.min(.4,6/lateralSize)) as Point:[0,0,0] as Point;
-  const proposed=add(add(medium,radial,forward),side);
-  if(!voidBranchCrossesCenter(medium,proposed))return proposed;
-  // Bend tangentially away from the void while still going outward
-  // along the original hero -> medium branch.
-  const normal=outward(medium);
-  const tangent=diff(normal,radial.map(v=>v*dot(normal,radial)) as Point);
-  const tangentDir=unit(tangent);
-  if(length(tangent)>.0001){
-    for(const distance of [5,10,20,36,60]){
-      const attempt=add(add(medium,radial,forward),tangentDir,distance);
-      if(!voidBranchCrossesCenter(medium,attempt))return attempt;
+function filamentCorridors(heroes:readonly Point[],random:()=>number):FilamentCorridor[]{
+  if(heroes.length===0)return [];
+  const seen=new Set<string>();
+  const corridors:FilamentCorridor[]=[];
+  for(let i=0;i<heroes.length;i++){
+    const candidates=heroes.map((p,j)=>({j,d:squared(heroes[i],p)}))
+      .filter(p=>p.j!==i&&!voidBranchCrossesCenter(heroes[i],heroes[p.j]))
+      .sort((a,b)=>a.d-b.d||a.j-b.j);
+    for(const candidate of candidates.slice(0,2)){
+      const j=candidate.j,key=Math.min(i,j)+':'+Math.max(i,j);
+      if(seen.has(key))continue;
+      seen.add(key);
+      const start=heroes[i],end=heroes[j];
+      const axis=unit(diff(end,start));
+      const midpoint=add(start,diff(end,start),.5);
+      const normal=outward(midpoint);
+      const side=diff(normal,add([0,0,0],axis,dot(normal,axis)));
+      const bend=length(side)>.0001?
+        add([0,0,0],unit(side),(2+random()*4)):[0,0,0] as Point;
+      const path:FilamentCorridor={from:i,to:j,start,end,bend};
+      // The only real wires are between actual generated figure centers;
+      // verify the whole curved trunk with a fixed small preflight sample.
+      let safe=true;
+      let last=pointOnCorridor(path,0);
+      for(let k=1;k<=16;k++){
+        const next=pointOnCorridor(path,k/16);
+        if(voidBranchCrossesCenter(last,next)){safe=false;break;}
+        last=next;
+      }
+      if(!safe)path.bend=[0,0,0];
+      corridors.push(path);
     }
   }
-  // Degenerate case: the parent is nearly tangent to the ellipsoid.
-  return add(medium,outward(medium),Math.max(forward,8));
+  // A one-hero or isolated-knot field still gets one outward main filament.
+  if(corridors.length===0){
+    const start=heroes[0],end=add(start,outward(start),50);
+    corridors.push({from:0,to:0,start,end,bend:[0,0,0]});
+  }
+  return corridors;
+}
+function smallBranchPoint(parent:Point,tangent:Point,branch:number,step:number):Point{
+  // Two shallow branches run close to each trunk. Each branch consists of
+  // chained accent figures, rather than a wide fan of independent rays.
+  const basis=Math.abs(tangent[2])<.85?[0,0,1] as Point:[0,1,0] as Point;
+  const side=unit(diff(basis,add([0,0,0],tangent,dot(basis,tangent))));
+  const angle=(branch===0?-1:1)*.24;
+  const direction=unit(add(tangent,side,angle));
+  const next=add(parent,direction,step);
+  if(!voidBranchCrossesCenter(parent,next))return next;
+  const safeDir=unit(add(tangent,outward(parent),.85));
+  const safe=add(parent,safeDir,step);
+  if(!voidBranchCrossesCenter(parent,safe))return safe;
+  // The last resort is guaranteed to point away from the ellipsoid.
+  return add(parent,outward(parent),step);
 }
 
 /** VOID is a different PLACEMENT of the existing 13 3D figure kinds, not an
@@ -109,10 +127,11 @@ export function voidSceneObjects(
   // Even at tiny positive densities, create a relay before any small node.
   const supports=Math.min(count-heroes,Math.max(count>heroes?1:0,Math.round(count*.15)));
   const result:VoidFigure[]=[];
-  const hierarchyRandom=seededRandom('void-gravity-hierarchy-v1:'+seed);
+  const hierarchyRandom=seededRandom('void-filament-spines-v1:'+seed);
   const heroLocations:Point[]=[];
   const supportLocations:Point[]=[];
-  const supportHero:number[]=[];
+  const supportDirections:Point[]=[];
+  const accentLocations:Point[]=[];
   const pick=(role:ThreeObject['role'],i:number)=>{
     const suitable=templates.filter(obj=>obj.role===role);
     return (suitable.length?suitable:templates)[i%(suitable.length||templates.length)];
@@ -149,33 +168,64 @@ export function voidSceneObjects(
     heroLocations.push(point);
     create('primary',i,scaled(...point),.75+random()*.60);
   }
-  // Medium relays follow *their own* large junction, not an independent
-  // world-space sample. Sample the native cosmic filaments for direction.
+  // A handful of long, slightly bent gravity-to-gravity filaments replace
+  // the independent radial spokes of PR #105. Every filament gets multiple
+  // medium figures linked in order: hero -> relay -> relay -> ... .
+  const corridors=filamentCorridors(heroLocations,hierarchyRandom);
   for(let i=0;i<supports;i++){
-    const sample=pointFromField(field.figures,i);
-    // Give each large knot at least one nearby relay when possible.
-    const hero=i<heroes?i:nearestIndex(sample,heroLocations);
-    const point=placeMedium(heroLocations[hero],sample,hierarchyRandom());
-    supportLocations.push(point);supportHero.push(hero);
-    create('support',i,scaled(...point),.32+random()*.21,`void-primary-${hero}`);
+    const filament=i%corridors.length;
+    const corridor=corridors[filament];
+    const level=Math.floor(i/corridors.length);
+    const alongCount=Math.ceil((supports-filament)/corridors.length);
+    const t=(level+1)/(alongCount+1);
+    let point=pointOnCorridor(corridor,t);
+    const previous=level===0?corridor.start:supportLocations[i-corridors.length];
+    if(voidBranchCrossesCenter(previous,point)){
+      // A safe straight chord between two already-safe primary knots.
+      point=add(corridor.start,diff(corridor.end,corridor.start),t);
+    }
+    if(voidBranchCrossesCenter(previous,point)){
+      point=add(previous,outward(previous),Math.max(3,
+        length(diff(corridor.end,corridor.start))/(alongCount+1)));
+    }
+    supportLocations.push(point);
+    supportDirections.push(unit(diff(point,previous)));
+    const parentId=level===0?
+      `void-primary-${corridor.from}`:`void-support-${i-corridors.length}`;
+    // The medium radius decreases strictly towards the distal end, so
+    // successive trunk figures never invert the large -> medium order.
+    create('support',i,scaled(...point),.32+.21*(1-t),parentId);
+    result[result.length-1].voidFilamentId=filament;
+    result[result.length-1].voidFilamentTargetId=`void-primary-${corridor.to}`;
   }
-  // Small accents inherit an actual medium parent and extend beyond it,
-  // preserving the physical big -> medium -> small ordering in space.
+  // Two narrow, staggered accent streams per relay. Later accent figures
+  // continue the previous small figure instead of all leaving the relay as
+  // long radiating spokes (the old "fireworks" effect).
   for(let i=0;i<count-heroes-supports;i++){
-    const sample=pointFromField(field.figures,supports+i);
-    const parent=nearestIndex(sample,supportLocations);
-    const point=placeSmall(heroLocations[supportHero[parent]],
-      supportLocations[parent],sample,hierarchyRandom());
-    create('accent',i,scaled(...point),.105+random()*.16,`void-support-${parent}`);
+    const relay=i%supports;
+    const layer=Math.floor(i/supports);
+    const branch=layer%2;
+    const depth=Math.floor(layer/2);
+    // The result array contains world-scaled positions; prefer the raw
+    // coordinates retained for constant-time construction of branchlets.
+    const parentRaw=depth===0?supportLocations[relay]:
+      accentLocations[i-2*supports];
+    const step=(depth===0?3.3:2.4)+hierarchyRandom()*1.3;
+    const point=smallBranchPoint(parentRaw,supportDirections[relay],branch,step);
+    accentLocations.push(point);
+    const parentId=depth===0?`void-support-${relay}`:
+      `void-accent-${i-2*supports}`;
+    // Each level of a thin branch is smaller than its predecessor.
+    create('accent',i,scaled(...point),Math.max(.11,.245-.039*depth),parentId);
+    result[result.length-1].voidFilamentId=relay%corridors.length;
   }
   return result;
 }
 
 /** Sparse native 3D figure wires for thousands of nodes.
- * The classic all-pairs nearest algorithm is O(n²) and would freeze at
- * 2,800 solids. Connect every accent to one nearby support and every support
- * to a nearby hero (same tier hierarchy as neural wiring) in bounded O(n*m).
- * No invisible background-only cable endpoints are used.
+ * Parent IDs are recorded while placing each filament and branchlet; cable
+ * endpoints follow those exact 3D positions. No per-frame neighbor search,
+ * cross-filament shortcuts or invisible background-only endpoints are used.
  */
 export function voidSceneConnections(objects:readonly ThreeObject[]):NetworkEdge[]{
   const hero=objects.filter(o=>o.role==='primary');
@@ -198,8 +248,10 @@ export function voidSceneConnections(objects:readonly ThreeObject[]):NetworkEdge
   const connect=(child:ThreeObject):NetworkEdge|null=>{
     const parentId=(child as VoidFigure).voidParentId;
     const parent=parentId?byId.get(parentId):undefined;
-    if(parent&&(child.role==='support'?parent.role==='primary':
-      child.role==='accent'?parent.role==='support':false)){
+    if(parent&&(child.role==='support'?
+        (parent.role==='primary'||parent.role==='support'):
+        child.role==='accent'?
+        (parent.role==='support'||parent.role==='accent'):false)){
       return {a:parent.id,b:child.id,
         distance:Math.sqrt(squared(parent.position,child.position))};
     }
