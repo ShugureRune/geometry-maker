@@ -1,7 +1,8 @@
 import {describe,it,expect} from 'vitest';
 import {generateThreeComposition} from './model';
 import {networkConnections} from './network';
-import {neuralStartupFlash,neuralPacketAt,neuralSignalPlan,
+import {neuralStartupFlash,neuralPacketAt,neuralSignalPlan,neuralPacketTrailAt,
+  neuralArrivalFlashAt,NEURAL_ARRIVAL_FLASH_DURATION,NEURAL_TRAIL_STEP,
   NEURAL_SIGNAL_LAUNCH_DELAY,NEURAL_SIGNAL_SPEED,NEURAL_SIGNAL_REST} from './neural-signals';
 
 const base=generateThreeComposition('impulse-branching','16:9').objects[0];
@@ -131,5 +132,78 @@ describe('deterministic neural circuit ignition',()=>{
     expect(neuralPacketAt(begin+plan.cycle-.01,6,route,plan.cycle)).toBeNull();
     expect(neuralPacketAt(begin+plan.cycle+.01,6,route,plan.cycle)?.progress??0)
       .toBeGreaterThan(0);
+  });
+});
+
+describe('glowing neural trail and arrival feedback',()=>{
+  it('leaves a series of fading positions BEHIND the packet head',()=>{
+    const route=byChild.get('middle-a')!;
+    const now=6+NEURAL_SIGNAL_LAUNCH_DELAY+route.end*.75;
+    const trail=neuralPacketTrailAt(now,6,route,plan.cycle,0,4);
+    expect(trail.length).toBe(5);
+    const head=neuralPacketAt(now,6,route,plan.cycle)!;
+    expect(trail[0]).toEqual(head);
+    for(let i=1;i<trail.length;i++){
+      expect(trail[i].progress).toBeLessThan(trail[i-1].progress);
+      expect(trail[i].alpha).toBeLessThanOrEqual(trail[i-1].alpha);
+      expect(trail[i].progress).toBeCloseTo(
+        neuralPacketAt(now-i*NEURAL_TRAIL_STEP,6,route,plan.cycle)!.progress,10);
+    }
+    expect(neuralPacketTrailAt(now,6,route,plan.cycle,0,20)).toEqual([]);
+    expect(neuralPacketTrailAt(now,6,route,plan.cycle,0,-1)).toEqual([]);
+  });
+  it('clips the trail at the START of its own wire instead of leaking from a parent edge',()=>{
+    const root=byChild.get('middle-a')!;
+    const child=byChild.get('small-a1')!;
+    const firstArrival=6+NEURAL_SIGNAL_LAUNCH_DELAY+root.end;
+    expect(neuralPacketTrailAt(firstArrival-.01,6,child,plan.cycle,0,4)).toEqual([]);
+    const justAfter=firstArrival+.06;
+    const tail=neuralPacketTrailAt(justAfter,6,child,plan.cycle,0,4);
+    expect(tail.length).toBeGreaterThan(0);
+    expect(tail.length).toBeLessThan(5);
+    expect(tail.every(v=>v.progress>=0&&v.progress<=1)).toBe(true);
+  });
+  it('flashes the medium at its reception time, then all split branches run in parallel',()=>{
+    const parent=byChild.get('middle-a')!;
+    const childA=byChild.get('small-a1')!,childB=byChild.get('small-a2')!;
+    const finish=6+NEURAL_SIGNAL_LAUNCH_DELAY+parent.end;
+    expect(neuralArrivalFlashAt(finish-.001,6,parent,plan.cycle)).toBe(0);
+    expect(neuralArrivalFlashAt(finish,6,parent,plan.cycle)).toBeCloseTo(1,10);
+    expect(neuralArrivalFlashAt(finish+.15,6,parent,plan.cycle)).toBeGreaterThan(0);
+    expect(neuralArrivalFlashAt(finish+NEURAL_ARRIVAL_FLASH_DURATION+.01,6,parent,plan.cycle))
+      .toBe(0);
+    expect(neuralPacketAt(finish+.04,6,childA,plan.cycle)).not.toBeNull();
+    expect(neuralPacketAt(finish+.04,6,childB,plan.cycle)).not.toBeNull();
+    const leafArrival=6+NEURAL_SIGNAL_LAUNCH_DELAY+childA.end;
+    expect(neuralArrivalFlashAt(leafArrival,6,childA,plan.cycle)).toBeCloseTo(1,10);
+  });
+  it('starts new arrivals only on their own waves with no phantom startup or loop flashes',()=>{
+    const root=byChild.get('middle-b')!;
+    const begin=6+NEURAL_SIGNAL_LAUNCH_DELAY;
+    for(const t of [-.5,0,.4]){
+      expect(neuralArrivalFlashAt(begin+t,6,root,plan.cycle)).toBe(0);
+    }
+    const end=begin+root.end;
+    expect(neuralArrivalFlashAt(end+plan.cycle,6,root,plan.cycle)).toBeCloseTo(1,10);
+    expect(neuralArrivalFlashAt(end+2*plan.cycle,6,root,plan.cycle)).toBeCloseTo(1,10);
+    expect(neuralArrivalFlashAt(end+plan.cycle*.5,6,root,plan.cycle,1)).toBeCloseTo(1,10);
+    expect(neuralArrivalFlashAt(end,6,root,plan.cycle,1)).toBe(0);
+    expect(neuralArrivalFlashAt(NaN,6,root,plan.cycle)).toBe(0);
+    expect(neuralArrivalFlashAt(6,Infinity,root,plan.cycle)).toBe(0);
+    expect(neuralArrivalFlashAt(6,6,{start:1,end:1},plan.cycle)).toBe(0);
+  });
+  it('restarts a fresh root wave late in the rewire and lets it reach leaves after completion',()=>{
+    const root=byChild.get('middle-a')!,leaf=byChild.get('small-a1')!;
+    const duration=6,reconnectBegin=.8*duration;
+    const absoluteLaunch=reconnectBegin+.12;
+    const completion=absoluteLaunch-NEURAL_SIGNAL_LAUNCH_DELAY;
+    expect(neuralPacketAt(reconnectBegin,completion,root,plan.cycle)).toBeNull();
+    expect(neuralPacketAt(absoluteLaunch+.05,completion,root,plan.cycle)).not.toBeNull();
+    // The wave keeps its original absolute launch when the transition layer
+    // disappears at t=duration. It must NOT restart at the scene commit.
+    const afterComplete=neuralPacketAt(duration+.1,completion,leaf,plan.cycle);
+    expect(afterComplete).not.toBeNull();
+    expect(neuralPacketAt(duration+.1,duration,leaf,plan.cycle)).toBeNull();
+    expect(neuralArrivalFlashAt(duration+.1,completion,root,plan.cycle)).toBeGreaterThan(0);
   });
 });

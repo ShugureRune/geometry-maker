@@ -73,3 +73,43 @@ export function neuralPacketAt(
   const alpha=Math.min(1,progress*10,(1-progress)*10);
   return alpha>.001?{progress,alpha}:null;
 }
+
+/** A thin, fading wake behind each packet. Sampling earlier positions gives a
+ * deterministic light streak without allocating timers, objects or motion
+ * history. Never cross a route's source when a new signal is just arriving. */
+export const NEURAL_TRAIL_STEP=.045;
+export function neuralPacketTrailAt(
+  seconds:number,completion:number,route:Pick<NeuralSignalRoute,'start'|'end'>,
+  cycle:number,lane=0,count=3,
+):NeuralPacket[]{
+  if(!Number.isInteger(count)||count<0||count>8)return [];
+  const samples:NeuralPacket[]=[];
+  for(let i=0;i<=count;i++){
+    const packet=neuralPacketAt(seconds-i*NEURAL_TRAIL_STEP,completion,route,cycle,lane);
+    if(!packet)continue;
+    const fade=Math.pow(.62,i);
+    samples.push({progress:packet.progress,alpha:packet.alpha*fade});
+  }
+  return samples;
+}
+
+/** Brief node ignition exactly when an upstream packet reaches the relay or
+ * leaf. Shared cycle and launch offset keep it synchronized with every split.
+ * The first cycle never flashes before its first real arrival. */
+export const NEURAL_ARRIVAL_FLASH_DURATION=.3;
+export function neuralArrivalFlashAt(
+  seconds:number,completion:number,route:Pick<NeuralSignalRoute,'start'|'end'>,
+  cycle:number,lane=0,
+):number{
+  if(![seconds,completion,route.start,route.end,cycle,lane].every(Number.isFinite)||
+    route.start<0||route.end<=route.start||cycle<=route.end||lane<0)return 0;
+  const elapsed=seconds-completion-NEURAL_SIGNAL_LAUNCH_DELAY-lane*cycle*.5;
+  // A half-cycle lane offset may round an exact arrival a few ulps early.
+  if(elapsed<route.end-1e-9)return 0;
+  // Treat near-zero and near-cycle remainders as an exact arrival. This
+  // avoids missing one flash frame at repeated or offset wave boundaries.
+  const remainder=(elapsed-route.end)%cycle;
+  const sinceArrival=Math.abs(remainder)<1e-9||cycle-remainder<1e-9?0:remainder;
+  if(sinceArrival<0||sinceArrival>=NEURAL_ARRIVAL_FLASH_DURATION)return 0;
+  return Math.pow(1-sinceArrival/NEURAL_ARRIVAL_FLASH_DURATION,2);
+}
