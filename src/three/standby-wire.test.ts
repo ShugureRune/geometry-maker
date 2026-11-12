@@ -84,6 +84,23 @@ describe('both standby wiring directions originate at the hero',()=>{
       expect(standbyMorphWireProgress(reconnecting,duration,'new',1,2,child)).toBe(0);
     }
   });
+  it('never leaves a detached child tail when a parent cable starts shrinking',()=>{
+    const parent={start:0,end:.4},child={start:.4,end:1};
+    for(const duration of [1,2,4,8]){
+      let lastParent=1,lastChild=1;
+      for(let i=0;i<=120;i++){
+        const seconds=duration*MORPH_WIRE_RELEASE_END*i/120;
+        const parentLength=standbyMorphWireProgress(seconds,duration,'old',0,2,parent);
+        const childLength=standbyMorphWireProgress(seconds,duration,'old',1,2,child);
+        expect(parentLength).toBeLessThanOrEqual(lastParent+1e-10);
+        expect(childLength).toBeLessThanOrEqual(lastChild+1e-10);
+        // A shrinking parent must never leave a full, dangling child.
+        if(parentLength<1-1e-8)expect(childLength).toBe(0);
+        if(childLength>1e-8)expect(parentLength).toBe(1);
+        lastParent=parentLength;lastChild=childLength;
+      }
+    }
+  });
   it('hides every cable throughout the move phase without changing total transition time',()=>{
     for(const duration of [1,2,4,8]){
       for(const p of [MORPH_WIRE_RELEASE_END,.3,.5,.75,MORPH_WIRE_ATTACH_START]){
