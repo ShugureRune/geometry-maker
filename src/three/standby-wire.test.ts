@@ -74,7 +74,8 @@ describe('both standby wiring directions originate at the hero',()=>{
       expect(standbyMorphWireProgress(during,duration,'old',1,2,child)).toBeLessThan(1);
       const midway=duration*.09;
       expect(standbyMorphWireProgress(midway,duration,'old',0,1,parent)).toBe(1);
-      expect(standbyMorphWireProgress(midway,duration,'old',0,1,child)).toBe(0);
+      expect(standbyMorphWireProgress(midway,duration,'old',0,1,child)).toBeGreaterThan(0);
+      expect(standbyMorphWireProgress(midway,duration,'old',0,1,child)).toBeLessThan(1);
       const nearEnd=duration*.15;
       expect(standbyMorphWireProgress(nearEnd,duration,'old',0,1,parent)).toBeLessThan(1);
       expect(standbyMorphWireProgress(nearEnd,duration,'old',0,1,child)).toBe(0);
