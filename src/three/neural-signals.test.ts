@@ -79,10 +79,17 @@ describe('deterministic neural circuit ignition',()=>{
     const begin=6+NEURAL_SIGNAL_LAUNCH_DELAY;
     const sample=begin+.15;
     for(const route of plan.routes){
-      expect(neuralPacketAt(sample+plan.cycle,6,route,plan.cycle)).toEqual(
-        neuralPacketAt(sample,6,route,plan.cycle));
-      expect(neuralPacketAt(sample+2*plan.cycle,6,route,plan.cycle)).toEqual(
-        neuralPacketAt(sample,6,route,plan.cycle));
+      const first=neuralPacketAt(sample,6,route,plan.cycle);
+      for(const repeat of [1,2]){
+        const again=neuralPacketAt(sample+repeat*plan.cycle,6,route,plan.cycle);
+        if(first===null)expect(again).toBeNull();
+        else{
+          expect(again).not.toBeNull();
+          // Remainder arithmetic introduces sub-ulp differences on repeat.
+          expect(again!.progress).toBeCloseTo(first.progress,10);
+          expect(again!.alpha).toBeCloseTo(first.alpha,10);
+        }
+      }
       const quiet=begin+farthest+NEURAL_SIGNAL_REST*.5;
       expect(neuralPacketAt(quiet,6,route,plan.cycle)).toBeNull();
     }
