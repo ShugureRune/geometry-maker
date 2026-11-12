@@ -67,6 +67,14 @@ export type MorphMatch={id:string;from?:ThreeObject;to?:ThreeObject};
 export const MORPH_WIRE_RELEASE_END=.18;
 export const MORPH_WIRE_ATTACH_START=.80;
 
+export function standbyMorphPhase(seconds:number,duration:number):
+  'retract'|'move'|'reconnect'|'complete'{
+  const fraction=clamp01(seconds/Math.max(.001,duration));
+  return fraction>=1?'complete':
+    fraction<MORPH_WIRE_RELEASE_END?'retract':
+    fraction<MORPH_WIRE_ATTACH_START?'move':'reconnect';
+}
+
 /** The figure's actual move/resize/color transition, excluding wire phases.
  * Without a visible network the original uninterrupted morph is retained. */
 export function standbyMorphMotionProgress(seconds:number,duration:number,rewire=true):number{
