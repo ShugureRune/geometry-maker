@@ -120,9 +120,10 @@ export function neuralWireWindowProgress(
   return smooth((wirePhase-start)/Math.max(.000001,end-start));
 }
 
-/** The visible segment grows from the larger object CENTER to the smaller
- * object CENTER, staying attached to the already-animated mesh positions.
- * The renderer can swap its endpoint colors without changing connectivity.
+/** Extend or erase a segment along a rooted route. The default remains
+ * larger-to-smaller for legacy callers; neural networks may override the
+ * origin so their cables always propagate away from the primary figure.
+ * Endpoints follow the actual animated node positions.
  */
 export function neuralWireEndpoints(
   a:Pick<ThreeObject,'radius'>,b:Pick<ThreeObject,'radius'>,
