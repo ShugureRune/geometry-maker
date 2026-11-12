@@ -1,6 +1,6 @@
 import {it,expect} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {networkConnections,visibleNetworkSegment} from './network';
+import {networkConnections,neuralConnectionScore,visibleNetworkSegment} from './network';
 import {threePose} from './model';
 import {visibilityDefaults} from './visibility';
 it('resolves exact distance ties by object ID regardless of generation order',()=>{
@@ -58,4 +58,54 @@ it('hides lines touching a disappearing satellite even when heroes are pinned vi
  // Turning the effect off restores the original line positions exactly.
  const classic=visibleNetworkSegment(hero,satellite,2);
  expect(classic).toEqual({start:threePose(hero,2,1,1).position,end:threePose(satellite,2,1,1).position});
+});
+
+it('neural scoring rewards larger nearby shapes without allowing out-of-range connections',()=>{
+ const base=generateThreeComposition('neural-scoring','16:9').objects[0];
+ const one=(id:string,radius:number,x:number,y=0)=>({
+  ...base,id,radius,position:[x,y,0] as [number,number,number],
+ });
+ const hub=one('hub',2.0,0),smallA=one('small-a',.2,.95);
+ const smallB=one('small-b',.2,1.05),branch=one('branch',.35,0,1.2);
+ const objects=[smallA,smallB,branch,hub];
+ expect(neuralConnectionScore(hub,smallA,.95)).toBeGreaterThan(
+  neuralConnectionScore(smallA,smallB,.1));
+ expect(neuralConnectionScore(hub,smallA,.95)).toBeGreaterThan(
+  neuralConnectionScore(hub,smallA,1.3));
+ expect(neuralConnectionScore(hub,branch,1.2)).toBeGreaterThan(
+  neuralConnectionScore(smallA,smallB,.1));
+ const edges=networkConnections(objects,2,2,'neural');
+ expect(edges[0]).toMatchObject({a:'hub',b:'small-a'});
+ expect(edges.length).toBeLessThanOrEqual(objects.length-1);
+ expect(edges.every(e=>e.distance<=2)).toBe(true);
+ const degrees=new Map<string,number>();
+ for(const e of edges)for(const id of [e.a,e.b]){
+  degrees.set(id,(degrees.get(id)??0)+1);
+  expect(degrees.get(id)).toBeLessThanOrEqual(2);
+ }
+ expect(networkConnections(objects,0,6,'neural')).toEqual([]);
+ expect(networkConnections(objects,2,2,'neural')).toEqual(
+   networkConnections([...objects].reverse(),2,2,'neural'));
+ expect(()=>networkConnections(objects,4,3,'random' as 'neural')).toThrow();
+});
+
+it('neural branches are an acyclic maximum-score forest with stable ties',()=>{
+ const scene=generateThreeComposition('neural-network-seed','16:9');
+ for(const density of [0,40,75,100])for(const limit of [1,2,3,6]){
+  const objects=visibleThreeObjects(scene,density);
+  const links=networkConnections(objects,5,limit,'neural');
+  const parent=new Map(objects.map(o=>[o.id,o.id]));
+  const root=(id:string):string=>{while(parent.get(id)!==id)id=parent.get(id)!;return id;};
+  const counts=new Map<string,number>();
+  for(const edge of links){
+   expect(root(edge.a)).not.toBe(root(edge.b));
+   parent.set(root(edge.a),root(edge.b));
+   for(const id of [edge.a,edge.b])counts.set(id,(counts.get(id)??0)+1);
+   expect(edge.distance).toBeLessThanOrEqual(5);
+  }
+  expect(Math.max(0,...counts.values())).toBeLessThanOrEqual(limit);
+  expect(links.length).toBeLessThanOrEqual(Math.max(0,objects.length-1));
+  expect(new Set(links.map(edge=>edge.a+'-'+edge.b)).size).toBe(links.length);
+  expect(networkConnections([...objects].reverse(),5,limit,'neural')).toEqual(links);
+ }
 });
