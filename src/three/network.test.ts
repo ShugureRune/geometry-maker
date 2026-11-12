@@ -38,7 +38,11 @@ it('removes fully disappeared network edges instead of leaving black segments',(
  const half=visibleNetworkSegment(a,b,.56,visibility)!;
  expect(half).not.toBeNull();
  const length=(v:{start:number[];end:number[]})=>Math.hypot(...v.start.map((x,i)=>x-v.end[i]));
- expect(length(half)).toBeCloseTo(length(visibleNetworkSegment(a,b,.56,visibilityDefaults)!) * .5,8);
+ // A half-visible mesh stays attached to its wire; it must never extend
+ // from/to an empty midpoint between two figures.
+ expect(length(half)).toBeCloseTo(length(visibleNetworkSegment(a,b,.56,visibilityDefaults)!),8);
+ expect(half.start).toEqual(threePose(a,.56,1,1).position);
+ expect(half.end).toEqual(threePose(b,.56,1,1).position);
  // Endpoints are deterministic and never generate dark geometry.
  expect(visibleNetworkSegment(a,b,.56,visibility)).toEqual(half);
  expect(visibleNetworkSegment(a,b,8.56,visibility)).not.toBeNull(); // envelope loops; pose still keeps floating/spinning
