@@ -95,6 +95,10 @@ export function threeEntrancePose(
   }
 }
 
+/** Wire-only part of the neural entrance timeline. Keeping this constant
+ * shared lets standby transitions replay the EXACT same staggered pattern. */
+export const NEURAL_WIRE_START_FRACTION=.72;
+
 /** Size-ranked edge order: larger source junctions grow their axons first.
  * This phase starts only AFTER the last small solid has completed arrival.
  * Rank is zero-based in descending size order, with stable ID tie breaks.
@@ -104,7 +108,7 @@ export function neuralWireProgress(seconds:number,settings:ThreeEntranceSettings
   if(!settings.enabled||settings.mode!=='neural-grow')return 1;
   const fraction=Number.isFinite(seconds)?Math.max(0,seconds)/settings.duration:0;
   const position=count>1?Math.max(0,Math.min(count-1,rank))/(count-1):0;
-  return smooth((fraction-(.72+.15*position))/.13);
+  return smooth((fraction-(NEURAL_WIRE_START_FRACTION+.15*position))/.13);
 }
 
 /** The visible segment grows from the larger object CENTER to the smaller
