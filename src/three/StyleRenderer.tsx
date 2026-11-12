@@ -192,15 +192,17 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
           neuralWireWindowProgress(wirePhase,route.start,route.end);
         // No ghost points at the source/target when a cable is absent.
         if(progress<=.001)continue;
-        const erasingFromHero=!!replayMorphWires&&standby!.layer==='old';
+        // Both directions keep the cable anchored at its parent node.
+        // For old wires, reversed progress moves the free tip inward.
         const growing=neuralWireEndpoints(a,b,positionA as [number,number,number],
-          positionB as [number,number,number],progress,route.source,erasingFromHero);
+          positionB as [number,number,number],progress,route.source);
         reverse=growing.reverse;
         start.setXYZ(active,...growing.start);
         end.setXYZ(active,...growing.end);
-        // Colors follow the actual clipped cable, not an invisible endpoint.
-        startMix=erasingFromHero?1-progress:0;
-        endMix=erasingFromHero?1:progress;
+        // Sample the original full-length gradient at the actual free tip
+        // instead of keeping the removed portion's end color.
+        startMix=0;
+        endMix=progress;
         perEdgeAlpha*=Math.min(1,progress*4);
       }else{
         start.setXYZ(active,...positionA as [number,number,number]);
