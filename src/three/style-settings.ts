@@ -1,14 +1,16 @@
+import type {NetworkConnectionMode} from './network';
+
 export const COLOR_MODES = ['auto', 'primary', 'support', 'accent', 'custom'] as const;
 export type StyleColorMode = typeof COLOR_MODES[number];
 export type NetworkSettings = {
-  enabled: boolean; maxConnections: number; distance: number; width: number; opacity: number;
+  enabled: boolean; mode: NetworkConnectionMode; maxConnections: number; distance: number; width: number; opacity: number;
   glow: number; colorMode: StyleColorMode; customColor: string; animation: 'none' | 'pulse'; contrast: boolean;
 };
 export type NeonSettings = {
   enabled: boolean; display: 'lines' | 'transparent' | 'surface'; width: number;
   colorMode: StyleColorMode; customColor: string; glow: number; faceOpacity: number; contrast: boolean;
 };
-export const networkDefaults: NetworkSettings = {enabled:false, maxConnections:3, distance:4, width:1, opacity:.7,
+export const networkDefaults: NetworkSettings = {enabled:false, mode:'nearest', maxConnections:3, distance:4, width:1, opacity:.7,
   glow:100, colorMode:'auto', customColor:'#82dfff', animation:'none', contrast:false};
 export const neonDefaults: NeonSettings = {enabled:false, display:'surface', width:1, colorMode:'auto',
   customColor:'#a3f2ff', glow:100, faceOpacity:.12, contrast:false};
@@ -46,7 +48,7 @@ export function hexField(value: unknown): string {
 }
 export function validateNetwork(value: unknown): NetworkSettings {
   const d={...networkDefaults,...record(value)};
-  return {enabled:booleanField(d.enabled,'接続ON/OFF'), maxConnections:numberField(d.maxConnections,1,6,'最大接続数',true),
+  return {enabled:booleanField(d.enabled,'接続ON/OFF'), mode:enumField(d.mode,['nearest','neural'],'接続方式'), maxConnections:numberField(d.maxConnections,1,6,'最大接続数',true),
     distance:numberField(d.distance,.5,15,'接続距離'), width:numberField(d.width,.25,6,'接続線の太さ'),
     opacity:numberField(d.opacity,0,1,'接続線の透明度'), glow:numberField(d.glow,0,200,'接続線の発光'),
     colorMode:enumField(d.colorMode,COLOR_MODES,'接続色モード'), customColor:hexField(d.customColor),
