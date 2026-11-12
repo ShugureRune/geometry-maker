@@ -4,7 +4,7 @@ export const COLOR_MODES = ['auto', 'primary', 'support', 'accent', 'custom'] as
 export type StyleColorMode = typeof COLOR_MODES[number];
 export type NetworkSettings = {
   enabled: boolean; mode: NetworkConnectionMode; maxConnections: number; distance: number; width: number; opacity: number;
-  glow: number; colorMode: StyleColorMode; customColor: string; animation: 'none' | 'pulse'; contrast: boolean;
+  glow: number; colorMode: StyleColorMode; customColor: string; animation: 'none' | 'pulse' | 'signal'; contrast: boolean;
 };
 export type NeonSettings = {
   enabled: boolean; display: 'lines' | 'transparent' | 'surface'; width: number;
@@ -52,7 +52,7 @@ export function validateNetwork(value: unknown): NetworkSettings {
     distance:numberField(d.distance,.5,15,'接続距離'), width:numberField(d.width,.25,6,'接続線の太さ'),
     opacity:numberField(d.opacity,0,1,'接続線の透明度'), glow:numberField(d.glow,0,200,'接続線の発光'),
     colorMode:enumField(d.colorMode,COLOR_MODES,'接続色モード'), customColor:hexField(d.customColor),
-    animation:enumField(d.animation,['none','pulse'],'接続アニメーション'), contrast:booleanField(d.contrast,'接続色の補正')};
+    animation:enumField(d.animation,['none','pulse','signal'],'接続アニメーション'), contrast:booleanField(d.contrast,'接続色の補正')};
 }
 export function validateNeon(value: unknown): NeonSettings {
   const d={...neonDefaults,...record(value)};
