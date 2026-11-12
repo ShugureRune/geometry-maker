@@ -50,6 +50,27 @@ test('3D standby morph swaps seeds and completes while keeping the preview mount
   await page.getByRole('button',{name:'3D登場演出を最初から再生'}).click();
   await expect(preview).toHaveAttribute('data-standby-entrance-complete','false');
 });
+test('neural connections retract, detach during motion, then reconnect after all figures arrive',async({page})=>{
+  await start(page);
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  const preview=page.getByTestId('three-preview');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
+  await category(page,'アニメーション');
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('6');
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await expect(preview).toHaveAttribute('data-standby-active','true');
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','retract');
+  // Crucially, neither outgoing nor incoming cables exist while figures move.
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','move',{timeout:7000});
+  await expect(preview).toHaveAttribute('data-standby-active','true');
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','reconnect',{timeout:7500});
+  await expect(preview).toHaveAttribute('data-standby-active','false',{timeout:7000});
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','off');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
+});
+
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
   await page.locator('#three-standby-mode').selectOption('exit-enter');
