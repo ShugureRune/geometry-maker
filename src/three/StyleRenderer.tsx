@@ -154,8 +154,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       :seconds.current;
     const growWires=neuralAppearance&&(appearing||
       (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
-    const morphWireLength=standby?.transition.mode==='morph'?
-      standbyMorphWireProgress(seconds.current,standby.transition.duration,standby.layer):null;
+    const replayMorphWires=standby?.transition.mode==='morph';
     let active=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
@@ -195,8 +194,11 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         ];
       }
       let reverse=false;
-      if(growWires||morphWireLength!==null){
-        const progress=morphWireLength??neuralWireProgress(growthTime,entrance,wireOrder[i],topology.length);
+      if(growWires||replayMorphWires){
+        const progress=replayMorphWires?
+          standbyMorphWireProgress(seconds.current,standby!.transition.duration,
+            standby!.layer,wireOrder[i],topology.length):
+          neuralWireProgress(growthTime,entrance,wireOrder[i],topology.length);
         // Zero progress is a hidden connection (not an opaque dot at origin).
         if(progress<=.001)continue;
         const growing=neuralWireEndpoints(a,b,positionA as [number,number,number],
