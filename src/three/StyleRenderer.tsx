@@ -11,7 +11,7 @@ import type {ThreeSettings} from './settings';
 import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
-import {visibleNetworkSegment,type networkConnections} from './network';
+import {MIN_NETWORK_ENDPOINT_VISIBILITY,visibleNetworkSegment,type networkConnections} from './network';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress} from './entrance';
 import {easeInOut,splitExitEnter,type MorphMatch,type ThreeStandbyTransition} from './standby';
@@ -112,66 +112,75 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     };
     invalidate();
   },[line,network.width,network.opacity,material,low,size.height,invalidate]);
-  useFrame(()=>{
+  const updateWire=()=>{
     material.opacity=currentOpacity();
     const clock=standby?.layer==='old'?standby.transition.fromTime+seconds.current:seconds.current;
-    const start=geometry.getAttribute('instanceStart') as InterleavedBufferAttribute, end=geometry.getAttribute('instanceEnd') as InterleavedBufferAttribute;
-    const colorStart=geometry.getAttribute('instanceColorStart') as InterleavedBufferAttribute, colorEnd=geometry.getAttribute('instanceColorEnd') as InterleavedBufferAttribute;
+    const start=geometry.getAttribute('instanceStart') as InterleavedBufferAttribute;
+    const end=geometry.getAttribute('instanceEnd') as InterleavedBufferAttribute;
+    const colorStart=geometry.getAttribute('instanceColorStart') as InterleavedBufferAttribute;
+    const colorEnd=geometry.getAttribute('instanceColorEnd') as InterleavedBufferAttribute;
+    const appearance=settings.visibilityAnimation??visibilityDefaults;
+    const entrance=settings.entrance??entranceDefaults;
+    const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
     let active=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
-      const segment=visibleNetworkSegment(a,b,clock,settings.visibilityAnimation??visibilityDefaults,
-        settings.floatAmount,settings.rotationAmount);
-      // Do not keep a zero-brightness opaque line in the draw list: that is
-      // the black ghost left behind after the original figure disappears.
-      if(!segment)continue;
-      const entrance=settings.entrance??entranceDefaults;
-      const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
       let perEdgeAlpha=1;
-      const ap=appearing?threeEntrancePose(a,seconds.current,entrance,seed):null;
-      const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
-      const reveal=appearing?Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
-      if(reveal<=.001)continue;
       if(standby){
-        // The old/new network connects moving mesh locations, not each seed's
-        // static endpoints. This is especially important in close-up morphs.
+        // The wire and its solid MUST use the same pose and visibility phase.
+        // In particular, a shared (same-kind) mesh always uses the NEW
+        // seed's loop, even when this line belongs to the old network layer.
         const pa=standbyWirePose(a,standby.layer,matchesById.get(a.id),standby.transition,
           seconds.current,settings,seed);
         const pb=standbyWirePose(b,standby.layer,matchesById.get(b.id),standby.transition,
           seconds.current,settings,seed);
         perEdgeAlpha=Math.min(pa.opacity,pb.opacity);
-        if(perEdgeAlpha<=.001)continue;
-        const poseA=threePose(a,clock,settings.floatAmount,settings.rotationAmount).position;
-        const poseB=threePose(b,clock,settings.floatAmount,settings.rotationAmount).position;
-        start.setXYZ(active,
-          segment.start[0]+pa.position[0]-poseA[0],
-          segment.start[1]+pa.position[1]-poseA[1],
-          segment.start[2]+pa.position[2]-poseA[2]);
-        end.setXYZ(active,
-          segment.end[0]+pb.position[0]-poseB[0],
-          segment.end[1]+pb.position[1]-poseB[1],
-          segment.end[2]+pb.position[2]-poseB[2]);
-      }else if(!appearing||reveal>=1){
-        // Identical to the legacy line renderer when standby is inactive.
-        start.setXYZ(active,...segment.start);end.setXYZ(active,...segment.end);
+        if(perEdgeAlpha<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
+        // Never use a disappearing line's old midpoint: that would detach
+        // both ends and draw a wire out into empty space.
+        start.setXYZ(active,...pa.position);
+        end.setXYZ(active,...pb.position);
       }else{
-        const sx=segment.start[0]+(ap?.offset[0]??0),sy=segment.start[1]+(ap?.offset[1]??0),sz=segment.start[2]+(ap?.offset[2]??0);
-        const ex=segment.end[0]+(bp?.offset[0]??0),ey=segment.end[1]+(bp?.offset[1]??0),ez=segment.end[2]+(bp?.offset[2]??0);
-        const mx=(sx+ex)/2,my=(sy+ey)/2,mz=(sz+ez)/2;
-        start.setXYZ(active,mx+(sx-mx)*reveal,my+(sy-my)*reveal,mz+(sz-mz)*reveal);
-        end.setXYZ(active,mx+(ex-mx)*reveal,my+(ey-my)*reveal,mz+(ez-mz)*reveal);
+        const segment=visibleNetworkSegment(a,b,clock,appearance,
+          settings.floatAmount,settings.rotationAmount);
+        if(!segment)continue;
+        const ap=appearing?threeEntrancePose(a,seconds.current,entrance,seed):null;
+        const bp=appearing?threeEntrancePose(b,seconds.current,entrance,seed):null;
+        const reveal=appearing?
+          Math.max(0,Math.min(1,(Math.min(ap!.progress,bp!.progress)-.35)/.65)):1;
+        perEdgeAlpha=Math.min(threeVisibility(a,clock,appearance),
+          threeVisibility(b,clock,appearance))*reveal;
+        if(perEdgeAlpha<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
+        // A fully/partially formed wire connects the actual moving meshes.
+        // Fade its brightness rather than moving endpoints toward a midpoint.
+        start.setXYZ(active,
+          segment.start[0]+(ap?.offset[0]??0),
+          segment.start[1]+(ap?.offset[1]??0),
+          segment.start[2]+(ap?.offset[2]??0));
+        end.setXYZ(active,
+          segment.end[0]+(bp?.offset[0]??0),
+          segment.end[1]+(bp?.offset[1]??0),
+          segment.end[2]+(bp?.offset[2]??0));
       }
       const pulse=network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1;
       const [ca,cb]=colors[i];
-      colorStart.setXYZ(active,ca.r*pulse*perEdgeAlpha,ca.g*pulse*perEdgeAlpha,ca.b*pulse*perEdgeAlpha);
-      colorEnd.setXYZ(active,cb.r*pulse*perEdgeAlpha,cb.g*pulse*perEdgeAlpha,cb.b*pulse*perEdgeAlpha);
+      colorStart.setXYZ(active,ca.r*pulse*perEdgeAlpha,
+        ca.g*pulse*perEdgeAlpha,ca.b*pulse*perEdgeAlpha);
+      colorEnd.setXYZ(active,cb.r*pulse*perEdgeAlpha,
+        cb.g*pulse*perEdgeAlpha,cb.b*pulse*perEdgeAlpha);
       active++;
     }
-    // Pack visible edges into the existing GPU buffers and skip hidden
-    // instances altogether, including when every linked figure is invisible.
     geometry.instanceCount=active;
-    start.data.needsUpdate=true;colorStart.data.needsUpdate=true;
-  });
+    start.data.needsUpdate=true;
+    end.data.needsUpdate=true;
+    colorStart.data.needsUpdate=true;
+    colorEnd.data.needsUpdate=true;
+  };
+  // On seed commits, buffers initially contain zeroed origin vertices.
+  // Fill them before the first render, not one frame after React remounts.
+  useLayoutEffect(updateWire,[geometry,topology,colors,settings,background,standby,
+    seconds,seed,skipEntrance,network.opacity,network.animation]);
+  useFrame(updateWire);
   return <primitive object={line} dispose={null}/>;
 }
 
