@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {generateThreeComposition,threePose} from './model';
+import {generateThreeComposition,threePose,type ThreeObject} from './model';
 import {entranceDefaults} from './entrance';
 import {threeDefaults} from './settings';
 import {matchThreeObjects,morphPose,splitExitEnter,type ThreeStandbyTransition} from './standby';
@@ -82,7 +82,7 @@ describe('3D standby wire endpoint synchronization',()=>{
   });
   it('hides transition wires whenever the exact old/new drawn mesh is invisible',()=>{
     const older={...from.objects[0],role:'support' as const,phase:Math.PI*2*.2};
-    const newer={...to.objects[0],role:'support' as const,
+    const newer:ThreeObject={...to.objects[0],role:'support',
       kind:older.kind==='sphere'?'cube':'sphere',phase:Math.PI*2*.3};
     const pair={id:'cross-geometry',from:older,to:newer};
     const combined={...settings,visibilityAnimation:{
