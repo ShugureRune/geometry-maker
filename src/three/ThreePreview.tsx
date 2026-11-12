@@ -322,6 +322,10 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
           settings.animation&&!exportingVideo.current&&!document.hidden&&
           performance.now()>=cameraInteractionUntil.current;
         orbit.autoRotateSpeed=standby.cameraRotateSpeed;
+        // Auto-rotation with damping accumulates angular momentum, so simply
+        // turning it off would keep the camera drifting after pause. Run
+        // continuous orbit without damping; manual gestures keep damping.
+        orbit.enableDamping=!orbit.autoRotate;
         orbit.update(Math.min(.1,Math.max(0,delta)));
       }
     }
