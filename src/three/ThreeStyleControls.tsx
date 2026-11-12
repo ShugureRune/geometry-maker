@@ -2,7 +2,7 @@ import {HelpInfo} from '../HelpInfo';
 import {useEffect, useState} from 'react';
 import {ThreeRange} from './ThreeControls';
 import type {ThreeSettings} from './settings';
-import {COLOR_MODES, networkDefaults, neonDefaults, stylePreset, type StyleColorMode, type StylePreset} from './style-settings';
+import {COLOR_MODES, networkDefaults, neonDefaults, stylePreset, type NetworkSettings, type StyleColorMode, type StylePreset} from './style-settings';
 
 function ColorControls({prefix, mode, color, contrast, onMode, onColor, onContrast}: {
   prefix:string; mode:StyleColorMode; color:string; contrast:boolean;
@@ -44,7 +44,15 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
     <fieldset><legend>図形を線でつなぐ</legend>
       <label className="three-checkbox"><input type="checkbox" aria-label="図形の接続を有効化" checked={network.enabled} onChange={event=>net({enabled:event.target.checked})}/> 接続線を表示</label>
       {network.enabled&&<>
-        <HelpInfo>接続方式：近い順。初期構図の中心間距離で判定し、浮遊中も接続を維持します。</HelpInfo>
+        <div className="studio-setting-label">
+          <label htmlFor="network-mode">つなぎ方</label>
+          <HelpInfo>「近い順」は今までどおり、距離だけで接続します。「神経回路」は距離が近く、大きな図形を含む組み合わせほど高得点にして優先します。大きな図形が分岐点になり、同じ図形に線が集中しすぎないよう最大接続数を守ります。輪っかにならず木の枝のようにつながります。離れすぎた図形は接続しません。</HelpInfo>
+        </div>
+        <select id="network-mode" value={network.mode}
+          onChange={event=>net({mode:event.target.value as NetworkSettings['mode']})}>
+          <option value="nearest">近い順（従来）</option>
+          <option value="neural">神経回路（近さ＋大きさ）</option>
+        </select>
         <ThreeRange id="network-count" label="最大接続数" min={1} max={6} step={1} value={network.maxConnections} unit="本" onChange={maxConnections=>net({maxConnections})}/>
         <ThreeRange id="network-distance" label="接続距離" min={.5} max={15} step={.25} value={network.distance} unit="単位" onChange={distance=>net({distance})}/>
         <ThreeRange id="network-width" label="接続線の太さ" min={.25} max={6} step={.25} value={network.width} unit="倍" onChange={width=>net({width})}/>
