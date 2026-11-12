@@ -1,7 +1,7 @@
 import type {Background} from '../scene';
 import type {VisualTheme} from '../themes';
 import {threePose,type ThreeComposition,type ThreeObject,type Vector3Tuple} from './model';
-import {threeEntrancePose,type ThreeEntranceSettings} from './entrance';
+import {NEURAL_WIRE_START_FRACTION,neuralWireProgress,threeEntrancePose,type ThreeEntranceSettings} from './entrance';
 import {threeVisibility,type ThreeVisibilitySettings} from './visibility';
 
 export type StandbyTransitionMode='exit-enter'|'morph';
@@ -83,15 +83,25 @@ export function standbyMorphMotionProgress(seconds:number,duration:number,rewire
     clamp01((fraction-MORPH_WIRE_RELEASE_END)/(MORPH_WIRE_ATTACH_START-MORPH_WIRE_RELEASE_END)):
     fraction;
 }
-/** Normalized visible wire length: old cables retract towards their larger
- * endpoint, the scene remains disconnected, and new cables grow afterwards. */
+/** Replay the actual neural entrance wiring animation in both directions.
+ * Retract edges in the REVERSE order of their original arrival (smallest
+ * junctions first); after morphing, reconnect them from largest to smallest.
+ * Each interval expands the original entrance's wire-only section [.72,1]
+ * to fill the entire designated transition phase, not the preceding figure
+ * entrance. This keeps the same size ranks, eased tip motion and endpoint
+ * orientation as neuralWireProgress/neuralWireEndpoints without sudden jumps. */
 export function standbyMorphWireProgress(
-  seconds:number,duration:number,layer:'old'|'new',
+  seconds:number,duration:number,layer:'old'|'new',rank=0,count=1,
 ):number{
   const fraction=clamp01(seconds/Math.max(.001,duration));
-  return layer==='old'?
-    1-easeInOut(fraction/MORPH_WIRE_RELEASE_END):
-    easeInOut((fraction-MORPH_WIRE_ATTACH_START)/(1-MORPH_WIRE_ATTACH_START));
+  const local=layer==='old'
+    ?clamp01(fraction/MORPH_WIRE_RELEASE_END)
+    :clamp01((fraction-MORPH_WIRE_ATTACH_START)/(1-MORPH_WIRE_ATTACH_START));
+  const forward=layer==='old'?1-local:local;
+  const neuralTime=NEURAL_WIRE_START_FRACTION+
+    (1-NEURAL_WIRE_START_FRACTION)*forward;
+  return neuralWireProgress(neuralTime,
+    {enabled:true,mode:'neural-grow',duration:1,stagger:true},rank,count);
 }
 
 /** One continuous visibility envelope for a seed change.
