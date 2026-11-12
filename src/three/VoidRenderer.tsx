@@ -122,7 +122,7 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
       transparent={translucent||kindMaterial==='glass'} opacity={1}
       depthWrite={!translucent&&kindMaterial!=='glass'}
       wireframe={wireframe} flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)}
-      emissive="#080808" emissiveIntensity={background.glowIntensity??0}/>
+      emissive="#080808" emissiveIntensity={(background.glowIntensity??0)/100*.12}/>
   </instancedMesh>;
 }
 
