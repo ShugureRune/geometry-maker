@@ -80,14 +80,16 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,parallelComponents=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;parallelComponents?:boolean}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
     return edges.map(edge=>({a:byId.get(edge.a)!,b:byId.get(edge.b)!}));
   },[objects,edges]);
   // Every wire shares the same main-figure-rooted propagation wave.
-  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges),[objects,edges]);  const matchesById=useMemo(()=>{
+  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges,parallelComponents),
+    [objects,edges,parallelComponents]);
+  const matchesById=useMemo(()=>{
     const byId=new Map<string,MorphMatch>();
     for(const pair of standby?.matches??[]){
       const object=standby?.layer==='old'?pair.from:pair.to;
@@ -245,17 +247,20 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
  * Incoming wiring can begin carrying packets as soon as each section grows:
  * no particle ever runs ahead of its visible cable during a morph.
  */
-export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false,standby,completionOverride}:{
+export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false,standby,completionOverride,parallelComponents=false}:{
   objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;
   background:Background;low:boolean;seconds:RefObject<number>;skipEntrance?:boolean;
   standby?:{transition:ThreeStandbyTransition;matches?:readonly MorphMatch[]};
   /** Absolute clock position to synchronize a fresh wave after a seed switch. */
   completionOverride?:number;
+  parallelComponents?:boolean;
 }){
   const network=settings.network??networkDefaults;
   const entrance=settings.entrance??entranceDefaults;
-  const signalPlan=useMemo(()=>neuralSignalPlan(objects,edges),[objects,edges]);
-  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges),[objects,edges]);
+  const signalPlan=useMemo(()=>neuralSignalPlan(objects,edges,parallelComponents),
+    [objects,edges,parallelComponents]);
+  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges,parallelComponents),
+    [objects,edges,parallelComponents]);
   const matchesById=useMemo(()=>{
     const lookup=new Map<string,MorphMatch>();
     for(const match of standby?.matches??[])if(match.to)lookup.set(match.to.id,match);
