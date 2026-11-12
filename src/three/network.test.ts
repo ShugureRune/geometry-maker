@@ -60,56 +60,94 @@ it('hides lines touching a disappearing satellite even when heroes are pinned vi
  expect(classic).toEqual({start:threePose(hero,2,1,1).position,end:threePose(satellite,2,1,1).position});
 });
 
-it('neural scoring rewards larger nearby shapes without allowing out-of-range connections',()=>{
- const base=generateThreeComposition('neural-scoring','16:9').objects[0];
- const one=(id:string,radius:number,x:number,y=0)=>({
-  ...base,id,radius,position:[x,y,0] as [number,number,number],
+it('neural hierarchy connects small to nearest medium and medium to nearest primary',()=>{
+ const base=generateThreeComposition('three-tier-nearest','16:9').objects[0];
+ const node=(id:string,role:'primary'|'support'|'accent',x:number,y=0)=>({
+   ...base,id,role,position:[x,y,0] as [number,number,number]
  });
- const hub=one('hub',2.0,0),smallA=one('small-a',.2,.95);
- const smallB=one('small-b',.2,1.05),branch=one('branch',.35,0,1.2);
- const objects=[smallA,smallB,branch,hub];
- expect(neuralConnectionScore(hub,smallA,.95)).toBeGreaterThan(
-  neuralConnectionScore(smallA,smallB,.1));
- expect(neuralConnectionScore(hub,smallA,.95)).toBeGreaterThan(
-  neuralConnectionScore(hub,smallA,1.3));
- expect(neuralConnectionScore(hub,branch,1.2)).toBeGreaterThan(
-  neuralConnectionScore(smallA,smallB,.1));
- const edges=networkConnections(objects,2,2,'neural');
- expect(edges[0]).toMatchObject({a:'hub',b:'small-a'});
- expect(edges.length).toBeLessThanOrEqual(objects.length-1);
- expect(edges.every(e=>e.distance<=2)).toBe(true);
- const degrees=new Map<string,number>();
- for(const e of edges)for(const id of [e.a,e.b]){
-  degrees.set(id,(degrees.get(id)??0)+1);
-  expect(degrees.get(id)).toBeLessThanOrEqual(2);
+ const h1=node('hero-a','primary',0),h2=node('hero-b','primary',12);
+ const m1=node('middle-a','support',3),m2=node('middle-b','support',10);
+ const s1=node('small-a','accent',4),s2=node('small-b','accent',11);
+ // The small figure at x=1 is closer to the hero at 0 but must still
+ // connect to the nearest MEDIUM at 3. The other hero may be even larger.
+ const s3=node('small-c','accent',1);
+ const objects=[s3,m2,h2,s2,h1,s1,m1];
+ const before=JSON.stringify(objects);
+ const result=networkConnections(objects,.5,1,'neural');
+ expect(result).toEqual([
+   {a:'hero-a',b:'middle-a',distance:3},
+   {a:'hero-b',b:'middle-b',distance:2},
+   {a:'middle-a',b:'small-a',distance:1},
+   {a:'middle-b',b:'small-b',distance:1},
+   {a:'middle-a',b:'small-c',distance:2},
+ ]);
+ expect(JSON.stringify(objects)).toBe(before); // graph formation never moves nodes
+ expect(networkConnections([...objects].reverse(),15,6,'neural')).toEqual(result);
+ const steps=rootedWireSteps(objects,result);
+ expect(steps.length).toBe(result.length);
+ for(let i=0;i<result.length;i++){
+   expect(steps[i].sourceId).toBe(result[i].a);
+   expect(steps[i].start).toBeLessThan(steps[i].end);
  }
- expect(networkConnections(objects,0,6,'neural')).toEqual([]);
- expect(networkConnections(objects,2,2,'neural')).toEqual(
-   networkConnections([...objects].reverse(),2,2,'neural'));
- expect(()=>networkConnections(objects,4,3,'random' as 'neural')).toThrow();
+ expect(networkConnections([h1,s3],15,6,'neural')).toEqual([]); // no medium
+ expect(networkConnections([],15,6,'neural')).toEqual([]);
 });
 
-it('neural branches are an acyclic maximum-score forest with stable ties',()=>{
+it('resolves exact distance ties by parent ID and never connects between equal tiers',()=>{
+ const base=generateThreeComposition('tier-ties','16:9').objects[0];
+ const node=(id:string,role:'primary'|'support'|'accent',x:number)=>({
+   ...base,id,role,position:[x,0,0] as [number,number,number]
+ });
+ const objects=[
+   node('hero-z','primary',0),node('hero-a','primary',2),
+   node('medium-z','support',1),node('medium-a','support',1),
+   node('small','accent',1),
+ ];
+ expect(networkConnections(objects,15,6,'neural')).toEqual([
+   {a:'hero-a',b:'medium-a',distance:1},
+   {a:'hero-a',b:'medium-z',distance:1},
+   {a:'medium-a',b:'small',distance:0},
+ ]);
+ expect(networkConnections(objects,15,6,'neural')).toEqual(
+   networkConnections([...objects].reverse(),15,6,'neural'));
+ expect(neuralConnectionScore(objects[0],objects[4],1)).toBeGreaterThan(0);
+});
+
+it('the complete three-tier circuit stays an acyclic tree rooted in the nearest hero',()=>{
  const scene=generateThreeComposition('neural-network-seed','16:9');
- for(const density of [0,40,75,100])for(const limit of [1,2,3,6]){
-  const objects=visibleThreeObjects(scene,density);
-  const links=networkConnections(objects,5,limit,'neural');
-  const parent=new Map(objects.map(o=>[o.id,o.id]));
-  const root=(id:string):string=>{while(parent.get(id)!==id)id=parent.get(id)!;return id;};
-  const counts=new Map<string,number>();
-  for(const edge of links){
-   expect(root(edge.a)).not.toBe(root(edge.b));
-   parent.set(root(edge.a),root(edge.b));
-   for(const id of [edge.a,edge.b])counts.set(id,(counts.get(id)??0)+1);
-   expect(edge.distance).toBeLessThanOrEqual(5);
-  }
-  expect(Math.max(0,...counts.values())).toBeLessThanOrEqual(limit);
+ for(const density of [0,5,15,40,75,100])for(const limit of [1,2,3,6]){
+  const objects=visibleThreeObjects(scene,density),links=networkConnections(objects,5,limit,'neural');
+  const heroes=objects.filter(o=>o.role==='primary');
+  const middle=objects.filter(o=>o.role==='support');
+  const small=objects.filter(o=>o.role==='accent');
+  expect(links.length).toBe(middle.length+(middle.length>0?small.length:0));
   expect(links.length).toBeLessThanOrEqual(Math.max(0,objects.length-1));
-  expect(new Set(links.map(edge=>edge.a+'-'+edge.b)).size).toBe(links.length);
-  expect(networkConnections([...objects].reverse(),5,limit,'neural')).toEqual(links);
+  const byId=new Map(objects.map(o=>[o.id,o]));
+  const incoming=new Map<string,string>();
+  const distance=(a:typeof objects[number],b:typeof objects[number])=>
+    Math.hypot(...a.position.map((n,i)=>n-b.position[i]));
+  for(const edge of links){
+    const from=byId.get(edge.a)!,to=byId.get(edge.b)!;
+    expect(from.role==='primary'&&to.role==='support'||
+      from.role==='support'&&to.role==='accent').toBe(true);
+    expect(incoming.has(to.id)).toBe(false);
+    incoming.set(to.id,from.id);
+    expect(edge.distance).toBeCloseTo(distance(from,to),8);
+    const candidates=objects.filter(o=>o.role===from.role);
+    expect(distance(to,from)).toBeCloseTo(
+      Math.min(...candidates.map(candidate=>distance(to,candidate))),8);
+  }
+  for(const mediumNode of middle){
+    expect(heroes.some(h=>h.id===incoming.get(mediumNode.id))).toBe(true);
+  }
+  for(const smallNode of small){
+    if(middle.length>0)expect(middle.some(m=>m.id===incoming.get(smallNode.id))).toBe(true);
+  }
+  expect(networkConnections([...objects].reverse(),15,6,'neural')).toEqual(links);
+  // The classic distance and degree limit deliberately do not stop this tree.
+  expect(networkConnections(objects,.5,1,'neural')).toEqual(links);
  }
 });
-
 
 it('starts from the actual primary node, not from whichever branch happens to be larger',()=>{
  const base=generateThreeComposition('rooted-test','16:9').objects[0];
