@@ -1,8 +1,8 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,threePose,type ThreeObject} from './model';
-import {entranceDefaults} from './entrance';
+import {entranceDefaults,neuralWireEndpoints} from './entrance';
 import {threeDefaults} from './settings';
-import {matchThreeObjects,morphPose,splitExitEnter,standbyMeshVisibility,standbyMorphMotionProgress,standbyMorphWireProgress,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START,type ThreeStandbyTransition} from './standby';
+import {matchThreeObjects,morphPose,splitExitEnter,standbyMeshVisibility,standbyObjectPose,standbyMorphMotionProgress,standbyMorphWireProgress,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {networkConnections,rootedWireSteps} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
@@ -36,18 +36,86 @@ describe('detached neural wiring during automatic seed morph',()=>{
       expect(standbyMorphWireProgress(t*4,4,'new')).toBe(0);
     }
   });
-  it('holds both configurations steady while old cables shrink or new cables grow',()=>{
-    const pair=matchThreeObjects(from.objects,to.objects).find(m=>m.from&&m.to)!;
-    const a=standbyWirePose(pair.from!,'old',pair,transition,0,settings,'wire-new');
-    const b=standbyWirePose(pair.from!,'old',pair,transition,.5,settings,'wire-new');
-    expect(b.position).toEqual(a.position);
-    const end=standbyWirePose(pair.to!,'new',pair,transition,4,settings,'wire-new');
-    const reconnecting=standbyWirePose(pair.to!,'new',pair,transition,3.5,settings,'wire-new');
-    expect(reconnecting.position).toEqual(end.position);
-    const middle=standbyWirePose(pair.to!,'new',pair,transition,2,settings,'wire-new');
-    expect(middle.position).not.toEqual(a.position);
-    // Network-free modes still retain the existing uninterrupted morph motion.
+  it('keeps floating/spinning alive while the base constellation waits for wires',()=>{
+    const old={...from.objects[0],phase:0,floatRate:1.1,
+      spin:[.12,.15,-.08] as [number,number,number]};
+    const next={...to.objects[0],kind:old.kind,phase:.4,floatRate:.8,
+      spin:[-.08,.11,.07] as [number,number,number]};
+    const pair={id:'floating-pair',from:old,to:next};
+    const active={...settings,floatAmount:1.5,rotationAmount:1.8};
+    const at=(time:number)=>standbyObjectPose(old,next,time,transition,'shared',
+      active.floatAmount,active.rotationAmount,active.entrance,'wire-new',true);
+    // While cables retract, morph progress stays zero, but the old shape
+    // bobbing and spinning must follow its actual advancing elapsed time.
+    for(const time of [0,.1,.35,.7]){
+      const pose=at(time);
+      const live=threePose(old,transition.fromTime+time,
+        active.floatAmount,active.rotationAmount);
+      expect(pose.position).toEqual(live.position);
+      expect(pose.rotation).toEqual(live.rotation);
+      expect(pose.radius).toBe(old.radius);
+      const wire=standbyWirePose(old,'old',pair,transition,time,active,'wire-new');
+      expect(wire.position).toEqual(pose.position);
+    }
+    expect(at(.35).position).not.toEqual(at(0).position);
+    expect(at(.35).rotation).not.toEqual(at(0).rotation);
+    // At the other side of the morph, the incoming node ALSO keeps bobbing
+    // while cables reconnect (and reaches normal playback with no jump).
+    for(const time of [3.2,3.45,3.8,4]){
+      const pose=at(time);
+      const live=threePose(next,time,active.floatAmount,active.rotationAmount);
+      expect(pose.position).toEqual(live.position);
+      expect(pose.rotation).toEqual(live.rotation);
+      expect(pose.radius).toBe(next.radius);
+      const wire=standbyWirePose(next,'new',pair,transition,time,active,'wire-new');
+      expect(wire.position).toEqual(pose.position);
+    }
+    expect(at(3.45).position).not.toEqual(at(3.8).position);
+    expect(at(3.45).rotation).not.toEqual(at(3.8).rotation);
+    // Network-free mode still retains its uninterrupted morph motion.
     expect(standbyMorphMotionProgress(.5,4,false)).toBeCloseTo(.125);
+  });
+});
+
+describe('live moving endpoints while neural cables grow or retract',()=>{
+  it('keeps the wire tip anchored to the actual floating source at every stage',()=>{
+    const old={...from.objects[0],role:'primary' as const,phase:.15,floatRate:.9};
+    const child={...from.objects[1],role:'support' as const,phase:.8,floatRate:1.05};
+    const active={...settings,floatAmount:1.6,rotationAmount:1};
+    for(const layer of ['old','new'] as const){
+      for(const elapsed of layer==='old'?[0,.12,.36,.65]:[3.25,3.5,3.8,4]){
+        const pa=standbyWirePose(old,layer,undefined,transition,elapsed,active,'wire-new');
+        const pb=standbyWirePose(child,layer,undefined,transition,elapsed,active,'wire-new');
+        const phase=standbyMorphWireProgress(elapsed,4,layer,0,1,{start:0,end:1});
+        const tip=neuralWireEndpoints(old,child,pa.position,pb.position,phase,'a');
+        expect(tip.start).toEqual(pa.position);
+        expect(tip.end).toEqual(pa.position.map((v,i)=>
+          v+(pb.position[i]-v)*phase));
+      }
+    }
+  });
+  it('respects float amount zero, and never snaps when morph movement begins or ends',()=>{
+    const prior={...from.objects[0],phase:0,floatRate:1};
+    const next={...to.objects[0],kind:prior.kind,phase:.5,floatRate:1.2};
+    const at=(time:number,amount:number)=>standbyObjectPose(prior,next,time,transition,
+      'shared',amount,1,entranceDefaults,'wire-new',true);
+    for(const time of [0,.12,.5,3.2,3.5,4]){
+      const stillPose=at(time,0);
+      const moving=at(time,1);
+      // Only the float offset changes: radius/color/morph staging is intact.
+      expect(stillPose.radius).toBe(moving.radius);
+      expect(stillPose.colorMix).toBe(moving.colorMix);
+      expect(stillPose.rotation).toEqual(moving.rotation);
+    }
+    for(const boundary of [4*MORPH_WIRE_RELEASE_END,4*MORPH_WIRE_ATTACH_START]){
+      const before=at(boundary-1e-4,1).position;
+      const after=at(boundary+1e-4,1).position;
+      expect(Math.hypot(...before.map((v,i)=>v-after[i]))).toBeLessThan(.003);
+    }
+    expect(at(0,1).position).toEqual(threePose(prior,transition.fromTime,1,1).position);
+    expect(at(4,1).position).toEqual(threePose(next,4,1,1).position);
+    expect(at(.4,0).position).toEqual(prior.position);
+    expect(at(3.6,0).position).toEqual(next.position);
   });
 });
 
@@ -167,8 +235,8 @@ describe('3D standby wire endpoint synchronization',()=>{
       if(!match.from||!match.to)continue;
       for(const t of [0,.25,.5,.75,1]){
         const time=t*transition.duration;
-        const oldPose=threePose(match.from,transition.fromTime,settings.floatAmount,settings.rotationAmount);
-        const newPose=threePose(match.to,transition.duration,settings.floatAmount,settings.rotationAmount);
+        const oldPose=threePose(match.from,transition.fromTime+time,settings.floatAmount,settings.rotationAmount);
+        const newPose=threePose(match.to,time,settings.floatAmount,settings.rotationAmount);
         const variant=match.from.kind===match.to.kind?'shared':'old';
         const expected=morphPose(match.from,match.to,standbyMorphMotionProgress(time,transition.duration),variant,oldPose,newPose,transition.cameraPosition).position;
         const oldWire=standbyWirePose(match.from,'old',match,transition,time,settings,'wire-new');
