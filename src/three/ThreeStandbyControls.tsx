@@ -52,6 +52,21 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
           onChange={e=>update({pauseOnInteraction:e.target.checked})}/>
         操作している間は止める
       </label>
+      <div className="studio-setting-label studio-setting-heading">
+        <h3>カメラの自動回転</h3>
+        <HelpInfo>待機中にカメラが現在の視点から図形の周りをゆっくり回ります。ONにしても急に視点は移動しません。手動で回転・ズームすると一時停止し、その位置から再開します。3Dの一時停止中・自由に歩くモード・動画の書き出し中は回転しません。</HelpInfo>
+      </div>
+      <label className="three-checkbox">
+        <input type="checkbox" aria-label="待機中にカメラを自動回転"
+          checked={standby.cameraAutoRotate}
+          onChange={e=>update({cameraAutoRotate:e.target.checked})}/>
+        カメラをゆっくり回す
+      </label>
+      {standby.cameraAutoRotate&&
+        <ThreeRange id="three-standby-camera-speed" label="カメラが回る速さ"
+          value={standby.cameraRotateSpeed} min={.25} max={3} step={.25} unit="倍"
+          onChange={cameraRotateSpeed=>update({cameraRotateSpeed})}/>}
+
       <button type="button" className="three-standby-next" disabled={transitioning||exporting}
         onClick={onNext} aria-label="今すぐ次の3Dシードへ">今すぐ切り替え</button>
       <p role="status" data-testid="three-standby-status" className="help">
