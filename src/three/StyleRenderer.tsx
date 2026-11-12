@@ -26,6 +26,7 @@ export function useOutlineGeometry(enabled:boolean,low:boolean){
 
 export function NeonOutline({geometry,object,settings,background,low,seconds,morphOpacity,skipEntrance=false}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;morphOpacity?:RefObject<number>;skipEntrance?:boolean}){
   const neon=settings.neon??neonDefaults, {invalidate,size}=useThree();
+  const visibilityLoop=(settings.visibilityAnimation??visibilityDefaults).enabled;
   const fading=visibilityUsesFade(settings.visibilityAnimation??visibilityDefaults);
   const entrance=settings.entrance??entranceDefaults;
   const entranceFade=!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
@@ -33,7 +34,7 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   // opacity of 1 can flash for one frame when entering/exiting a seed morph.
   const currentOpacity=()=>{
     if(morphOpacity)return morphOpacity.current;
-    const visibility=fading?threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults):1;
+    const visibility=threeVisibility(object,seconds.current,settings.visibilityAnimation??visibilityDefaults);
     const arrival=entranceFade?threeEntranceProgress(object,seconds.current,entrance):1;
     return visibility*arrival;
   };
@@ -42,12 +43,12 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
     const initialColor=new Color(styleColor(neon.colorMode,neon.customColor,object.role,background,neon.contrast));
     initialColor.multiplyScalar(radiance(initialColor,neon.glow,low));
     return new LineMaterial({worldUnits:!low,depthTest:true,depthWrite:false,
-      transparent:fading||entranceFade||!!morphOpacity,toneMapped:true,
+      transparent:visibilityLoop||entranceFade||!!morphOpacity,toneMapped:true,
       linewidth:.022*neon.width*weight,color:initialColor,opacity:currentOpacity()});
-  },[fading,entranceFade,morphOpacity]);
+  },[visibilityLoop,entranceFade,morphOpacity]);
   // Reconcile immediately on React commits, not only on the next animation tick.
   useLayoutEffect(()=>{material.opacity=currentOpacity();},
-    [material,morphOpacity,object,seconds,fading,entranceFade,entrance,settings.visibilityAnimation]);
+    [material,morphOpacity,object,seconds,visibilityLoop,entranceFade,entrance,settings.visibilityAnimation]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;value.scale.setScalar(1.002);return value;},[geometry,material]);
   useEffect(()=>()=>material.dispose(),[material]);
   // Apply color and width during the commit. A passive effect can arrive a
