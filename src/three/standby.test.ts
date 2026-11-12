@@ -1,7 +1,25 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
+
+describe('rewire morph phase boundaries',()=>{
+  it('keeps the nodes still during both cable phases for 1–8 second standby transitions',()=>{
+    for(const duration of [1,2,4,8]){
+      for(const p of [0,.08,MORPH_WIRE_RELEASE_END]){
+        expect(standbyMorphMotionProgress(p*duration,duration)).toBe(0);
+        expect(standbyMorphWireProgress(p*duration,duration,'new')).toBe(0);
+      }
+      for(const p of [MORPH_WIRE_ATTACH_START,.9,1]){
+        expect(standbyMorphMotionProgress(p*duration,duration)).toBe(1);
+        expect(standbyMorphWireProgress(p*duration,duration,'old')).toBe(0);
+      }
+      expect(standbyMorphMotionProgress(duration*.5,duration)).toBeGreaterThan(0);
+      expect(standbyMorphMotionProgress(duration*.5,duration)).toBeLessThan(1);
+      expect(standbyMorphMotionProgress(duration,duration,false)).toBe(1);
+    }
+  });
+});
 
 describe('3D standby transition grammar',()=>{
   it('defaults off and is backwards compatible with saved 3D project JSON',()=>{
