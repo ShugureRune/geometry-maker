@@ -706,10 +706,12 @@ export default function ThreePreview(props: Props) {
         {props.transition&&<VoidRenderer objects={previousObjects} settings={props.settings}
           background={props.transition.fromBackground} visualTheme={props.transition.fromTheme}
           low={low} seconds={seconds} seed={props.transition.fromSeed}
+          counterparts={props.transition.mode==='morph'?objects:undefined}
           standby={{transition:props.transition,layer:'old'}}/>}
         <VoidRenderer objects={objects} settings={props.settings}
           background={props.background} visualTheme={props.visualTheme}
           low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance}
+          counterparts={props.transition?.mode==='morph'?previousObjects:undefined}
           standby={props.transition?{transition:props.transition,layer:'new'}:undefined}/>
       </>:<>
       {props.transition ? props.transition.mode==='morph'?

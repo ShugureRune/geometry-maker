@@ -9,15 +9,18 @@ import {threeEntrancePose,entranceDefaults} from './entrance';
 import {themeMaterial,type ThreeSettings} from './settings';
 import {THREE_KINDS,type ThreeKind,type ThreeObject} from './model';
 import type {ThreeStandbyTransition} from './standby';
-import {voidSeedFigureTime,voidSeedReveal} from './void-standby';
+import {voidSeedFigureTime,voidSeedReveal,voidSeedTravel,voidSeedMix,voidSeedMixAngle,voidSeedKindVisibility} from './void-standby';
 
 type Props={
   objects:readonly ThreeObject[];settings:ThreeSettings;background:Background;
   visualTheme:VisualTheme;low:boolean;seconds:RefObject<number>;seed:string;
   skipEntrance?:boolean;
   standby?:{transition:ThreeStandbyTransition;layer:'old'|'new'};
+  /** Figures from the opposite seed; supplied only for standby morphs. */
+  counterparts?:readonly ThreeObject[];
 };
-type BatchProps=Props&{kind:ThreeKind;group:ThreeObject[]};
+type BatchProps=Props&{kind:ThreeKind;group:ThreeObject[];
+  counterpartById:ReadonlyMap<string,ThreeObject>};
 
 function geometry(kind:ThreeKind,low:boolean){
   switch(kind){
@@ -41,7 +44,7 @@ function geometry(kind:ThreeKind,low:boolean){
  * A few thousand objects create just 13 React meshes, not 2,800 components.
  */
 function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
-  skipEntrance=false,standby}:BatchProps){
+  skipEntrance=false,standby,counterpartById}:BatchProps){
   const mesh=useRef<InstancedMesh>(null);
   const material=useRef<MeshStandardMaterial>(null);
   const dummy=useMemo(()=>new Object3D(),[]);
@@ -51,6 +54,15 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
     support:new Color(background.figureColors?.support??fallbackThreeColors.support),
     accent:new Color(background.figureColors?.accent??fallbackThreeColors.accent),
   }),[background]);
+  const oldPalette=useMemo(()=>({
+    primary:new Color(standby?.transition.fromBackground.figureColors?.primary??fallbackThreeColors.primary),
+    support:new Color(standby?.transition.fromBackground.figureColors?.support??fallbackThreeColors.support),
+    accent:new Color(standby?.transition.fromBackground.figureColors?.accent??fallbackThreeColors.accent),
+  }),[standby?.transition.fromBackground]);
+  // Precompute all ID pairs once per seed change: no O(n^2) matching and
+  // no map search or temporary geometry arrays per animation frame.
+  const opposite=useMemo(()=>group.map(o=>counterpartById.get(o.id)),
+    [group,counterpartById]);
   const neon=settings.neon;
   const kindMaterial=settings.material==='theme'?themeMaterial(visualTheme):settings.material;
   const translucent=!!neon?.enabled&&neon.display==='transparent';
@@ -62,41 +74,98 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
     const instance=mesh.current;
     if(!instance)return;
     const time=seconds.current;
-    // One lightweight phase calculation per draw batch, not per figure.
-    // Keep the preexisting 13 instanced meshes and their native materials.
+    const moving=standby?.transition.mode==='morph';
+    const travel=moving?voidSeedTravel(time,standby.transition.duration):0;
+    const geometryFade=moving?voidSeedKindVisibility(time,standby.transition.duration,
+      standby.layer):1;
     const reveal=standby?voidSeedReveal(time,standby.transition.duration,
       standby.transition.mode,standby.layer):null;
-    const figureTime=voidSeedFigureTime(time,standby?.layer,
-      standby?.transition.fromTime);
+    const figureTime=voidSeedFigureTime(time,standby?.layer,standby?.transition.fromTime);
+    const oldTime=voidSeedFigureTime(time,'old',standby?.transition.fromTime);
     for(let i=0;i<group.length;i++){
       const object=group[i];
-      // Inline the pure threePose formula to avoid allocating thousands
-      // of position/rotation arrays every WebGL frame.
-      const drift=Math.sin(Math.max(0,figureTime)*object.floatRate+object.phase)-Math.sin(object.phase);
-      const rise=drift*settings.floatAmount;
-      let x=object.position[0]+rise*.08;
-      let y=object.position[1]+rise*.25;
-      let z=object.position[2];
+      const paired=moving?opposite[i]:undefined;
+      const from=paired&&standby?.layer==='new'?paired:
+        standby?.layer==='old'?object:undefined;
+      const to=paired&&standby?.layer==='old'?paired:
+        standby?.layer==='new'?object:undefined;
+      const matched=!!from&&!!to;
+      const shared=matched&&from.kind===to.kind;
+      // Native same-kind morphs need only ONE GPU instance, not a pair.
+      // It starts in the exact old position/size/color while the old wires
+      // retract, then ends at the exact new pose before reconnection.
+      if(shared&&standby?.layer==='old'){
+        dummy.position.set(...object.position);
+        dummy.scale.setScalar(.00001);
+        dummy.updateMatrix();
+        instance.setMatrixAt(i,dummy.matrix);
+        tint.setRGB(0,0,0);
+        instance.setColorAt(i,tint);
+        continue;
+      }
+      let x:number,y:number,z:number;
+      let rx:number,ry:number,rz:number,radius:number,visibility:number;
+      let transitionOpacity:number,transitionSize:number;
+      if(matched){
+        const a=from,b=to;
+        const aDrift=(Math.sin(Math.max(0,oldTime)*a.floatRate+a.phase)-
+          Math.sin(a.phase))*settings.floatAmount;
+        const bDrift=(Math.sin(Math.max(0,time)*b.floatRate+b.phase)-
+          Math.sin(b.phase))*settings.floatAmount;
+        x=voidSeedMix(a.position[0]+aDrift*.08,b.position[0]+bDrift*.08,travel);
+        y=voidSeedMix(a.position[1]+aDrift*.25,b.position[1]+bDrift*.25,travel);
+        z=voidSeedMix(a.position[2],b.position[2],travel);
+        const rotationAmount=settings.rotationAmount;
+        rx=voidSeedMixAngle(a.rotation[0]+a.spin[0]*oldTime*rotationAmount,
+          b.rotation[0]+b.spin[0]*time*rotationAmount,travel);
+        ry=voidSeedMixAngle(a.rotation[1]+a.spin[1]*oldTime*rotationAmount,
+          b.rotation[1]+b.spin[1]*time*rotationAmount,travel);
+        rz=voidSeedMixAngle(a.rotation[2]+a.spin[2]*oldTime*rotationAmount,
+          b.rotation[2]+b.spin[2]*time*rotationAmount,travel);
+        radius=voidSeedMix(a.radius,b.radius,travel);
+        visibility=voidSeedMix(threeVisibility(a,oldTime,appearance),
+          threeVisibility(b,time,appearance),travel);
+        transitionOpacity=shared?1:geometryFade;
+        transitionSize=shared?1:.90+.10*geometryFade;
+      }else{
+        // Unmatched nodes (e.g. a changed density) retain the safe staged
+        // shrink/reveal from PR #103. Exit-enter also remains unchanged.
+        const drift=Math.sin(Math.max(0,figureTime)*object.floatRate+object.phase)-
+          Math.sin(object.phase);
+        const rise=drift*settings.floatAmount;
+        x=object.position[0]+rise*.08;
+        y=object.position[1]+rise*.25;
+        z=object.position[2];
+        rx=object.rotation[0]+object.spin[0]*Math.max(0,figureTime)*settings.rotationAmount;
+        ry=object.rotation[1]+object.spin[1]*Math.max(0,figureTime)*settings.rotationAmount;
+        rz=object.rotation[2]+object.spin[2]*Math.max(0,figureTime)*settings.rotationAmount+
+          (reveal?.rotationZ??0);
+        radius=object.radius;
+        visibility=threeVisibility(object,figureTime,appearance);
+        transitionOpacity=reveal?.opacity??1;
+        transitionSize=reveal?.size??1;
+      }
       const progress=standby||skipEntrance?null:
         entrance.enabled?threeEntrancePose(object,time,entrance,seed):null;
       if(progress){
         x+=progress.offset[0];y+=progress.offset[1];z+=progress.offset[2];
+        rz+=progress.rotationZ;
       }
-      const visibility=threeVisibility(object,figureTime,appearance);
-      const alpha=visibility*(reveal?.opacity??1)*(progress?.opacity??1);
-      const scale=alpha<=.001?0.00001:object.radius*
+      const alpha=visibility*transitionOpacity*(progress?.opacity??1);
+      const scale=alpha<=.001?0.00001:radius*
         (scaleVisibility?Math.max(.001,visibility):1)*
-        (progress?.scale??1)*(reveal?.size??1);
+        (progress?.scale??1)*transitionSize;
       dummy.position.set(x,y,z);
-      dummy.rotation.set(
-        object.rotation[0]+object.spin[0]*Math.max(0,figureTime)*settings.rotationAmount,
-        object.rotation[1]+object.spin[1]*Math.max(0,figureTime)*settings.rotationAmount,
-        object.rotation[2]+object.spin[2]*Math.max(0,figureTime)*settings.rotationAmount+
-          (progress?.rotationZ??0)+(reveal?.rotationZ??0));
+      dummy.rotation.set(rx,ry,rz);
       dummy.scale.setScalar(Math.max(.00001,scale));
       dummy.updateMatrix();
       instance.setMatrixAt(i,dummy.matrix);
-      tint.copy(palette[object.role]).multiplyScalar(Math.max(0,alpha));
+      if(shared&&standby?.layer==='new'){
+        tint.copy(oldPalette[object.role]).lerp(palette[object.role],travel);
+      }else{
+        tint.copy(palette[object.role]);
+      }
+      tint.multiplyScalar(Math.max(0,alpha));
       instance.setColorAt(i,tint);
     }
     instance.instanceMatrix.needsUpdate=true;
@@ -105,7 +174,8 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
       (neon?.faceOpacity??.5):kindMaterial==='glass'?.72:1;
   };
   useLayoutEffect(update,[group,settings,background,seconds,seed,skipEntrance,standby,
-    appearance,entrance,kindMaterial,neon,translucent,palette,scaleVisibility]);
+    appearance,entrance,kindMaterial,neon,translucent,palette,oldPalette,
+    opposite,scaleVisibility]);
   useFrame(update);
   if(group.length===0)return null;
   return <instancedMesh ref={mesh} args={[undefined,undefined,group.length]}
@@ -123,6 +193,8 @@ function VoidBatch({group,kind,settings,background,visualTheme,low,seconds,seed,
 }
 
 export function VoidRenderer(props:Props){
+  const counterpartById=useMemo(()=>new Map<string,ThreeObject>(
+    (props.counterparts??[]).map(o=>[o.id,o])),[props.counterparts]);
   const groups=useMemo(()=>{
     const byKind=new Map<ThreeKind,ThreeObject[]>();
     for(const kind of THREE_KINDS)byKind.set(kind,[]);
@@ -131,6 +203,7 @@ export function VoidRenderer(props:Props){
   },[props.objects]);
   return <group name="cosmic-void-web" userData={{figureCount:props.objects.length}}>
     {THREE_KINDS.map(kind=><VoidBatch key={kind} {...props}
-      group={groups.get(kind)!} kind={kind}/>)}
+      group={groups.get(kind)!} kind={kind}
+      counterpartById={counterpartById}/>)}
   </group>;
 }

@@ -43,3 +43,41 @@ export function voidSeedFigureTime(
 ):number{
   return layer==='old'?fromTime+elapsed:elapsed;
 }
+
+/** Position morph only runs AFTER old cables have retracted and finishes
+ * BEFORE new cables reconnect. All matching is precomputed by stable ID.
+ * These scalar helpers allocate no arrays in the 2,800-instance frame loop.
+ */
+export function voidSeedTravel(elapsed:number,duration:number):number{
+  const progress=elapsed/Math.max(.001,duration);
+  return easeInOut((progress-MORPH_WIRE_RELEASE_END)/
+    (MORPH_WIRE_ATTACH_START-MORPH_WIRE_RELEASE_END));
+}
+export function voidSeedMix(from:number,to:number,fraction:number):number{
+  // Return the exact source/target values at the endpoints: floating-point
+  // arithmetic must not shift a settled node when its standby layer unmounts.
+  if(fraction<=0)return from;
+  if(fraction>=1)return to;
+  return from+(to-from)*fraction;
+}
+/** Nearest-angle interpolation prevents sudden multi-turn reversals. */
+export function voidSeedMixAngle(from:number,to:number,fraction:number):number{
+  const full=Math.PI*2;
+  const delta=((to-from+Math.PI)%full+full)%full-Math.PI;
+  // Exact destination when the transition ends (the equivalent angle may
+  // differ by 2*pi, but the rendered orientation is identical).
+  if(fraction>=1)return to;
+  if(fraction<=0)return from;
+  return from+delta*fraction;
+}
+/** Crossfade just the geometry when the native shape changes.
+ * Same-kind matches use a SINGLE incoming instance for the entire morph.
+ */
+export function voidSeedKindVisibility(
+  elapsed:number,duration:number,layer:'old'|'new',
+):number{
+  const fraction=elapsed/Math.max(.001,duration);
+  return layer==='old'?
+    1-easeInOut((fraction-.31)/.31):
+    easeInOut((fraction-.34)/.33);
+}
