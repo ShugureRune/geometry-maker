@@ -42,9 +42,9 @@ export function ExploreController({speed,view,onNavigate}:{
       right.current.set(1,0,0).applyQuaternion(camera.quaternion);
       up.current.set(0,1,0).applyQuaternion(camera.quaternion);
       direction.current.set(0,0,-1).applyQuaternion(camera.quaternion);
-      // Match touch movement to screen coordinates; pan never orbits the scene.
-      camera.position.addScaledVector(right.current,-dx*.014*factor);
-      camera.position.addScaledVector(up.current,dy*.014*factor);
+      // The camera travels in the swipe direction, without orbiting a pivot.
+      camera.position.addScaledVector(right.current,dx*.014*factor);
+      camera.position.addScaledVector(up.current,-dy*.014*factor);
       camera.position.addScaledVector(direction.current,forward*.04*factor);
       camera.position.x=clamp(camera.position.x,-850,850);
       camera.position.y=clamp(camera.position.y,-40,450);
