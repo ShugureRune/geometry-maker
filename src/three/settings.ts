@@ -8,18 +8,20 @@ import {skyDefaults,validateSky,type SkySettings} from './sky-settings';
 import {CELESTIAL_KINDS, celestialDefaults, validateCelestialSettings, type CelestialSettings} from './celestial';
 import {networkDefaults, neonDefaults, record, enumField, numberField, booleanField, validateNetwork, validateNeon, type NetworkSettings, type NeonSettings} from './style-settings';
 import {validateVoidSettings,type VoidSettings} from './void-settings';
+import {hybrid2DDefaults,validateHybrid2D,type Hybrid2DSettings} from './hybrid-2d';
 
 export type ThreeSettings = {
   voidMode?:VoidSettings;
   network?: NetworkSettings; neon?: NeonSettings; enabledKinds?: ThreeKind[]; visibilityAnimation?:ThreeVisibilitySettings; entrance?:ThreeEntranceSettings; standby?:ThreeStandbySettings;
   floorGrid?:FloorGridSettings; celestial?:CelestialSettings; spacingPercent?: number; sky?:SkySettings;
+  hybrid2D?:Hybrid2DSettings;
   quality: 'auto' | 'low' | 'high'; material: 'theme' | 'matte' | 'metal' | 'glass' | 'wireframe';
   roughness: number; metalness: number; lightIntensity: number;
   animation: boolean; speed: number; floatAmount: number; rotationAmount: number;
 };
 export const threeDefaults: ThreeSettings = {
   network: {...networkDefaults}, neon: {...neonDefaults}, enabledKinds: [...THREE_KINDS], visibilityAnimation:{...visibilityDefaults}, entrance:{...entranceDefaults}, standby:{...standbyDefaults},
-  floorGrid:{...floorGridDefaults}, celestial:{...celestialDefaults,kinds:[...CELESTIAL_KINDS]}, sky:{...skyDefaults},
+  floorGrid:{...floorGridDefaults}, celestial:{...celestialDefaults,kinds:[...CELESTIAL_KINDS]}, sky:{...skyDefaults}, hybrid2D:{...hybrid2DDefaults},
   spacingPercent:THREE_SPACING_DEFAULT,
   quality: 'auto', material: 'theme', roughness: .32, metalness: .45, lightIntensity: 1,
   animation: true, speed: 1, floatAmount: 1, rotationAmount: 1,
@@ -39,7 +41,8 @@ export function validateThreeSettings(value: unknown): ThreeSettings {
     entrance:source.entrance===undefined?{...entranceDefaults,enabled:false}:validateThreeEntrance(d.entrance),
     standby:source.standby===undefined?{...standbyDefaults}:validateThreeStandby(d.standby),
     floorGrid:validateFloorGrid(d.floorGrid??floorGridDefaults), celestial:validateCelestialSettings(d.celestial??celestialDefaults),
-    sky:validateSky(d.sky??skyDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon)};
+    sky:validateSky(d.sky??skyDefaults), network:validateNetwork(d.network), neon:validateNeon(d.neon),
+    hybrid2D:source.hybrid2D===undefined?{...hybrid2DDefaults}:validateHybrid2D(d.hybrid2D)};
 }
 export type ThreeView = {position: Vector3Tuple; target: Vector3Tuple};
 export type ThreePreviewHandle = {
