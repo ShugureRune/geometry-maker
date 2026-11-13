@@ -95,7 +95,12 @@ export function ExploreController({speed,view,onNavigate}:{
     const wheel=(event:WheelEvent)=>{
       event.preventDefault();
       const dy=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?canvas.clientHeight:1);
-      moveCamera(0,0,clamp(-dy,-120,120)*.8);
+      // Large wheel gestures should genuinely travel into a distant scene.
+      // Cap only the single-event jump to avoid leaping straight past it.
+      const desired=-dy*.07*(speed/8);
+      const maxStep=Math.max(6,camera.position.length()*.9);
+      const step=clamp(desired,-maxStep,maxStep);
+      moveCamera(0,0,step/(.04*(speed/8)));
     };
     const down=(event:KeyboardEvent)=>{
       const target=event.target as HTMLElement|null;
