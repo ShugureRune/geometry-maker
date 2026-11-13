@@ -101,24 +101,46 @@ test('sun time, storms, natural density and water reflection adjust image and su
   expect(digest(await png(page))).toBe(saved);
 });
 
-test('explore mode flies with WASD without losing 3D PNG and has touch buttons on mobile',async({page})=>{
+async function savedView(page:Page):Promise<{position:number[];target:number[]}>{
+  await category(page,'書き出し');
+  const download=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const data=JSON.parse(await readFile((await(await download).path())!,'utf8'));
+  return data.view;
+}
+const gap=(a:number[],b:number[])=>Math.hypot(...a.map((value,i)=>value-b[i]));
+
+test('one camera mode looks in place and moves with wheel/WASD without changing 3D export',async({page})=>{
   await start(page);
   await category(page,'背景');
   await page.getByLabel('3D背景の種類').selectOption('endless-desert');
-  await page.locator('#three-world-explore').check();
-  const preview=page.getByTestId('three-preview');
-  await expect(preview).toHaveAttribute('data-explore','on');
-  await expect(page.getByRole('button',{name:'探索 ↑'})).toBeVisible();
-  const before=digest(await png(page));
-  await page.keyboard.down('w');
-  await page.waitForTimeout(420);
-  await page.keyboard.up('w');
-  const after=digest(await png(page));
-  expect(before).not.toBe(after);
-  await category(page,'背景');
-  await page.locator('#three-world-explore').uncheck();
-  await expect(preview).toHaveAttribute('data-explore','off');
+  const preview=page.getByTestId('three-preview'),canvas=preview.locator('canvas');
+  await expect(preview).toHaveAttribute('data-navigation','unified');
+  await expect(page.locator('#three-world-explore')).toHaveCount(0);
+  await expect(page.locator('#three-world-explore-speed')).toBeVisible();
   await expect(page.getByRole('button',{name:'探索 ↑'})).toHaveCount(0);
+
+  const before=await savedView(page),box=(await canvas.boundingBox())!;
+  await page.mouse.move(box.x+box.width*.45,box.y+box.height*.45);
+  await page.mouse.down();
+  await page.mouse.move(box.x+box.width*.45+90,box.y+box.height*.45+25,{steps:6});
+  await page.mouse.up();
+  const looked=await savedView(page);
+  expect(gap(looked.position,before.position)).toBeLessThan(.001);
+  expect(gap(looked.target,before.target)).toBeGreaterThan(.5);
+
+  await canvas.hover();
+  await page.mouse.wheel(0,-280);
+  const advanced=await savedView(page);
+  expect(gap(advanced.position,looked.position)).toBeGreaterThan(.15);
+
+  const beforeImage=digest(await png(page));
+  await canvas.focus();
+  await page.keyboard.down('w');
+  await page.waitForTimeout(350);
+  await page.keyboard.up('w');
+  const afterImage=digest(await png(page));
+  expect(beforeImage).not.toBe(afterImage);
 });
 
 test('mobile low quality handles floating islands, snowy weather and solar lighting then returns to 2D',async({page})=>{
