@@ -29,6 +29,9 @@ import {neuralStartupFlash,NEURAL_SIGNAL_LAUNCH_DELAY} from './neural-signals';
 import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
+import {isVoidComposition,voidEdges} from './void-graph';
+import {voidRenderSettings} from './void-settings';
+import {VoidObjects} from './VoidObjects';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -580,7 +583,10 @@ function webGLAvailable() {
   } catch {return false;}
 }
 
-export default function ThreePreview(props: Props) {
+export default function ThreePreview(input: Props) {
+  const effectiveSettings=useMemo(()=>voidRenderSettings(input.settings),[input.settings]);
+  const props=effectiveSettings===input.settings?input:{...input,settings:effectiveSettings};
+  const voidMode=isVoidComposition(props.composition);
   const [supported] = useState(webGLAvailable), [lost, setLost] = useState(false);
   const [smallDevice, setSmallDevice] = useState(() => matchMedia('(max-width: 720px), (pointer: coarse)').matches);
   useEffect(() => {
@@ -618,25 +624,26 @@ export default function ThreePreview(props: Props) {
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
   const edges=useMemo(()=>network.enabled?
-    networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
-    [objects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
+    isVoidComposition(props.composition)?voidEdges(props.composition,objects):networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
+    [objects,props.composition,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const previousEdges=useMemo(()=>props.transition&&network.enabled?
-    networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
+    isVoidComposition(props.transition.fromComposition)?voidEdges(props.transition.fromComposition,previousObjects):networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
-  const celestialBase=useMemo(()=>generateCelestialBodies(props.sourceComposition,celestial,props.density),
-    [props.sourceComposition,celestial,props.density]);
+  const celestialBase=useMemo(()=>voidMode?[]:generateCelestialBodies(props.sourceComposition,celestial,props.density),
+    [voidMode,props.sourceComposition,celestial,props.density]);
   const celestialObjects=useMemo(()=>spaceCelestialBodies(celestialBase,props.settings.spacingPercent??100),
     [celestialBase,props.settings.spacingPercent]);
-  const previousCelestial=useMemo(()=>props.transition?
+  const previousCelestial=useMemo(()=>props.transition&&!voidMode?
     spaceCelestialBodies(generateCelestialBodies(props.transition.fromSourceComposition,celestial,props.density),props.settings.spacingPercent??100):[],
-    [props.transition,celestial,props.density,props.settings.spacingPercent]);
-  const outlines=useOutlineGeometry(neon.enabled,low);
+    [props.transition,voidMode,celestial,props.density,props.settings.spacingPercent]);
+  const outlines=useOutlineGeometry(neon.enabled&&!voidMode,low);
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
   return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
+    data-void-mode={voidMode?'prototype':'off'} data-void-filaments={isVoidComposition(props.composition)?props.composition.voidGraph.filaments.length:0}
     data-network-count={edges.length} data-network-mode={network.mode}
     data-neural-signals={network.enabled&&network.mode==='neural'&&network.animation==='signal'?'on':'off'}
     data-neural-signal-stage={props.transition?'rewiring':props.skipEntrance?'resumed':'normal'}
@@ -670,7 +677,9 @@ export default function ThreePreview(props: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={floorSeconds} view={props.view} low={low}/>
-      {props.transition ? props.transition.mode==='morph'?
+      {voidMode?<VoidObjects objects={objects} previous={previousObjects} matches={matches} settings={props.settings} background={props.background}
+        visualTheme={props.visualTheme} low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance} transition={props.transition}/>:
+      props.transition ? props.transition.mode==='morph'?
         matches.map(match=><group key={match.id}>
           {match.from&&match.to&&match.from.kind===match.to.kind?
             <Solid object={match.to} settings={props.settings} background={props.background}
