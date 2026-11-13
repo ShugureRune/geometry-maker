@@ -1,7 +1,23 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionFlash,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
+
+describe('standby reconnect flare',()=>{
+  it('brightens only as a new wire nears reconnection and returns to baseline',()=>{
+    for(const progress of [-2,0,.2,.5,1,2,NaN,Infinity])
+      expect(standbyReconnectionFlash(progress)).toBe(0);
+    expect(standbyReconnectionFlash(.7)).toBeGreaterThan(0);
+    expect(standbyReconnectionFlash(.89)).toBeGreaterThan(.5);
+    expect(standbyReconnectionFlash(.99)).toBeGreaterThan(0);
+    expect(standbyReconnectionFlash(.99)).toBeLessThan(.1);
+    for(let i=0;i<=100;i++){
+      const strength=standbyReconnectionFlash(i/100);
+      expect(strength).toBeGreaterThanOrEqual(0);
+      expect(strength).toBeLessThanOrEqual(1);
+    }
+  });
+});
 
 describe('rewire morph phase boundaries',()=>{
   it('keeps the nodes still during both cable phases for 1–8 second standby transitions',()=>{
@@ -26,10 +42,12 @@ describe('3D standby transition grammar',()=>{
     expect(threeDefaults.standby).toEqual(standbyDefaults);
     expect(validateThreeSettings({...threeDefaults,standby:undefined}).standby).toEqual(standbyDefaults);
     expect(standbyDefaults.cameraAutoRotate).toBe(false);
+    expect(standbyDefaults.reconnectGlow).toBe(true);
     expect(standbyDefaults.cameraRotateSpeed).toBe(1);
     expect(standbyDefaults.cameraOrbitMode).toBe('horizontal');
     expect(standbyDefaults.cameraOrbitTilt).toBe(10);
     expect(validateThreeStandby({enabled:true})).toEqual({...standbyDefaults,enabled:true});
+    expect(validateThreeStandby({enabled:true,reconnectGlow:false}).reconnectGlow).toBe(false);
     expect(validateThreeStandby({...standbyDefaults,cameraAutoRotate:true,cameraRotateSpeed:2.5,
       cameraOrbitMode:'inclined',cameraOrbitTilt:15}))
       .toMatchObject({cameraAutoRotate:true,cameraRotateSpeed:2.5,
@@ -43,7 +61,7 @@ describe('3D standby transition grammar',()=>{
     });
     for(const bad of [{enabled:'yes'},{intervalSeconds:4},{intervalSeconds:121},
       {transitionSeconds:0},{transitionSeconds:9},{mode:'warp'},{preserveCamera:1},
-      {pauseOnInteraction:null},{cameraAutoRotate:'yes'},
+      {pauseOnInteraction:null},{reconnectGlow:'yes'},{cameraAutoRotate:'yes'},
       {cameraRotateSpeed:0},{cameraRotateSpeed:3.5},{cameraRotateSpeed:Infinity},
       {cameraOrbitMode:'upside-down'},{cameraOrbitTilt:0},
       {cameraOrbitTilt:40},{cameraOrbitTilt:Infinity},
