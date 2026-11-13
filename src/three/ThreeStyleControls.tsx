@@ -25,7 +25,7 @@ function ColorControls({prefix, mode, color, contrast, onMode, onColor, onContra
     <label className="three-checkbox"><input type="checkbox" checked={contrast} onChange={event=>onContrast(event.target.checked)}/> 背景に合わせて見やすくする</label>
   </>;
 }
-export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;onChange:(settings:ThreeSettings)=>void}) {
+export function ThreeStyleControls({settings,onChange,fixedTopology=false}:{settings:ThreeSettings;onChange:(settings:ThreeSettings)=>void;fixedTopology?:boolean}) {
   const network=settings.network??networkDefaults, neon=settings.neon??neonDefaults;
   const net=(patch:Partial<typeof network>)=>onChange({...settings,network:{...network,...patch}});
   const outline=(patch:Partial<typeof neon>)=>onChange({...settings,neon:{...neon,...patch}});
@@ -44,6 +44,7 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
     <fieldset><legend>図形を線でつなぐ</legend>
       <label className="three-checkbox"><input type="checkbox" aria-label="図形の接続を有効化" checked={network.enabled} onChange={event=>net({enabled:event.target.checked})}/> 接続線を表示</label>
       {network.enabled&&<>
+        {fixedTopology?<p className="help">VOID配線：生成したフィラメント経路を使用します。最近傍接続への変更や距離・次数による張り直しは行いません。</p>:<>
         <div className="studio-setting-label">
           <label htmlFor="network-mode">つなぎ方</label>
           <HelpInfo>「近い順」は距離順で接続します。「神経回路」は図形の配置を確定してから、小さい図形を最寄りの中くらいの図形へ、中くらいの図形を最寄りの主役図形へ接続します。輪っかにならない3階層の木構造です。すべての枝をつなげるため神経回路には最大接続数・接続距離の制限を適用しません。</HelpInfo>
@@ -56,6 +57,7 @@ export function ThreeStyleControls({settings,onChange}:{settings:ThreeSettings;o
         {network.mode==='nearest'&&<>
           <ThreeRange id="network-count" label="最大接続数" min={1} max={6} step={1} value={network.maxConnections} unit="本" onChange={maxConnections=>net({maxConnections})}/>
           <ThreeRange id="network-distance" label="接続距離" min={.5} max={15} step={.25} value={network.distance} unit="単位" onChange={distance=>net({distance})}/>
+        </>}
         </>}
         <ThreeRange id="network-width" label="接続線の太さ" min={.25} max={6} step={.25} value={network.width} unit="倍" onChange={width=>net({width})}/>
         <ThreeRange id="network-opacity" label="接続線の濃さ" min={0} max={1} step={.05} value={network.opacity} onChange={opacity=>net({opacity})}/>

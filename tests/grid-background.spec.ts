@@ -107,7 +107,10 @@ test('grid speed is independent and follows the 0–360 degree infinite figure s
  await page.getByLabel('待機アニメーション').selectOption('scroll');
  await page.getByText('待機画面の詳細設定',{exact:true}).click();
  await expect(page.locator('#ambient-scrollAngle')).toBeVisible();
- await expect(page.getByText('0°=右、90°=下、180°=左、270°=上',{exact:false})).toBeVisible();
+ await page.locator('.ambient-range:has(#ambient-scrollAngle) + .studio-info-disclosure > summary').click();
+ await expect(page.getByTestId('studio-info-popover')).toContainText('0°=右、90°=下、180°=左、270°=上');
+ await page.keyboard.press('Escape');
+ await expect(page.getByTestId('studio-info-popover')).toHaveCount(0);
  await page.locator('#ambient-scrollAngle').fill('90');
  await expect(page.locator('#ambient-scrollAngle')).toHaveValue('90');
  await expect(page.getByTestId('ambient-preview').getByTestId('grid-background')).toHaveAttribute('data-grid-motion','scroll');

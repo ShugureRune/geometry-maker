@@ -7,8 +7,10 @@ import {floorGridDefaults,validateFloorGrid,type FloorGridSettings} from './floo
 import {skyDefaults,validateSky,type SkySettings} from './sky-settings';
 import {CELESTIAL_KINDS, celestialDefaults, validateCelestialSettings, type CelestialSettings} from './celestial';
 import {networkDefaults, neonDefaults, record, enumField, numberField, booleanField, validateNetwork, validateNeon, type NetworkSettings, type NeonSettings} from './style-settings';
+import {validateVoidSettings,type VoidSettings} from './void-settings';
 
 export type ThreeSettings = {
+  voidMode?:VoidSettings;
   network?: NetworkSettings; neon?: NeonSettings; enabledKinds?: ThreeKind[]; visibilityAnimation?:ThreeVisibilitySettings; entrance?:ThreeEntranceSettings; standby?:ThreeStandbySettings;
   floorGrid?:FloorGridSettings; celestial?:CelestialSettings; spacingPercent?: number; sky?:SkySettings;
   quality: 'auto' | 'low' | 'high'; material: 'theme' | 'matte' | 'metal' | 'glass' | 'wireframe';
@@ -27,7 +29,7 @@ export function validateThreeSettings(value: unknown): ThreeSettings {
   const source=record(value),d={...threeDefaults,...source};
   if(!Array.isArray(d.enabledKinds)||!d.enabledKinds.every(kind=>THREE_KINDS.includes(kind as ThreeKind))||new Set(d.enabledKinds).size!==d.enabledKinds.length)
     throw new Error('3D図形の種類設定が不正です。');
-  return {enabledKinds:[...d.enabledKinds] as ThreeKind[],spacingPercent:numberField(d.spacingPercent,50,200,'3D図形の間隔'),quality:enumField(d.quality,['auto','low','high'],'3D描画品質'),
+  return {...(source.voidMode===undefined?{}:{voidMode:validateVoidSettings(source.voidMode)}),enabledKinds:[...d.enabledKinds] as ThreeKind[],spacingPercent:numberField(d.spacingPercent,50,200,'3D図形の間隔'),quality:enumField(d.quality,['auto','low','high'],'3D描画品質'),
     material:enumField(d.material,['theme','matte','metal','glass','wireframe'],'3Dマテリアル'),
     roughness:numberField(d.roughness,0,1,'粗さ'), metalness:numberField(d.metalness,0,1,'金属感'),
     lightIntensity:numberField(d.lightIntensity,.1,3,'照明'), animation:booleanField(d.animation,'3Dアニメーション'),
