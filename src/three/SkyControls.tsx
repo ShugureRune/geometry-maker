@@ -89,17 +89,13 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
           onChange={waterWaves=>updateWorld({waterWaves})}/>
         <HelpInfo>リアルタイムの空色・光の方向を使った軽量な水面反射です。実際の図形・山を鏡写しにするフルシーン反射とは異なります。</HelpInfo>
       </fieldset>}
-      {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>自由に歩く</legend>
-        <label className="three-checkbox" htmlFor="three-world-explore">
-          <input id="three-world-explore" type="checkbox" checked={world.explore}
-            onChange={e=>updateWorld({explore:e.target.checked})}/> 自由探索モードを有効化
-        </label>
-        <ThreeRange id="three-world-explore-speed" label="歩く速さ"
+      <fieldset className="three-kind-fieldset" data-testid="unified-navigation-controls">
+        <legend>3Dカメラ操作</legend>
+        <ThreeRange id="three-world-explore-speed" label="移動速度"
           value={world.exploreSpeed} min={1} max={20} step={1} unit="倍"
           onChange={exploreSpeed=>updateWorld({exploreSpeed})}/>
-        <HelpInfo>PCでは画面クリックでマウス視点操作、WASDで移動、Space/Shiftで上下移動。Escでマウス操作を解除。スマホでは画面上の矢印で移動・回転できます。</HelpInfo>
-      </fieldset>}
+        <HelpInfo>モード切り替えは不要です。1本指ドラッグはその場で視点回転、2本指スワイプは平行移動、ピンチは視線方向に前進・後退します。PCでは左ドラッグで視点回転、右ドラッグで平行移動、ホイールで前進・後退、WASDとSpace/Shiftでも移動できます。</HelpInfo>
+      </fieldset>
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
         <legend>遠くの見え方</legend>
         <ThreeRange id="three-outdoor-view-distance" label="描画距離" value={visibility.distance}
