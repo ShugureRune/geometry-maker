@@ -28,9 +28,11 @@ export function ThreeShapeControls({settings, onChange}: Props) {
     <div className="studio-setting-label studio-setting-heading"><h3>3D図形</h3>
       <HelpInfo>13種類の立体から生成します。図形の種類だけ変えても位置・シード・密度は維持されます。</HelpInfo>
     </div>
-    {!settings.voidMode?.enabled&&<><ThreeRange id="three-spacing" label="図形の間隔" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
+    <ThreeRange id="three-spacing" label="図形の間隔" value={settings.spacingPercent??THREE_SPACING_DEFAULT}
       min={50} max={200} step={5} unit="%" onChange={spacingPercent=>onChange({...settings,spacingPercent})}/>
-    <HelpInfo>100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。</HelpInfo></>}
+    <HelpInfo>{settings.voidMode?.enabled
+      ? 'VOIDでは100%が従来の間隔です。空洞・フィラメント・図形の位置を一緒に広げたり縮めたりします。図形の大きさや接続は変わりません。'
+      : '100%が標準（以前の約1.5倍の距離）。約65〜70%で以前に近い間隔です。図形の大きさ自体は変えず、配置を広げます。カメラは向きを保って距離に合わせて調整します。'}</HelpInfo>
     <fieldset className="three-kind-fieldset"><legend>図形の種類（${(settings.enabledKinds??THREE_KINDS).length}/13）</legend>
       <div className="three-kind-presets">
         <button type="button" onClick={()=>onChange({...settings,enabledKinds:[...THREE_KINDS]})}>全種類</button>
