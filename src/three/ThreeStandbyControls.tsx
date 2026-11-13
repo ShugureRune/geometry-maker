@@ -51,7 +51,7 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
         <ThreeRange id="three-standby-reconnect-intensity" label="再接続の発光の強さ"
           value={standby.reconnectIntensity} min={0} max={100} step={5} unit="%"
           onChange={reconnectIntensity=>update({reconnectIntensity})}/>}
-      <HelpInfo>再接続する瞬間の光を控えめに表示します。光が強すぎる場合は「再接続の発光の強さ」を下げてください。登場時の発光には影響しません。通常3Dとコズミックウェブ共通です。</HelpInfo>
+      <HelpInfo>ワイヤーの接続先で光の粒が出て、全部つながった瞬間にはネットワーク全体が一斉に短く光ります。どちらも「再接続の発光の強さ」とON/OFFで調整できます。登場時の発光には影響しません。通常3Dとコズミックウェブ共通です。</HelpInfo>
       <label className="three-checkbox">
         <input type="checkbox" checked={standby.preserveCamera}
           onChange={e=>update({preserveCamera:e.target.checked})}/>

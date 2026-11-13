@@ -15,7 +15,7 @@ import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections,type RootedWireStep} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
-import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,standbyCompletionFlash,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketTrailAt,neuralArrivalFlashAt,neuralSignalPlan} from './neural-signals';
 
@@ -80,7 +80,7 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false,completionFlashAt}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean;completionFlashAt?:RefObject<number|null>}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
@@ -161,7 +161,14 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const growWires=neuralAppearance&&(appearing||
       (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
     const replayMorphWires=standby?.transition.mode==='morph';
-    let active=0,maxReconnectFlash=0;
+    const standbySettings=settings.standby??standbyDefaults;
+    // A separate pulse starts at the exact standby completion boundary,
+    // AFTER React has removed the old wire layer. Every final edge shares
+    // the same decay, so even a huge cosmic web ignites in one frame.
+    const completionGlow=!standby&&network.enabled&&standbySettings.reconnectGlow
+      ?standbyCompletionFlash(seconds.current,completionFlashAt?.current??null)*
+        standbySettings.reconnectIntensity/100:0;
+    let active=0,maxReconnectFlash=completionGlow;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
       let perEdgeAlpha=1;
@@ -234,12 +241,11 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
       // Tint existing linear-RGB wire colors: no neutral white flashes and
       // no effect outside the new layer of an active standby transition.
-      const standbySettings=settings.standby??standbyDefaults;
       const reconnect=standby?.layer==='new'&&standbySettings.reconnectGlow
         ?standbyReconnectionGlowAt(seconds.current,standby.transition.duration,
           standby.transition.mode,route,neuralAppearance)*standbySettings.reconnectIntensity/100:0;
       maxReconnectFlash=Math.max(maxReconnectFlash,reconnect);
-      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1);
+      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1)*(1+completionGlow*1.65);
       colorStart.setXYZ(active,
         (ca.r+(cb.r-ca.r)*startMix)*strength,
         (ca.g+(cb.g-ca.g)*startMix)*strength,

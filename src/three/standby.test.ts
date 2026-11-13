@@ -1,7 +1,22 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,standbyCompletionFlash,STANDBY_COMPLETION_FLASH_SECONDS,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
+
+describe('standby synchronized full-network completion flash',()=>{
+  it('starts only at the exact transition completion and decays after the old layer unmounts',()=>{
+    expect(standbyCompletionFlash(0,null)).toBe(0);
+    expect(standbyCompletionFlash(4,5)).toBe(0);
+    expect(standbyCompletionFlash(5,5)).toBe(1);
+    expect(standbyCompletionFlash(5+.15,5)).toBeGreaterThan(.5);
+    expect(standbyCompletionFlash(5+.35,5)).toBeGreaterThan(0);
+    expect(standbyCompletionFlash(5+STANDBY_COMPLETION_FLASH_SECONDS,5)).toBe(0);
+    expect(standbyCompletionFlash(6,5)).toBe(0);
+    for(const bad of [NaN,Infinity,-Infinity])
+      expect(standbyCompletionFlash(bad,5)).toBe(0);
+    expect(standbyCompletionFlash(5,NaN)).toBe(0);
+  });
+});
 
 describe('standby reconnect flare',()=>{
   const route={start:.25,end:.5};
