@@ -22,7 +22,13 @@ async function open(page:Page,project=fixture(),url='./'){
 }
 async function png(page:Page){await category(page,'書き出し');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'3D PNGを書き出す',exact:true}).click();const file=await pending;expect(await file.failure()).toBeNull();return readFile((await file.path())!);}
 async function json(page:Page){await category(page,'書き出し');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();return readFile((await(await pending).path())!,'utf8');}
-async function toggle(page:Page,enabled:boolean){await category(page,'背景');await page.getByLabel('VOID MODEを有効化').setChecked(enabled);await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled({timeout:30_000});}
+async function toggle(page:Page,enabled:boolean){
+  await category(page,'背景');await page.getByLabel('VOID MODEを有効化').setChecked(enabled);
+  // These regressions intentionally exercise the saved v1 prototype. New
+  // VOID sessions default to the separately tested large web.
+  if(enabled&&await page.locator('#void-version').count())await page.locator('#void-version').selectOption('void-filaments-v1');
+  await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled({timeout:30_000});
+}
 
 test('OFF preserves ordinary 3D, restores its camera/time and never overwrites normal wiring',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await open(page);
@@ -37,10 +43,16 @@ test('OFF preserves ordinary 3D, restores its camera/time and never overwrites n
   await toggle(page,true);await category(page,'装飾');await expect(page.locator('#network-width')).toHaveValue('2');expect(errors).toEqual([]);
 });
 
-test('matches the unchanged main reference pixel-for-pixel while VOID is OFF',async({page,browser})=>{
+test('matches the base reference pixel-for-pixel for ordinary 3D and saved v1 VOID',async({page,browser})=>{
   test.skip(!process.env.VOID_REFERENCE_URL,'Set VOID_REFERENCE_URL to a read-only checkout of the PR base.');
   await open(page);const actual=await png(page);
-  const reference=await browser.newPage();try{await open(reference,fixture(),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(actual));}finally{await reference.close();}
+  const reference=await browser.newPage();try{
+    await open(reference,fixture(),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(actual));
+    if(await reference.getByLabel('VOID MODEを有効化').count()){
+      await open(page,fixture(true));const prototype=await png(page);
+      await open(reference,fixture(true),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(prototype));
+    }
+  }finally{await reference.close();}
 });
 
 test('returns to a completed normal standby pose without replaying its entrance',async({page})=>{

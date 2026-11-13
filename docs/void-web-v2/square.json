@@ -1,0 +1,170 @@
+{
+  "kind": "geometry-maker-3d",
+  "schemaVersion": 1,
+  "algorithmVersion": "3d-v1",
+  "seed": "cosmic-depth-17",
+  "aspectRatio": "1:1",
+  "density": 75,
+  "visualTheme": "cosmic",
+  "background": {
+    "mode": "gradient",
+    "solid": "#030617",
+    "colors": [
+      "#08051d",
+      "#0a1027",
+      "#031422"
+    ],
+    "angle": 135,
+    "glowIntensity": 75,
+    "figureColors": {
+      "primary": "#b995ff",
+      "support": "#65bfe4",
+      "accent": "#a8ebcf"
+    }
+  },
+  "settings": {
+    "network": {
+      "enabled": false,
+      "mode": "nearest",
+      "maxConnections": 3,
+      "distance": 4,
+      "width": 1,
+      "opacity": 0.7,
+      "glow": 100,
+      "colorMode": "auto",
+      "customColor": "#82dfff",
+      "animation": "none",
+      "contrast": false
+    },
+    "neon": {
+      "enabled": false,
+      "display": "surface",
+      "width": 1,
+      "colorMode": "auto",
+      "customColor": "#a3f2ff",
+      "glow": 100,
+      "faceOpacity": 0.12,
+      "contrast": false
+    },
+    "enabledKinds": [
+      "sphere",
+      "cube",
+      "torus",
+      "icosahedron",
+      "dodecahedron",
+      "octahedron",
+      "tetrahedron",
+      "cylinder",
+      "cone",
+      "capsule",
+      "prism",
+      "pyramid",
+      "torus-knot"
+    ],
+    "visibilityAnimation": {
+      "enabled": false,
+      "mode": "fade-scale",
+      "duration": 12,
+      "visibleRatio": 0.65,
+      "stagger": true,
+      "keepPrimaryVisible": true
+    },
+    "entrance": {
+      "enabled": false,
+      "mode": "seeded",
+      "duration": 6,
+      "stagger": true
+    },
+    "standby": {
+      "enabled": false,
+      "intervalSeconds": 15,
+      "transitionSeconds": 4,
+      "mode": "morph",
+      "preserveCamera": true,
+      "pauseOnInteraction": true,
+      "cameraAutoRotate": false,
+      "cameraRotateSpeed": 1,
+      "cameraOrbitMode": "horizontal",
+      "cameraOrbitTilt": 10
+    },
+    "floorGrid": {
+      "enabled": false,
+      "style": "grid",
+      "color": "#43cfff",
+      "opacity": 0.62,
+      "spacing": 2.5,
+      "thickness": 1.5,
+      "glow": 80,
+      "extent": 70,
+      "scrollSpeed": 0,
+      "circuitDensity": 58,
+      "circuitSpeed": 1.5,
+      "circuitDetail": 72,
+      "circuitBoardOpacity": 0.3,
+      "circuitAccentColor": "#f0b56b",
+      "circuitWorldEnabled": true,
+      "circuitChipCount": 12,
+      "circuitCoreScale": 1
+    },
+    "celestial": {
+      "enabled": false,
+      "kinds": [
+        "star",
+        "planet",
+        "ringed-planet",
+        "moon",
+        "black-hole",
+        "neutron-star"
+      ]
+    },
+    "sky": {
+      "kind": "classic",
+      "intensity": 100,
+      "density": 100,
+      "motion": 100
+    },
+    "spacingPercent": 100,
+    "quality": "high",
+    "material": "theme",
+    "roughness": 0.32,
+    "metalness": 0.45,
+    "lightIntensity": 1,
+    "animation": false,
+    "speed": 1,
+    "floatAmount": 1,
+    "rotationAmount": 1,
+    "voidMode": {
+      "enabled": true,
+      "version": "void-web-v2",
+      "network": {
+        "enabled": true,
+        "mode": "neural",
+        "maxConnections": 3,
+        "distance": 4,
+        "width": 1,
+        "opacity": 0.7,
+        "glow": 100,
+        "colorMode": "auto",
+        "customColor": "#82dfff",
+        "animation": "signal",
+        "contrast": true
+      },
+      "neon": {
+        "enabled": true,
+        "display": "transparent",
+        "width": 0.8,
+        "colorMode": "auto",
+        "customColor": "#a3f2ff",
+        "glow": 85,
+        "faceOpacity": 0.16,
+        "contrast": true
+      },
+      "objectLimit": 1400,
+      "depthFade": 80
+    }
+  },
+  "elapsedSeconds": 24,
+  "floorElapsedSeconds": 24,
+  "exportWidth": 960,
+  "exportHeight": 960
+}

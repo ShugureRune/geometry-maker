@@ -39,7 +39,8 @@ import {FloorGridControls} from './three/FloorGridControls';
 import {SkyControls} from './three/SkyControls';
 import {VoidModeControls} from './three/VoidModeControls';
 import {generateVoidComposition,isVoidComposition} from './three/void-graph';
-import {voidDefaults,voidRenderSettings} from './three/void-settings';
+import {generateVoidWeb} from './three/void-web';
+import {VOID_WEB_VERSION,voidDefaults,voidRenderSettings} from './three/void-settings';
 import {floorGridDefaults} from './three/floor-grid';
 import type {ThreeProject} from './three/project';
 import {loadStudioAutosave,saveStudioAutosave,type StudioAutosave} from './studio-autosave';
@@ -97,6 +98,7 @@ export default function App() {
   const threeApi=useRef<ThreePreviewHandle|null>(null);
   const threeView=useRef<ThreeView|undefined>(saved?.threeD.view);
   const [threeReady,setThreeReady]=useState(false);
+  const [voidVisibleCount,setVoidVisibleCount]=useState(0);
   const beforeVoid=useRef<{view:ThreeView|undefined;time:number;seed:string;complete:string|null}|null>(null);
   const [threeRestore,setThreeRestore]=useState({
     serial:0,time:saved?.threeD.elapsedSeconds??0,
@@ -242,8 +244,9 @@ export default function App() {
   // Transform spacing only after deterministic geometry has been generated.
   // The scene seed, candidate selection, IDs and density remain unchanged.
   const voidEnabled=!!threeSettings.voidMode?.enabled;
+  const voidVersion=threeSettings.voidMode?.version;
   const threeBaseComposition=useMemo(()=>renderMode==='3d'?
-    voidEnabled?generateVoidComposition(seed,ratio):generateThreeComposition(seed,ratio):null,[renderMode,seed,ratio,voidEnabled]);
+    voidEnabled?(voidVersion===VOID_WEB_VERSION?generateVoidWeb(seed,ratio):generateVoidComposition(seed,ratio)):generateThreeComposition(seed,ratio):null,[renderMode,seed,ratio,voidEnabled,voidVersion]);
   const threeComposition=useMemo(()=>threeBaseComposition?
     isVoidComposition(threeBaseComposition)?threeBaseComposition:spaceThreeComposition(threeBaseComposition,threeSettings.spacingPercent??100):null,
     [threeBaseComposition,threeSettings.spacingPercent]);
@@ -448,15 +451,16 @@ export default function App() {
         {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<HelpInfo>魔法陣の背景・自動配色は「カラー」から変更できます。背景なしでの表示や透過保存は「図形」の魔法陣設定で切り替えられます。</HelpInfo>}
         {renderMode==='2d'&&version!==MAGIC_ALGORITHM_VERSION&&<GridBackgroundControls value={background.grid??gridBackgroundDefaults} onChange={grid=>setBackground(bg=>({...bg,grid}))}/>}
         {renderMode==='3d'&&<><VoidModeControls value={threeSettings.voidMode} disabled={threeExportBusy||!!standbyTransition} onChange={voidMode=>{
-          if(voidMode.enabled!==voidEnabled){
+          if(voidMode.enabled!==voidEnabled||(voidMode.enabled&&voidMode.version!==voidVersion)){
             const floorTime=threeApi.current?.getFloorElapsedSeconds?.()??threeRestore.floorTime;
             if(voidMode.enabled){
-              beforeVoid.current={view:threeView.current?{position:[...threeView.current.position],target:[...threeView.current.target]}:undefined,time:threeApi.current?.getElapsedSeconds?.()??0,seed,complete:standbyFinishedSeed};
+              if(!voidEnabled)beforeVoid.current={view:threeView.current?{position:[...threeView.current.position],target:[...threeView.current.target]}:undefined,time:threeApi.current?.getElapsedSeconds?.()??0,seed,complete:standbyFinishedSeed};
               threeView.current=undefined;
             }else threeView.current=beforeVoid.current?.seed===seed?beforeVoid.current.view:undefined;
             setThreeReady(false);setThreeRestore(current=>({...current,serial:current.serial+1,time:!voidMode.enabled&&beforeVoid.current?.seed===seed?beforeVoid.current.time:0,floorTime}));
+            setStandbyTransition(null);setStandbyFinishedSeed(!voidMode.enabled&&beforeVoid.current?.seed===seed?beforeVoid.current.complete:null);
           }
-          setStandbyTransition(null);setStandbyFinishedSeed(!voidMode.enabled&&beforeVoid.current?.seed===seed?beforeVoid.current.complete:null);setThreeSettings(settings=>({...settings,voidMode}));
+          setThreeSettings(settings=>({...settings,voidMode}));
         }}/><SkyControls value={threeSettings.sky} onChange={sky=>setThreeSettings(settings=>({...settings,sky}))}/><FloorGridControls value={threeSettings.floorGrid??floorGridDefaults} onChange={floorGrid=>setThreeSettings(settings=>({...settings,floorGrid}))}/></>}
 
 
@@ -594,8 +598,8 @@ export default function App() {
             }}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
                 {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time}
-                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}${voidEnabled?':void-filaments-v1':''}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
-                   skipEntrance={standbyFinishedSeed===seed}
+                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}${voidEnabled?':'+voidVersion:''}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
+                   skipEntrance={standbyFinishedSeed===seed} onVoidVisibleCount={setVoidVisibleCount}
                    onTransitionComplete={id=>{
                      setStandbyFinishedSeed(seed);
                      setStandbyTransition(current=>current?.id===id?null:current);
@@ -625,7 +629,7 @@ export default function App() {
           </div>
         </div>
         {renderMode==='3d'&&<div className="three-view-toolbar"><p>ドラッグで回転 · ホイール／ピンチでズーム</p><button type="button" disabled={!threeReady} onClick={()=>threeApi.current?.resetView()}>視点をリセット</button></div>}
-        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> {renderMode==='2d'?'SVG · 2D':'WebGL · 3D'}</span><span>{threeComposition && renderMode==='3d' ? visibleThreeObjects(threeComposition,density,threeSettings.enabledKinds).length + generateCelestialBodies(threeComposition,threeSettings.celestial??celestialDefaults,density).length : scene.shapes.length} SHAPES</span></div>
+        <div className="canvas-info"><span>{ratio} <span className="info-divider">/</span> {renderMode==='2d'?'SVG · 2D':'WebGL · 3D'}</span><span>{threeComposition && renderMode==='3d' ? voidEnabled?voidVisibleCount:visibleThreeObjects(threeComposition,density,threeSettings.enabledKinds).length + generateCelestialBodies(threeComposition,threeSettings.celestial??celestialDefaults,density).length : scene.shapes.length} SHAPES</span></div>
         <div className="seed-card"><span className="seed-card-icon" aria-hidden="true">⌘</span><div><span className="tiny-label">CURRENT SEED</span><code data-testid="current-seed">{seed === '' ? '（空文字）' : seed}</code></div><span className="algorithm">{renderMode==='2d'?version:THREE_ALGORITHM_VERSION}</span></div>
         <p className="preview-hint" role="status">{regenerations > 0 ? `再生成しました（${regenerations}回）。同じシードと設定の模様です。` : '設定を変えると、プレビューが自動で更新されます。'}</p>
       </section>

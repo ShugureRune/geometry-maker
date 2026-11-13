@@ -1,0 +1,50 @@
+{
+  "note": "Short headless Chromium probe on the recorded renderer; not a physical PC/phone benchmark or a long-duration leak test.",
+  "results": [
+    {
+      "quality": "low",
+      "requestedLimit": 2800,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "instances": 640,
+      "bodyBatches": 13,
+      "outlineBatches": 13,
+      "sampledFrames": 5,
+      "elapsedMs": 2714.300000000745,
+      "observedFps": 1.8420955679175581,
+      "medianFrameMs": 533.1999999999989,
+      "p95FrameMs": 750,
+      "gpuGeometries": 29,
+      "gpuTextures": 2
+    },
+    {
+      "quality": "high",
+      "requestedLimit": 1400,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "instances": 1400,
+      "bodyBatches": 13,
+      "outlineBatches": 13,
+      "sampledFrames": 3,
+      "elapsedMs": 2625,
+      "observedFps": 1.1428571428571428,
+      "medianFrameMs": 866.7000000000044,
+      "p95FrameMs": 916.5999999999985,
+      "gpuGeometries": 30,
+      "gpuTextures": 17
+    },
+    {
+      "quality": "high",
+      "requestedLimit": 2800,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "instances": 2800,
+      "bodyBatches": 13,
+      "outlineBatches": 13,
+      "sampledFrames": 2,
+      "elapsedMs": 3132.4000000003725,
+      "observedFps": 0.6384880602731969,
+      "medianFrameMs": 1533.300000000003,
+      "p95FrameMs": 1533.300000000003,
+      "gpuGeometries": 30,
+      "gpuTextures": 17
+    }
+  ]
+}

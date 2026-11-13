@@ -32,6 +32,8 @@ import {inclinedCameraOrbitStep} from './camera-orbit';
 import {isVoidComposition,voidEdges} from './void-graph';
 import {voidRenderSettings} from './void-settings';
 import {VoidObjects} from './VoidObjects';
+import {isVoidWeb,visibleVoidObjects,voidWireSteps,matchVoidObjects} from './void-web-runtime';
+import {VoidDepth} from './VoidDepth';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
@@ -42,6 +44,7 @@ type Props = {
   transition?:ThreeStandbyTransition|null;
   onTransitionComplete?:(id:number)=>void;
   skipEntrance?:boolean;
+  onVoidVisibleCount?:(count:number)=>void;
   /** Read-only transition progress for UI and regression tests. */
   progressHost?:RefObject<HTMLDivElement|null>;
 };
@@ -587,14 +590,16 @@ export default function ThreePreview(input: Props) {
   const effectiveSettings=useMemo(()=>voidRenderSettings(input.settings),[input.settings]);
   const props=effectiveSettings===input.settings?input:{...input,settings:effectiveSettings};
   const voidMode=isVoidComposition(props.composition);
+  const web=isVoidWeb(props.composition);
   const [supported] = useState(webGLAvailable), [lost, setLost] = useState(false);
+  const [softwareDevice,setSoftwareDevice]=useState(false);
   const [smallDevice, setSmallDevice] = useState(() => matchMedia('(max-width: 720px), (pointer: coarse)').matches);
   useEffect(() => {
     const query = matchMedia('(max-width: 720px), (pointer: coarse)');
     const update = () => setSmallDevice(query.matches);
     query.addEventListener('change', update); return () => query.removeEventListener('change', update);
   }, []);
-  const low = effectiveThreeQuality(props.settings.quality, smallDevice) === 'low';
+  const low = effectiveThreeQuality(props.settings.quality, smallDevice||(web&&softwareDevice)) === 'low';
   const seconds = useRef(props.initialTime??0);
   // A seed switch resets the scene clock to zero. Keep the same next-wave
   // start time across the transition boundary so its electrical pulse never
@@ -614,12 +619,13 @@ export default function ThreePreview(input: Props) {
   const exploring=!!world.explore;
   const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
   const sunlight=sunlightAtHour(world.timeOfDay);
-  const objects = useMemo(() => visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [props.composition, props.density, props.settings.enabledKinds]);
+  const objects = useMemo(() => web?visibleVoidObjects(props.composition,props.density,props.settings.enabledKinds,props.settings.voidMode?.objectLimit,low):visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [web,props.composition, props.density, props.settings.enabledKinds,props.settings.voidMode?.objectLimit,low]);
+  useEffect(()=>{if(voidMode)props.onVoidVisibleCount?.(objects.length);},[voidMode,objects.length,props.onVoidVisibleCount]);
   const previousObjects=useMemo(()=>props.transition?
-    visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
-    [props.transition,props.density,props.settings.enabledKinds]);
+    isVoidWeb(props.transition.fromComposition)?visibleVoidObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds,props.settings.voidMode?.objectLimit,low):visibleThreeObjects(props.transition.fromComposition,props.density,props.settings.enabledKinds):[],
+    [props.transition,props.density,props.settings.enabledKinds,props.settings.voidMode?.objectLimit,low]);
   const matches=useMemo<MorphMatch[]>(()=>props.transition?.mode==='morph'?
-    matchThreeObjects(previousObjects,objects):[],[props.transition,previousObjects,objects]);
+    web?matchVoidObjects(previousObjects,objects):matchThreeObjects(previousObjects,objects):[],[web,props.transition,previousObjects,objects]);
   const network=props.settings.network??networkDefaults,neon=props.settings.neon??neonDefaults;
   // Preserve network topology as the entire figure constellation spreads.
   const spacingFactor=threeSpacingFactor(props.settings.spacingPercent??100);
@@ -629,6 +635,10 @@ export default function ThreePreview(input: Props) {
   const previousEdges=useMemo(()=>props.transition&&network.enabled?
     isVoidComposition(props.transition.fromComposition)?voidEdges(props.transition.fromComposition,previousObjects):networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
+  const routes=useMemo(()=>web?voidWireSteps(objects,edges):undefined,[web,objects,edges]);
+  const oldRoutes=useMemo(()=>web?voidWireSteps(previousObjects,previousEdges):undefined,[web,previousObjects,previousEdges]);
+  const widths=useMemo(()=>web?edges.map(e=>((e as {width?:number}).width??1)*(low?1:2.7)):undefined,[web,edges,low]);
+  const oldWidths=useMemo(()=>web?previousEdges.map(e=>((e as {width?:number}).width??1)*(low?1:2.7)):undefined,[web,previousEdges,low]);
   const celestial=props.settings.celestial??celestialDefaults;
   // Generate celestial appearance from unscaled positions, then spread the
   // constellation without re-rolling its sizes, phases or surface patterns.
@@ -643,7 +653,8 @@ export default function ThreePreview(input: Props) {
   const onLost = useMemo(() => () => {props.onReady(false); setLost(true);}, [props.onReady]);
   if (!supported || lost) return <div className="three-fallback" role="alert"><h3>{lost ? '3D描画が中断されました' : 'この環境では3Dを表示できません'}</h3><p>WebGL 2対応ブラウザとハードウェアアクセラレーションが必要です。2Dモードは引き続き利用できます。中断した場合は軽量設定で3Dモードを開き直してください。</p></div>;
   return <div ref={progressHost} className="three-preview" data-testid="three-preview" data-quality={low ? 'low' : 'high'} data-object-count={objects.length}
-    data-void-mode={voidMode?'prototype':'off'} data-void-filaments={isVoidComposition(props.composition)?props.composition.voidGraph.filaments.length:0}
+    data-void-mode={web?'web':voidMode?'prototype':'off'} data-void-filaments={isVoidComposition(props.composition)?props.composition.voidGraph.filaments.length:0}
+    data-void-knots={web?objects.filter(o=>o.role==='primary').length:undefined} data-void-candidates={web?props.composition.objects.length:undefined}
     data-network-count={edges.length} data-network-mode={network.mode}
     data-neural-signals={network.enabled&&network.mode==='neural'&&network.animation==='signal'?'on':'off'}
     data-neural-signal-stage={props.transition?'rewiring':props.skipEntrance?'resumed':'normal'}
@@ -665,7 +676,13 @@ export default function ThreePreview(input: Props) {
     data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
-      onCreated={({gl}) => {gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;}}>
+      onCreated={({gl}) => {
+        gl.outputColorSpace = SRGBColorSpace; gl.toneMappingExposure = .95;
+        if(web){const context=gl.getContext(),debug=context.getExtension('WEBGL_debug_renderer_info');
+          const renderer=String(context.getParameter(debug?debug.UNMASKED_RENDERER_WEBGL:context.RENDERER));
+          setSoftwareDevice(/swiftshader|llvmpipe|software|basic render/i.test(renderer));}
+      }}>
+      {web&&(props.settings.voidMode?.depthFade??80)>0&&<VoidDepth background={props.background} extent={Math.min(props.composition.width,props.composition.height)*.48} strength={props.settings.voidMode?.depthFade??80} seconds={seconds} transition={props.transition}/>}
       <SkyRenderer sky={props.settings.sky} seed={props.skySeed} seconds={seconds} low={low}
         sceneHeight={props.composition.height} floorGridEnabled={(props.settings.floorGrid??floorGridDefaults).enabled} view={props.view}/>
       <ambientLight intensity={props.settings.lightIntensity*.5*(outdoor?.24+.76*sunlight.strength:1)}/>
@@ -677,7 +694,7 @@ export default function ThreePreview(input: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={floorSeconds} view={props.view} low={low}/>
-      {voidMode?<VoidObjects objects={objects} previous={previousObjects} matches={matches} settings={props.settings} background={props.background}
+      {voidMode?<VoidObjects web={web} objects={objects} previous={previousObjects} matches={matches} settings={props.settings} background={props.background}
         visualTheme={props.visualTheme} low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance} transition={props.transition}/>:
       props.transition ? props.transition.mode==='morph'?
         matches.map(match=><group key={match.id}>
@@ -716,14 +733,17 @@ export default function ThreePreview(input: Props) {
         standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
         skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
+        routes={oldRoutes} widths={oldWidths}
         settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
         seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}/>}
       {edges.length>0&&<NetworkLines objects={objects} edges={edges}
+        routes={routes} widths={widths} startAtZero={web}
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
       {edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
         <NeuralSignals objects={objects} edges={edges} settings={props.settings}
+          routes={routes}
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}

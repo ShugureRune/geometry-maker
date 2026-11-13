@@ -1,13 +1,14 @@
 import {RATIOS,seededRandom,type Ratio} from '../scene';
 import {THREE_ALGORITHM_VERSION,THREE_KINDS,type ThreeComposition,type ThreeObject,type Vector3Tuple} from './model';
 import type {NetworkEdge} from './network';
-import {VOID_ALGORITHM_VERSION} from './void-settings';
+import {VOID_ALGORITHM_VERSION,type VoidVersion} from './void-settings';
 
 type V=Vector3Tuple;
 export type VoidCavity={id:string;center:V;radius:number};
 export type VoidFilament={id:string;nodes:string[];roots:[string,string]};
 export type VoidNode=ThreeObject&{filamentId:string;rootId:string;parentId?:string};
-export type VoidGraph={version:typeof VOID_ALGORITHM_VERSION;cavities:VoidCavity[];filaments:VoidFilament[];junctionBranches:{rootId:string;relayId:string}[];edges:NetworkEdge[]};
+export type VoidGraph={version:VoidVersion;cavities:VoidCavity[];filaments:VoidFilament[];junctionBranches:{rootId:string;relayId:string}[];edges:(NetworkEdge&{width?:number})[];
+  web?:{backboneIds:string[];junctions:number;cycles:number;chambers:number}};
 export type VoidComposition=Omit<ThreeComposition,'objects'>&{objects:VoidNode[];voidGraph:VoidGraph};
 export const isVoidComposition=(scene:ThreeComposition):scene is VoidComposition=>'voidGraph' in scene;
 const add=(a:V,b:V):V=>a.map((n,i)=>n+b[i]) as V;
