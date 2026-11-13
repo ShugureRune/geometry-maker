@@ -34,7 +34,7 @@ test('native 2D SVG composites as a depth-aware textured plane with editable 3D 
   await page.getByLabel('3D描画品質').selectOption('low');
   const preview=page.getByTestId('three-preview');
   await expect(preview).toHaveAttribute('data-hybrid-2d','off');
-  await expect(planeState(page)).resolves.toBeNull();
+  expect(await planeState(page)).toBeNull();
   const original=await preview.locator('canvas').screenshot();
   await page.getByLabel('3D空間に2D図形を合成').check();
   await expect(preview).toHaveAttribute('data-hybrid-2d','on');
