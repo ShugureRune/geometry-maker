@@ -34,10 +34,12 @@ import {voidRenderSettings} from './void-settings';
 import {VoidObjects} from './VoidObjects';
 import {isVoidWeb,visibleVoidObjects,voidWireSteps,matchVoidObjects} from './void-web-runtime';
 import {VoidDepth} from './VoidDepth';
+import {Hybrid2DPlane,type Hybrid2DArtwork} from './Hybrid2DPlane';
 
 type Props = {
   composition: ThreeComposition; sourceComposition: ThreeComposition; skySeed: string; density: number; background: Background; visualTheme: VisualTheme;
   settings: ThreeSettings; restartKey: string; view: RefObject<ThreeView | undefined>;
+  hybridArtwork?:Hybrid2DArtwork;
   api: Ref<ThreePreviewHandle>; onReady: (ready: boolean) => void;
   initialTime?:number;
   initialFloorTime?:number;
@@ -699,6 +701,7 @@ export default function ThreePreview(input: Props) {
     data-void-mode={web?'web':voidMode?'prototype':'off'} data-void-filaments={isVoidComposition(props.composition)?props.composition.voidGraph.filaments.length:0}
     data-void-knots={web?objects.filter(o=>o.role==='primary').length:undefined} data-void-candidates={web?props.composition.objects.length:undefined}
     data-network-count={edges.length} data-network-mode={network.mode}
+    data-hybrid-2d={props.settings.hybrid2D?.enabled?'on':'off'}
     data-neural-signals={network.enabled&&network.mode==='neural'&&network.animation==='signal'?'on':'off'}
     data-neural-signal-stage={props.transition?'rewiring':props.skipEntrance?'resumed':'normal'}
     data-neon-mode={neon.enabled?neon.display:'off'}
@@ -737,6 +740,8 @@ export default function ThreePreview(input: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={floorSeconds} view={props.view} low={low}/>
+      {props.settings.hybrid2D?.enabled&&props.hybridArtwork&&
+        <Hybrid2DPlane artwork={props.hybridArtwork} options={props.settings.hybrid2D} seconds={seconds} low={low}/>}
       {voidMode?<VoidObjects web={web} objects={objects} previous={previousObjects} matches={matches} settings={props.settings} background={props.background}
         visualTheme={props.visualTheme} low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance} transition={props.transition}/>:
       props.transition ? props.transition.mode==='morph'?
