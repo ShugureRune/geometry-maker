@@ -26,7 +26,7 @@ import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {neuralStartupFlash,NEURAL_SIGNAL_LAUNCH_DELAY} from './neural-signals';
-import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,standbyNetworkCompletionFlash,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
 import {isVoidComposition,voidEdges} from './void-graph';
@@ -188,7 +188,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost, completionAt}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void; completionAt?:RefObject<number|null>}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const cameraInteractionUntil=useRef(0);
@@ -346,6 +346,12 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       progressHost.current.dataset.standbyWirePhase=
         transition?.mode==='morph'&&(settings.network??networkDefaults).enabled
           ?standbyMorphPhase(seconds.current,transition.duration):'off';
+      const standbySettings=settings.standby??standbyDefaults;
+      progressHost.current.dataset.standbyCompletionFlash=(
+        !transition&&standbySettings.reconnectGlow&&(settings.network??networkDefaults).enabled
+          ?standbyNetworkCompletionFlash(seconds.current,completionAt?.current??null)*
+            standbySettings.reconnectIntensity/100:0
+      ).toFixed(4);
       const grid=settings.floorGrid??floorGridDefaults;
       progressHost.current.dataset.floorTime=floorSeconds.current.toFixed(6);
       progressHost.current.dataset.floorOffset=floorGridOffset(floorSeconds.current,grid).toFixed(6);
@@ -498,6 +504,9 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       if(exportingVideo.current)throw new Error('3D動画はすでに書き出し中です。');
       beforeVideoTime.current=seconds.current;
       beforeVideoFloorTime.current=floorSeconds.current;
+      // Export restarts the scene clock at 0 without any standby transition:
+      // don't replay a previously completed network ignition in the file.
+      if(completionAt)completionAt.current=null;
       exportingVideo.current=true;
       skipDelta.current=true;
     },
@@ -614,6 +623,19 @@ export default function ThreePreview(input: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice||(web&&softwareDevice)) === 'low';
   const seconds = useRef(props.initialTime??0);
+  // Keep the final network ignition alive AFTER the transition layers unmount.
+  // Both the normal 3D and cosmic web NetworkLines read this same timestamp.
+  const completionAt=useRef<number|null>(null);
+  const lastCompletionRestart=useRef(props.restartKey);
+  const lastCompletionTransition=useRef<number|null>(null);
+  if(lastCompletionRestart.current!==props.restartKey){
+    completionAt.current=null;
+    lastCompletionRestart.current=props.restartKey;
+  }
+  if(props.transition&&lastCompletionTransition.current!==props.transition.id){
+    completionAt.current=null;
+    lastCompletionTransition.current=props.transition.id;
+  }
   // A seed switch resets the scene clock to zero. Keep the same next-wave
   // start time across the transition boundary so its electrical pulse never
   // teleports/restarts when the old scene layer finally unmounts.
@@ -751,7 +773,7 @@ export default function ThreePreview(input: Props) {
         routes={routes} widths={widths} startAtZero={web}
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
-        skipEntrance={props.skipEntrance}/>}
+        completionAt={completionAt} skipEntrance={props.skipEntrance}/>}
       {props.transition&&edges.length>0&&network.enabled&&
         (props.settings.standby??standbyDefaults).reconnectGlow&&
         <StandbyReconnectionSparks objects={objects} edges={edges} routes={routes}
@@ -763,7 +785,13 @@ export default function ThreePreview(input: Props) {
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}
-      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds}
+        completionAt={completionAt} onLost={onLost} onTransitionComplete={id=>{
+          // Capture the exact completed frame BEFORE App removes its transition.
+          // A post-transition scene can now flash *all* newly attached wires.
+          if(props.transition?.id===id)completionAt.current=seconds.current;
+          props.onTransitionComplete?.(id);
+        }}/>
     </Canvas>
 
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>
