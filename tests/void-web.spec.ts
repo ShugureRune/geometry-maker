@@ -110,7 +110,11 @@ test('mobile lightweight web grows, preserves paused frames and completes standb
 test('the web exports WebM and MP4 using exact animation frames and restores preview',async({page})=>{
   const errors=errorsOn(page),project=fixture();project.settings.quality='low';project.settings.voidMode!.objectLimit=600;
   project.settings.entrance={...project.settings.entrance!,enabled:true,mode:'neural-grow',duration:2};project.elapsedSeconds=0;project.exportWidth=256;project.exportHeight=256;await open(page,project);
-  const background=(await png(page)).toString('base64');project.elapsedSeconds=12;await restore(page,project);
+  // The live standby completion flag normally bypasses entrance entirely.
+  // A video must still replay the animation from t=0, even when paused.
+  const background=(await png(page)).toString('base64');
+  project.standbyComplete=true;
+  project.elapsedSeconds=12;await restore(page,project);
   const before=hash(await png(page));await category(page,'書き出し');await page.locator('.three-video-panel > summary').click();
   await page.locator('#three-video-width').fill('256');await page.locator('#three-video-height').fill('256');await page.locator('#three-video-duration').fill('3');await page.locator('#three-video-fps').selectOption('24');
   const endFrames:number[][]=[];
