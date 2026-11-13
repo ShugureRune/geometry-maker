@@ -149,13 +149,16 @@ test('mobile touch rotates in place, two fingers pan, and pinch moves the camera
   try{
     await start(page);
     const canvas=page.getByTestId('three-preview').locator('canvas');
-    await canvas.scrollIntoViewIfNeeded();
-    const bounds=(await canvas.boundingBox())!;
-    const x=bounds.x+bounds.width*.5,y=bounds.y+bounds.height*.5;
+    const gestureCenter=async()=>{
+      await canvas.scrollIntoViewIfNeeded();
+      const bounds=(await canvas.boundingBox())!;
+      return {x:bounds.x+bounds.width*.5,y:bounds.y+bounds.height*.5};
+    };
     const cdp=await context.newCDPSession(page);
     const fire=async(type:'touchStart'|'touchMove'|'touchEnd',points:{id:number;x:number;y:number}[])=>
       cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
     const before=await savedView(page);
+    const {x,y}=await gestureCenter();
     await fire('touchStart',[{id:1,x,y}]);
     await fire('touchMove',[{id:1,x:x+70,y:y+30}]);
     await fire('touchEnd',[]);
@@ -165,15 +168,17 @@ test('mobile touch rotates in place, two fingers pan, and pinch moves the camera
     const facing=(v:{position:number[];target:number[]})=>
       v.target.map((n,i)=>n-v.position[i]);
 
-    await fire('touchStart',[{id:2,x:x-25,y},{id:3,x:x+25,y}]);
-    await fire('touchMove',[{id:2,x:x+45,y},{id:3,x:x+95,y}]);
+    const panCenter=await gestureCenter(),px=panCenter.x,py=panCenter.y;
+    await fire('touchStart',[{id:2,x:px-25,y:py},{id:3,x:px+25,y:py}]);
+    await fire('touchMove',[{id:2,x:px+45,y:py},{id:3,x:px+95,y:py}]);
     await fire('touchEnd',[]);
     const panned=await savedView(page);
     expect(gap(looked.position,panned.position)).toBeGreaterThan(.2);
     expect(gap(facing(looked),facing(panned))).toBeLessThan(.01);
 
-    await fire('touchStart',[{id:4,x:x-30,y},{id:5,x:x+30,y}]);
-    await fire('touchMove',[{id:4,x:x-70,y},{id:5,x:x+70,y}]);
+    const pinchCenter=await gestureCenter(),zx=pinchCenter.x,zy=pinchCenter.y;
+    await fire('touchStart',[{id:4,x:zx-30,y:zy},{id:5,x:zx+30,y:zy}]);
+    await fire('touchMove',[{id:4,x:zx-70,y:zy},{id:5,x:zx+70,y:zy}]);
     await fire('touchEnd',[]);
     const zoomed=await savedView(page);
     expect(gap(panned.position,zoomed.position)).toBeGreaterThan(.5);
