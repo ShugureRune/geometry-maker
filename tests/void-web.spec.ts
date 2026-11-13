@@ -48,6 +48,14 @@ test('a new VOID session defaults to a large web and explicitly retains the old 
   await expect(page.getByTestId('three-preview')).toHaveAttribute('data-void-mode','web');
   await expect(page.locator('#void-version')).toHaveValue('void-web-v2');
   expect(Number(await page.getByTestId('three-preview').getAttribute('data-object-count'))).toBeGreaterThan(600);
+  await category(page,'図形');const spacing=page.locator('#three-spacing');
+  await expect(spacing).toHaveValue('100');
+  const start=await inspect(page),key=Object.keys(start.matrices).find(id=>Math.abs(start.matrices[id][12])>.01)!;
+  await spacing.fill('150');await expect(spacing).toHaveValue('150');
+  await expect.poll(async()=>(await inspect(page)).matrices[key]?.[12]).not.toBe(start.matrices[key][12]);
+  await spacing.fill('100');
+  await expect.poll(async()=>(await inspect(page)).matrices[key]?.[12]).toBe(start.matrices[key][12]);
+  await category(page,'背景');
   await page.locator('#void-version').selectOption('void-filaments-v1');await expect(page.getByTestId('three-preview')).toHaveAttribute('data-void-mode','prototype');
   expect(Number(await page.getByTestId('three-preview').getAttribute('data-object-count'))).toBeLessThanOrEqual(35);
   await page.getByLabel('VOID MODEを有効化').uncheck();expect(hash(await png(page))).toBe(original);
