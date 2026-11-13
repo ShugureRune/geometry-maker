@@ -91,7 +91,8 @@ export const STANDBY_COMPLETION_FLASH_DURATION=.62;
 export function standbyCompletionFlash(seconds:number,finishedAt?:number):number{
   if(finishedAt===undefined||!Number.isFinite(seconds)||!Number.isFinite(finishedAt))return 0;
   const age=seconds-finishedAt;
-  if(age<0||age>=STANDBY_COMPLETION_FLASH_DURATION)return 0;
+  // Account for floating-point rounding at the exact end of the pulse.
+  if(age<0||age>=STANDBY_COMPLETION_FLASH_DURATION-1e-9)return 0;
   return Math.pow(1-age/STANDBY_COMPLETION_FLASH_DURATION,2);
 }
 
