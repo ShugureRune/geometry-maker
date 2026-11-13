@@ -12,6 +12,8 @@ export type ThreeStandbySettings={
   mode:StandbyTransitionMode;
   preserveCamera:boolean;
   pauseOnInteraction:boolean;
+  /** Brief HDR highlight when standby wires reconnect (both classic and VOID). */
+  reconnectGlow:boolean;
   /** Orbit around the current focal point only while standby playback runs. */
   cameraAutoRotate:boolean;
   cameraRotateSpeed:number;
@@ -22,7 +24,7 @@ export type ThreeStandbySettings={
 };
 export const standbyDefaults:ThreeStandbySettings={
   enabled:false,intervalSeconds:15,transitionSeconds:4,mode:'morph',
-  preserveCamera:true,pauseOnInteraction:true,
+  preserveCamera:true,pauseOnInteraction:true,reconnectGlow:true,
   cameraAutoRotate:false,cameraRotateSpeed:1,
   cameraOrbitMode:'horizontal',cameraOrbitTilt:10,
 };
@@ -32,7 +34,7 @@ export function validateThreeStandby(value:unknown):ThreeStandbySettings{
   const d={...standbyDefaults,...v};
   if(Object.keys(v).some(k=>!Object.hasOwn(standbyDefaults,k))||
     typeof d.enabled!=='boolean'||typeof d.preserveCamera!=='boolean'||
-    typeof d.pauseOnInteraction!=='boolean'||typeof d.cameraAutoRotate!=='boolean'||
+    typeof d.pauseOnInteraction!=='boolean'||typeof d.reconnectGlow!=='boolean'||typeof d.cameraAutoRotate!=='boolean'||
     typeof d.cameraRotateSpeed!=='number'||!Number.isFinite(d.cameraRotateSpeed)||
     d.cameraRotateSpeed<.25||d.cameraRotateSpeed>3||
     (d.cameraOrbitMode!=='horizontal'&&d.cameraOrbitMode!=='inclined')||
@@ -46,6 +48,16 @@ export function validateThreeStandby(value:unknown):ThreeStandbySettings{
   return d as ThreeStandbySettings;
 }
 /** Old composition is captured before the seed changes, not regenerated from an overwritten seed. */
+/** Smooth, short HDR flare while a reconnecting wire approaches its far node.
+ * At progress 0 / 1 the old wire brightness is restored exactly. */
+export function standbyReconnectionFlash(progress:number):number{
+  if(!Number.isFinite(progress))return 0;
+  const p=Math.max(0,Math.min(1,progress));
+  const rise=easeInOut((p-.55)/.30);
+  const fall=easeInOut((1-p)/.13);
+  return rise*fall;
+}
+
 export type ThreeStandbyTransition={
   id:number;
   mode:StandbyTransitionMode;
