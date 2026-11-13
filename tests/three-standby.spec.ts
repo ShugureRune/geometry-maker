@@ -113,6 +113,44 @@ test('standby reconnect emission is visible with glow ON and disappears with OFF
   expect(on.equals(off)).toBe(false);
 });
 
+test('all normal 3D wires ignite together AFTER standby completion, at adjustable intensity',async({page})=>{
+  await start(page);
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  const preview=page.getByTestId('three-preview'),canvas=preview.locator('canvas');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
+  await category(page,'アニメーション');
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('4');
+  await page.getByRole('checkbox',{name:'操作している間は止める'}).uncheck();
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  // Freeze on the first frame after the old layer disappears, when the
+  // synchronized flash has just begun. An ordinary Playwright click often
+  // misses a sub-second pulse.
+  await page.waitForFunction(()=>{
+    const preview=document.querySelector('[data-testid="three-preview"]') as HTMLElement|null;
+    if(preview?.dataset.standbyActive!=='false'||
+      Number(preview.dataset.standbyGlobalFlash??0)<.16)return false;
+    const button=Array.from(document.querySelectorAll('button')).find(el=>el.textContent?.trim()==='3Dを一時停止');
+    if(!button)return false;
+    button.click();
+    return true;
+  },undefined,{polling:16,timeout:20_000});
+  await expect(page.getByRole('button',{name:'3Dを再生',exact:true})).toBeVisible();
+  const flash=async()=>Number(await preview.getAttribute('data-standby-global-flash'));
+  await expect.poll(flash,{timeout:2000}).toBeGreaterThan(.02);
+  const bright=await canvas.screenshot();
+  const intensity=page.locator('#three-standby-reconnect-intensity');
+  await intensity.fill('0');
+  await expect.poll(flash).toBe(0);
+  const dark=await canvas.screenshot();
+  expect(bright.equals(dark)).toBe(false);
+  await intensity.fill('25');
+  await expect.poll(flash).toBeGreaterThan(.02);
+  await page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'}).uncheck();
+  await expect.poll(flash).toBe(0);
+});
+
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
   await page.locator('#three-standby-mode').selectOption('exit-enter');
