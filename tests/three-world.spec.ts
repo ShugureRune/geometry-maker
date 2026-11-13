@@ -106,7 +106,16 @@ async function savedView(page:Page):Promise<{position:number[];target:number[]}>
   const download=page.waitForEvent('download');
   await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
   const data=JSON.parse(await readFile((await(await download).path())!,'utf8'));
-  return data.view;
+  if(data.view)return data.view;
+  // An untouched camera has no saved view yet; inspect its actual initial pose.
+  return page.evaluate(async()=>{
+    const url=performance.getEntriesByType('resource').find(entry=>entry.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    const camera=(_roots.get(canvas) as any).store.getState().camera;
+    const forward=camera.getWorldDirection(camera.position.clone());
+    return {position:camera.position.toArray(),target:camera.position.clone().addScaledVector(forward,12).toArray()};
+  });
 }
 const gap=(a:number[],b:number[])=>Math.hypot(...a.map((value,i)=>value-b[i]));
 
