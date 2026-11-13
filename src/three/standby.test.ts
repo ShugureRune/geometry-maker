@@ -10,7 +10,10 @@ describe('standby reconnect flare',()=>{
       const finish=duration*(MORPH_WIRE_ATTACH_START+(1-MORPH_WIRE_ATTACH_START)*route.end);
       expect(standbyReconnectionGlowAt(finish,duration,'morph',route)).toBeCloseTo(1);
       expect(standbyReconnectionGlowAt(finish-.18,duration,'morph',route)).toBeGreaterThan(0);
-      expect(standbyReconnectionGlowAt(finish+.13,duration,'morph',route)).toBeGreaterThan(0);
+      // The transition ends at duration, so a post-connection flare is only
+      // observable while the transition is still active.
+      if(finish+.13<duration)
+        expect(standbyReconnectionGlowAt(finish+.13,duration,'morph',route)).toBeGreaterThan(0);
       expect(standbyReconnectionGlowAt(duration*.3,duration,'morph',route)).toBe(0);
       expect(standbyReconnectionGlowAt(0,duration,'morph',route)).toBe(0);
       expect(standbyReconnectionGlowAt(duration,duration,'morph',route)).toBe(0);
