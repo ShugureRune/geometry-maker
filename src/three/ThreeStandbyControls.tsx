@@ -54,7 +54,7 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
       </label>
       <div className="studio-setting-label studio-setting-heading">
         <h3>カメラの自動回転</h3>
-        <HelpInfo>待機中にカメラが現在の視点から図形の周りをゆっくり回ります。ONにしても急に視点は移動しません。手動で回転・ズームすると一時停止し、その位置から再開します。3Dの一時停止中・自由に歩くモード・動画の書き出し中は回転しません。「斜め周回」では衛星の公転面のように水平から10°傾いた軌道を選べます。傾きは5〜30°で変更でき、切り替えても現在の視点から滑らかにつながります。</HelpInfo>
+        <HelpInfo>待機中にカメラが現在の視点から図形の周りをゆっくり回ります。ONにしても急に視点は移動しません。手動で回転・ズームすると一時停止し、その位置から再開します。3Dの一時停止中・動画の書き出し中は回転しません。「斜め周回」では衛星の公転面のように水平から10°傾いた軌道を選べます。傾きは5〜30°で変更でき、切り替えても現在の視点から滑らかにつながります。</HelpInfo>
       </div>
       <label className="three-checkbox">
         <input type="checkbox" aria-label="待機中にカメラを自動回転"
