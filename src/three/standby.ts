@@ -78,6 +78,20 @@ export function standbyReconnectionGlowAt(
   return difference<0?easeInOut(1+difference/before):easeInOut(1-difference/after);
 }
 
+/** The completion pulse starts only after every standby wire has attached.
+ * Keeping it on the post-transition scene clock makes the entire fully
+ * connected network flash together, even after old transition layers vanish.
+ * Pure and seekable: pausing freezes the exact glow frame.
+ */
+export function standbyNetworkCompletionFlash(seconds:number,completedAt:number|null):number{
+  if(completedAt===null||!Number.isFinite(completedAt)||!Number.isFinite(seconds))return 0;
+  const t=seconds-completedAt;
+  if(t<0||t>=.7)return 0;
+  const primary=Math.pow(Math.max(0,1-t/.52),2);
+  const echo=Math.max(0,1-Math.abs(t-.26)/.13)*.16;
+  return Math.min(1,primary+echo);
+}
+
 export type ThreeStandbyTransition={
   id:number;
   mode:StandbyTransitionMode;
