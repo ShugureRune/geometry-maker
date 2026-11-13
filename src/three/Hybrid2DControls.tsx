@@ -20,7 +20,25 @@ export function Hybrid2DControls({settings,onChange,sourceLabel}:{
       2D図形を3D空間に合成する
     </label>
     {current.enabled&&<>
-      <p className="help">合成元：{sourceLabel}。2Dモードで図形の種類や魔法陣を変更すると、3Dにも反映されます。文字と2D背景は合成しません。</p>
+      <p className="help">合成元：{sourceLabel}。現在の2D作品と別シードの2D作品を3D空間へ召喚します。文字と2D背景は合成しません。</p>
+      <fieldset className="three-kind-fieldset" data-testid="hybrid-2d-summon-controls">
+        <legend>別シードの2Dを大量召喚</legend>
+        <ThreeRange id="hybrid-2d-count" label="召喚する2Dの枚数" value={current.count}
+          min={1} max={32} step={1} unit="枚" onChange={count=>update({count})}/>
+        {current.count>1&&<>
+          <label htmlFor="hybrid-2d-layout">召喚した図形の並び方</label>
+          <select id="hybrid-2d-layout" value={current.layout}
+            onChange={e=>update({layout:e.target.value as Hybrid2DSettings['layout']})}>
+            <option value="cloud">空間に散らす（立体配置）</option>
+            <option value="spiral">渦巻き状に配置</option>
+            <option value="grid">格子状に並べる</option>
+          </select>
+          <ThreeRange id="hybrid-2d-spread" label="召喚範囲" value={current.spread}
+            min={1} max={20} step={.5} onChange={spread=>update({spread})}/>
+          <button type="button" onClick={()=>update({variation:(current.variation+1)%1000000})}>別シードを再抽選</button>
+          <p className="help" data-testid="hybrid-2d-variation">再抽選番号：{current.variation}。最初の1枚は元のシードで、残りはすべて別々のシードです。スマホ・軽量描画では負荷対策で最大12枚を表示します。</p>
+        </>}
+      </fieldset>
       <ThreeRange id="hybrid-2d-x" label="左右（X）" value={current.x}
         min={-8} max={8} step={.25} onChange={x=>update({x})}/>
       <ThreeRange id="hybrid-2d-y" label="上下（Y）" value={current.y}
