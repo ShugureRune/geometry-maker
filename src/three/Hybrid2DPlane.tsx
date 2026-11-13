@@ -13,7 +13,7 @@ export function Hybrid2DPlane({artwork,options,seconds,low}:{
   artwork:Hybrid2DArtwork;options:Hybrid2DSettings;seconds:RefObject<number>;low:boolean;
 }){
   const {invalidate}=useThree();
-  const [loaded,setLoaded]=useState<{svg:string;texture:CanvasTexture}|null>(null);
+  const [loaded,setLoaded]=useState<{svg:string;low:boolean;texture:CanvasTexture}|null>(null);
   const mesh=useRef<Mesh>(null);
   useEffect(()=>{
     let cancelled=false;
@@ -38,7 +38,7 @@ export function Hybrid2DPlane({artwork,options,seconds,low}:{
       result=new CanvasTexture(canvas);
       result.colorSpace=SRGBColorSpace;
       result.anisotropy=low?1:4;
-      setLoaded({svg:artwork.svg,texture:result});
+      setLoaded({svg:artwork.svg,low,texture:result});
       invalidate();
     };
     image.onerror=()=>{if(!cancelled)setLoaded(null);};
@@ -60,7 +60,8 @@ export function Hybrid2DPlane({artwork,options,seconds,low}:{
       mesh.current.rotation.set(rad(options.rotationX),rad(options.rotationY),z);
     }
   });
-  const texture=loaded?.svg===artwork.svg?loaded.texture:null;
+  // Never render a disposed high/low-quality texture while its replacement loads.
+  const texture=loaded?.svg===artwork.svg&&loaded.low===low?loaded.texture:null;
   if(!texture)return null;
   const aspect=artwork.width/artwork.height;
   return <mesh ref={mesh} name="hybrid-2d-plane"
