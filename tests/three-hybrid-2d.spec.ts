@@ -94,3 +94,88 @@ test('hybrid scene exports and restores its native 2D source and transform',asyn
   await category(page,'図形');
   await expect(page.getByLabel('生成アルゴリズム')).toHaveValue('2d-v4');
 });
+
+async function summonedPlanes(page:Page){
+  return page.evaluate(async()=>{
+    const entry=performance.getEntriesByType('resource')
+      .find(e=>e.name.includes('@react-three_fiber.js'));
+    if(!entry)return [];
+    const {_roots}=await import(/* @vite-ignore */entry.name);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    if(!canvas)return [];
+    const scene=(_roots.get(canvas) as any)?.store.getState().scene;
+    const all:any[]=[];
+    scene?.traverse((node:any)=>{
+      if(node.name?.startsWith('hybrid-2d-plane'))
+        all.push({seed:node.userData.hybridSeed,index:node.userData.hybridIndex,
+          position:node.position.toArray(),textureWidth:node.material.map?.image?.width??0,
+          textureId:node.material.map?.uuid??null});
+    });
+    return all.sort((a,b)=>a.index-b.index);
+  });
+}
+
+test('summons multiple distinct native 2D seeds, rearranges without rerendering, and rerolls',async({page})=>{
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('./');
+  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
+  await category(page,'図形');
+  await page.getByLabel('3D描画品質').selectOption('low');
+  await page.getByLabel('3D空間に2D図形を合成').check();
+  await page.locator('#hybrid-2d-count').fill('8');
+  const preview=page.getByTestId('three-preview');
+  await expect(preview).toHaveAttribute('data-hybrid-2d-count','8');
+  await expect.poll(async()=> (await summonedPlanes(page)).filter(x=>x.textureWidth>0).length,
+    {timeout:20000,intervals:[100,250,400]}).toBe(8);
+  const initial=await summonedPlanes(page);
+  expect(initial).toHaveLength(8);
+  expect(new Set(initial.map(x=>x.seed)).size).toBe(8);
+  expect(new Set(initial.map(x=>x.position.join(','))).size).toBe(8);
+  expect(initial.every(x=>x.textureWidth<=192)).toBe(true);
+  await page.locator('#hybrid-2d-layout').selectOption('grid');
+  await expect.poll(async()=> (await summonedPlanes(page))[1]?.position.join(','))
+    .not.toBe(initial[1].position.join(','));
+  const grid=await summonedPlanes(page);
+  expect(grid.map(x=>x.seed)).toEqual(initial.map(x=>x.seed));
+  expect(grid.map(x=>x.textureId)).toEqual(initial.map(x=>x.textureId));
+  await page.getByRole('button',{name:'別シードを再抽選'}).click();
+  await expect(page.getByTestId('hybrid-2d-variation')).toContainText('再抽選番号：1');
+  await expect.poll(async()=> (await summonedPlanes(page)).filter(x=>x.textureWidth>0).length,
+    {timeout:20000,intervals:[100,250,400]}).toBe(8);
+  const rerolled=await summonedPlanes(page);
+  expect(rerolled[0].seed).toBe(initial[0].seed);
+  expect(rerolled.slice(1).map(x=>x.seed)).not.toEqual(initial.slice(1).map(x=>x.seed));
+  expect(errors).toEqual([]);
+});
+
+test('large summon counts are capped on low quality and preserved in settings JSON',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('./');
+  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
+  await category(page,'図形');
+  await page.getByLabel('3D描画品質').selectOption('low');
+  await page.getByLabel('3D空間に2D図形を合成').check();
+  await page.locator('#hybrid-2d-count').fill('32');
+  await page.locator('#hybrid-2d-layout').selectOption('spiral');
+  await page.locator('#hybrid-2d-spread').fill('15');
+  await expect(page.getByTestId('three-preview')).toHaveAttribute('data-hybrid-2d-count','12');
+  await expect.poll(async()=>(await summonedPlanes(page)).length,{timeout:25000}).toBe(12);
+  await category(page,'書き出し');
+  const waiting=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const data=JSON.parse((await readFile((await (await waiting).path())!)).toString('utf8'));
+  expect(data.settings.hybrid2D).toMatchObject({enabled:true,count:32,layout:'spiral',spread:15});
+  await category(page,'図形');
+  await page.locator('#hybrid-2d-count').fill('1');
+  await expect(page.getByTestId('three-preview')).toHaveAttribute('data-hybrid-2d-count','1');
+  await category(page,'書き出し');
+  await page.getByLabel('保存した3D設定ファイル').setInputFiles({
+    name:'summons.json',mimeType:'application/json',
+    buffer:Buffer.from(JSON.stringify(data)),
+  });
+  await category(page,'図形');
+  await expect(page.locator('#hybrid-2d-count')).toHaveValue('32');
+  await expect(page.locator('#hybrid-2d-layout')).toHaveValue('spiral');
+  await expect(page.getByTestId('three-preview')).toHaveAttribute('data-hybrid-2d-count','12');
+});
