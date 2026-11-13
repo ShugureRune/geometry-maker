@@ -14,6 +14,8 @@ export type ThreeStandbySettings={
   pauseOnInteraction:boolean;
   /** Brief HDR highlight when standby wires reconnect (both classic and VOID). */
   reconnectGlow:boolean;
+  /** Soft reconnection flare strength; separate from entrance glow. */
+  reconnectIntensity:number;
   /** Orbit around the current focal point only while standby playback runs. */
   cameraAutoRotate:boolean;
   cameraRotateSpeed:number;
@@ -24,7 +26,7 @@ export type ThreeStandbySettings={
 };
 export const standbyDefaults:ThreeStandbySettings={
   enabled:false,intervalSeconds:15,transitionSeconds:4,mode:'morph',
-  preserveCamera:true,pauseOnInteraction:true,reconnectGlow:true,
+  preserveCamera:true,pauseOnInteraction:true,reconnectGlow:true,reconnectIntensity:25,
   cameraAutoRotate:false,cameraRotateSpeed:1,
   cameraOrbitMode:'horizontal',cameraOrbitTilt:10,
 };
@@ -34,7 +36,9 @@ export function validateThreeStandby(value:unknown):ThreeStandbySettings{
   const d={...standbyDefaults,...v};
   if(Object.keys(v).some(k=>!Object.hasOwn(standbyDefaults,k))||
     typeof d.enabled!=='boolean'||typeof d.preserveCamera!=='boolean'||
-    typeof d.pauseOnInteraction!=='boolean'||typeof d.reconnectGlow!=='boolean'||typeof d.cameraAutoRotate!=='boolean'||
+    typeof d.pauseOnInteraction!=='boolean'||typeof d.reconnectGlow!=='boolean'||
+    typeof d.reconnectIntensity!=='number'||!Number.isInteger(d.reconnectIntensity)||
+    d.reconnectIntensity<0||d.reconnectIntensity>100||typeof d.cameraAutoRotate!=='boolean'||
     typeof d.cameraRotateSpeed!=='number'||!Number.isFinite(d.cameraRotateSpeed)||
     d.cameraRotateSpeed<.25||d.cameraRotateSpeed>3||
     (d.cameraOrbitMode!=='horizontal'&&d.cameraOrbitMode!=='inclined')||
