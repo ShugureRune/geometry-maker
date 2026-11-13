@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {hybrid2DDefaults,validateHybrid2D,validateHybrid2DSource} from './hybrid-2d';
+import {hybrid2DDefaults,hybrid2DInstances,hybrid2DSeed,validateHybrid2D,validateHybrid2DSource} from './hybrid-2d';
 import {threeDefaults,validateThreeSettings} from './settings';
 import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 import {MAGIC_ALGORITHM_VERSION,magicDefaults} from '../magic-circle';
@@ -55,4 +55,39 @@ describe('hybrid 2D composition in 3D',()=>{
       [],
     ])expect(()=>validateHybrid2DSource(bad)).toThrow();
   });
+  it('summons 32 uniquely seeded 2D scenes with deterministic spatial layouts',()=>{
+    const source='base-seed-123';
+    for(const layout of ['cloud','spiral','grid'] as const){
+      const options={...hybrid2DDefaults,enabled:true,count:32,spread:12,layout,variation:3};
+      const one=hybrid2DInstances(source,options);
+      const twice=hybrid2DInstances(source,options);
+      expect(one).toEqual(twice);
+      expect(one).toHaveLength(32);
+      expect(one[0].seed).toBe(source);
+      expect(new Set(one.map(x=>x.seed)).size).toBe(32);
+      expect(new Set(one.map(x=>x.offset.join(','))).size).toBe(32);
+      expect(one.every(x=>[...x.offset,...x.rotation,x.scale].every(Number.isFinite))).toBe(true);
+      expect(one.every(x=>x.offset.every(v=>Math.abs(v)<=options.spread))).toBe(true);
+      expect(one.every(x=>x.scale>0&&x.scale<1)).toBe(true);
+      const other=hybrid2DInstances(source,{...options,variation:4});
+      expect(other[0].seed).toBe(source);
+      expect(other.slice(1).map(x=>x.seed)).not.toEqual(one.slice(1).map(x=>x.seed));
+      const moved=hybrid2DInstances(source,{...options,spread:5});
+      expect(moved.map(x=>x.seed)).toEqual(one.map(x=>x.seed));
+    }
+    expect(hybrid2DSeed(source,2,1)).not.toBe(hybrid2DSeed(source,2,2));
+  });
+  it('retains legacy single-plane placement and safely validates high summon counts',()=>{
+    const single=hybrid2DInstances('old-scene',hybrid2DDefaults);
+    expect(single).toEqual([{seed:'old-scene',offset:[0,0,0],rotation:[0,0,0],scale:1}]);
+    const legacy={enabled:true,x:1,y:2,z:-2,size:7,rotationX:0,rotationY:0,
+      rotationZ:0,opacity:1,billboard:false,spinSpeed:0};
+    expect(validateHybrid2D(legacy)).toEqual({...hybrid2DDefaults,...legacy});
+    expect(validateHybrid2D({...hybrid2DDefaults,count:32,layout:'spiral',spread:20,variation:999999}).count).toBe(32);
+    for(const value of [
+      {count:0},{count:33},{count:3.5},{spread:0},{spread:21},
+      {layout:'tower'},{variation:-1},{variation:1000000},{variation:1.5},
+    ])expect(()=>validateHybrid2D({...hybrid2DDefaults,...value})).toThrow();
+  });
+
 });
