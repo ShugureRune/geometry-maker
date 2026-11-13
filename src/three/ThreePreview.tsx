@@ -26,7 +26,7 @@ import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {neuralStartupFlash,NEURAL_SIGNAL_LAUNCH_DELAY} from './neural-signals';
-import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,standbyCompletionFlash,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
 import {isVoidComposition,voidEdges} from './void-graph';
@@ -62,9 +62,9 @@ function drawBackground(context: CanvasRenderingContext2D, width: number, height
   context.fillRect(0, 0, width, height);
 }
 
-function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed, standby, skipEntrance=false}: {
+function Solid({object, settings, background, visualTheme, low, seconds, outlines, seed, standby, skipEntrance=false,completionFlashAt}: {
   object: ThreeObject; settings: ThreeSettings; background: Background; visualTheme: VisualTheme; low: boolean; seconds: Clock; outlines:OutlineGeometries; seed:string;
-  standby?:StandbySolid;skipEntrance?:boolean;
+  standby?:StandbySolid;skipEntrance?:boolean;completionFlashAt?:number;
 }) {
   const mesh = useRef<Mesh>(null);
   const fromColor=useMemo(()=>{
@@ -110,7 +110,10 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
       const ignition=circuit.enabled&&circuit.mode==='neural'&&!standby&&
         !skipEntrance&&entrance.enabled
         ?neuralStartupFlash(seconds.current,entrance.duration):0;
-      surfaceRef.current.emissiveIntensity=emissive*(material==='glass'?.45:1)+ignition*1.35;
+      const standbySettings=settings.standby??standbyDefaults;
+      const completion=standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+        ?standbyCompletionFlash(seconds.current,completionFlashAt)*standbySettings.reconnectIntensity/100:0;
+      surfaceRef.current.emissiveIntensity=emissive*(material==='glass'?.45:1)+ignition*1.35+completion*1.1;
     }
     if(standby){
       const {transition,variant}=standby;
@@ -184,11 +187,11 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
         polygonOffset={neon.enabled} polygonOffsetFactor={1} polygonOffsetUnits={1}
         metalness={material === 'matte' ? 0 : settings.metalness} wireframe={material === 'wireframe'&&!translucent}
         flatShading={!['sphere','torus','capsule','torus-knot'].includes(kind)} emissive={color} emissiveIntensity={emissive}/>}
-    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} morphOpacity={standby?morphLineAlpha:undefined} skipEntrance={skipEntrance}/>}
+    {neon.enabled&&outlines&&<NeonOutline geometry={outlines.get(object.kind)!} object={object} settings={settings} background={background} low={low} seconds={seconds} morphOpacity={standby?morphLineAlpha:undefined} skipEntrance={skipEntrance} completionFlashAt={completionFlashAt}/>}
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost,completionFlashAt}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void;completionFlashAt?:number}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const cameraInteractionUntil=useRef(0);
@@ -346,6 +349,11 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       progressHost.current.dataset.standbyWirePhase=
         transition?.mode==='morph'&&(settings.network??networkDefaults).enabled
           ?standbyMorphPhase(seconds.current,transition.duration):'off';
+      const standbySettings=settings.standby??standbyDefaults;
+      progressHost.current.dataset.standbyCompletionFlash=(
+        standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+          ?standbyCompletionFlash(seconds.current,completionFlashAt)*standbySettings.reconnectIntensity/100:0
+      ).toFixed(5);
       const grid=settings.floorGrid??floorGridDefaults;
       progressHost.current.dataset.floorTime=floorSeconds.current.toFixed(6);
       progressHost.current.dataset.floorOffset=floorGridOffset(floorSeconds.current,grid).toFixed(6);
@@ -614,6 +622,15 @@ export default function ThreePreview(input: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice||(web&&softwareDevice)) === 'low';
   const seconds = useRef(props.initialTime??0);
+  // The old transition scene unmounts immediately at its completion. Retain
+  // that timestamp under the seed's restart key so the new completed scene
+  // can display its one-shot ignition; a regular replay resets the marker.
+  const lastStandbyCompletion=useRef<{restartKey:string;at:number}|null>(null);
+  if(props.transition)lastStandbyCompletion.current={
+    restartKey:props.restartKey,at:props.transition.duration
+  };
+  else if(lastStandbyCompletion.current?.restartKey!==props.restartKey)
+    lastStandbyCompletion.current=null;
   // A seed switch resets the scene clock to zero. Keep the same next-wave
   // start time across the transition boundary so its electrical pulse never
   // teleports/restarts when the old scene layer finally unmounts.
@@ -643,6 +660,10 @@ export default function ThreePreview(input: Props) {
   const edges=useMemo(()=>network.enabled?
     isVoidComposition(props.composition)?voidEdges(props.composition,objects):networkConnections(objects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [objects,props.composition,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
+  const standbySettings=props.settings.standby??standbyDefaults;
+  const completionFlashAt=network.enabled&&edges.length>0&&standbySettings.reconnectGlow&&
+    standbySettings.reconnectCompletionGlow&&standbySettings.reconnectIntensity>0
+    ?lastStandbyCompletion.current?.at:undefined;
   const previousEdges=useMemo(()=>props.transition&&network.enabled?
     isVoidComposition(props.transition.fromComposition)?voidEdges(props.transition.fromComposition,previousObjects):networkConnections(previousObjects,network.distance*spacingFactor,network.maxConnections,network.mode):[],
     [props.transition,previousObjects,network.enabled,network.distance,network.maxConnections,network.mode,spacingFactor]);
@@ -705,35 +726,35 @@ export default function ThreePreview(input: Props) {
       <directionalLight position={[-6, -2, 4]} intensity={props.settings.lightIntensity * .7} color={props.background.figureColors?.support ?? '#a4caff'}/>
       <pointLight position={[2, 4, -4]} intensity={props.settings.lightIntensity * 12} color={props.background.figureColors?.accent ?? '#d5b5ff'}/>
       <FloorGrid grid={props.settings.floorGrid??floorGridDefaults} sceneHeight={props.composition.height} seconds={floorSeconds} view={props.view} low={low}/>
-      {voidMode?<VoidObjects web={web} objects={objects} previous={previousObjects} matches={matches} settings={props.settings} background={props.background}
+      {voidMode?<VoidObjects completionFlashAt={completionFlashAt} web={web} objects={objects} previous={previousObjects} matches={matches} settings={props.settings} background={props.background}
         visualTheme={props.visualTheme} low={low} seconds={seconds} seed={props.skySeed} skipEntrance={props.skipEntrance} transition={props.transition}/>:
       props.transition ? props.transition.mode==='morph'?
         matches.map(match=><group key={match.id}>
           {match.from&&match.to&&match.from.kind===match.to.kind?
-            <Solid object={match.to} settings={props.settings} background={props.background}
+            <Solid completionFlashAt={completionFlashAt} object={match.to} settings={props.settings} background={props.background}
               visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
               standby={{transition:props.transition!,variant:'shared',from:match.from,to:match.to}}/> :
             <>
-              {match.from&&<Solid object={match.from} settings={props.settings} background={props.transition!.fromBackground}
+              {match.from&&<Solid completionFlashAt={completionFlashAt} object={match.from} settings={props.settings} background={props.transition!.fromBackground}
                 visualTheme={props.transition!.fromTheme} low={low} seconds={seconds} outlines={outlines}
                 seed={props.transition!.fromSeed}
                 standby={{transition:props.transition!,variant:'old',from:match.from,to:match.to}}/>}
-              {match.to&&<Solid object={match.to} settings={props.settings} background={props.background}
+              {match.to&&<Solid completionFlashAt={completionFlashAt} object={match.to} settings={props.settings} background={props.background}
                 visualTheme={props.visualTheme} low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
                 standby={{transition:props.transition!,variant:'new',from:match.from,to:match.to}}/>}
             </>}
         </group>):
         <>
-          {previousObjects.map(object=><Solid key={'exit-'+object.id} object={object} settings={props.settings}
+          {previousObjects.map(object=><Solid completionFlashAt={completionFlashAt} key={'exit-'+object.id} object={object} settings={props.settings}
             background={props.transition!.fromBackground} visualTheme={props.transition!.fromTheme}
             low={low} seconds={seconds} outlines={outlines} seed={props.transition!.fromSeed}
             standby={{transition:props.transition!,variant:'old',from:object}}/>)}
-          {objects.map(object=><Solid key={'enter-'+object.id} object={object} settings={props.settings}
+          {objects.map(object=><Solid completionFlashAt={completionFlashAt} key={'enter-'+object.id} object={object} settings={props.settings}
             background={props.background} visualTheme={props.visualTheme}
             low={low} seconds={seconds} outlines={outlines} seed={props.skySeed}
             standby={{transition:props.transition!,variant:'new',to:object}}/>)}
         </>:
-        objects.map(object=><Solid key={object.id} object={object} settings={props.settings}
+        objects.map(object=><Solid completionFlashAt={completionFlashAt} key={object.id} object={object} settings={props.settings}
           background={props.background} visualTheme={props.visualTheme} low={low}
           seconds={seconds} outlines={outlines} seed={props.skySeed} skipEntrance={props.skipEntrance}/>)}
       {props.transition&&previousCelestial.map(body=><CelestialObjectMesh key={'old-'+body.id}
@@ -743,11 +764,11 @@ export default function ThreePreview(input: Props) {
         settings={props.settings} low={low} seconds={seconds} seed={props.skySeed}
         standby={props.transition?{transition:props.transition,layer:'new'}:undefined}
         skipEntrance={props.skipEntrance}/>)}
-      {props.transition&&previousEdges.length>0&&<NetworkLines objects={previousObjects} edges={previousEdges}
+      {props.transition&&previousEdges.length>0&&<NetworkLines completionFlashAt={completionFlashAt} objects={previousObjects} edges={previousEdges}
         routes={oldRoutes} widths={oldWidths}
         settings={props.settings} background={props.transition.fromBackground} low={low} seconds={seconds}
         seed={props.transition.fromSeed} standby={{transition:props.transition,layer:'old',matches}}/>}
-      {edges.length>0&&<NetworkLines objects={objects} edges={edges}
+      {edges.length>0&&<NetworkLines completionFlashAt={completionFlashAt} objects={objects} edges={edges}
         routes={routes} widths={widths} startAtZero={web}
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
@@ -763,7 +784,7 @@ export default function ThreePreview(input: Props) {
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}
-      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost} completionFlashAt={completionFlashAt}/>
     </Canvas>
 
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>
