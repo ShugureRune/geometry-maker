@@ -133,7 +133,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
       // Keep the whole connecting stroke visibly bright on lightweight
       // devices, where postprocessing bloom is deliberately disabled.
-      const boost=1+1.6*(line.userData.reconnectFlash??0);
+      const boost=1+.45*(line.userData.reconnectFlash??0);
       material.linewidth=low
         ?Math.max(.8,network.width*1.2)*material.resolution.y/Math.max(1,size.height)*boost
         :.018*network.width*boost;
@@ -234,11 +234,12 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
       // Tint existing linear-RGB wire colors: no neutral white flashes and
       // no effect outside the new layer of an active standby transition.
-      const reconnect=standby?.layer==='new'&&(settings.standby??standbyDefaults).reconnectGlow
+      const standbySettings=settings.standby??standbyDefaults;
+      const reconnect=standby?.layer==='new'&&standbySettings.reconnectGlow
         ?standbyReconnectionGlowAt(seconds.current,standby.transition.duration,
-          standby.transition.mode,route,neuralAppearance):0;
+          standby.transition.mode,route,neuralAppearance)*standbySettings.reconnectIntensity/100:0;
       maxReconnectFlash=Math.max(maxReconnectFlash,reconnect);
-      const strength=pulse*perEdgeAlpha*(1+reconnect*3.6);
+      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1);
       colorStart.setXYZ(active,
         (ca.r+(cb.r-ca.r)*startMix)*strength,
         (ca.g+(cb.g-ca.g)*startMix)*strength,
@@ -426,6 +427,7 @@ export function StandbyReconnectionSparks({objects,edges,routes,settings,backgro
   const tint=useMemo(()=>new Color(),[]);
   const network=settings.network??networkDefaults;
   const entrance=settings.entrance??entranceDefaults;
+  const intensity=(settings.standby??standbyDefaults).reconnectIntensity/100;
   const routed=useMemo(()=>routes??rootedWireSteps(objects,edges),[objects,edges,routes]);
   const matchesById=useMemo(()=>{
     const lookup=new Map<string,MorphMatch>();
@@ -440,14 +442,20 @@ export function StandbyReconnectionSparks({objects,edges,routes,settings,backgro
       return {source,target,route,color:networkEndpointColor(target.role,network,background,low)};
     });
   },[objects,edges,routed,network,background,low]);
+  // Dense cosmic networks can reconnect hundreds of wires at nearly the same
+  // instant. Draw at most 56 evenly distributed sparks to retain readable
+  // solid silhouettes and bound both draw work and apparent brightness.
+  const sampleStep=Math.max(1,Math.ceil(topology.length/56));
+  const sparkCapacity=Math.ceil(topology.length/sampleStep)*2;
   const update=()=>{
     const instance=mesh.current;
     if(!instance)return;
     let used=0,maxGlow=0;
     const time=seconds.current,duration=transition.duration;
     const neuralEntrance=entrance.enabled&&entrance.mode==='neural-grow';
-    for(const edge of topology){
-      const glow=standbyReconnectionGlowAt(time,duration,transition.mode,edge.route,neuralEntrance);
+    for(let index=0;index<topology.length;index+=sampleStep){
+      const edge=topology[index];
+      const glow=standbyReconnectionGlowAt(time,duration,transition.mode,edge.route,neuralEntrance)*intensity;
       if(glow<.03)continue;
       const sourcePose=standbyWirePose(edge.source,'new',matchesById.get(edge.source.id),transition,time,settings,'');
       const targetPose=standbyWirePose(edge.target,'new',matchesById.get(edge.target.id),transition,time,settings,'');
@@ -469,12 +477,12 @@ export function StandbyReconnectionSparks({objects,edges,routes,settings,backgro
         from[0]+(to[0]-from[0])*progress,
         from[1]+(to[1]-from[1])*progress,
         from[2]+(to[2]-from[2])*progress);
-      const radius=Math.min(1.25,Math.max(low?.22:.16,edge.target.radius*1.12));
+      const radius=Math.min(.46,Math.max(low?.09:.07,edge.target.radius*.32));
       for(let layer=0;layer<2;layer++){
-        dummy.scale.setScalar(radius*(layer===0?.55:1.6));
+        dummy.scale.setScalar(radius*(layer===0?.58:1.25));
         dummy.updateMatrix();
         instance.setMatrixAt(used,dummy.matrix);
-        tint.copy(edge.color).multiplyScalar(alpha*(layer===0?3.5:.85));
+        tint.copy(edge.color).multiplyScalar(alpha*(layer===0?1.2:.18));
         instance.setColorAt(used,tint);
         used++;
       }
@@ -490,7 +498,7 @@ export function StandbyReconnectionSparks({objects,edges,routes,settings,backgro
   },[topology,settings,transition,matchesById,entrance,seconds]);
   useFrame(update);
   return <instancedMesh name="standby-reconnect-sparks" ref={mesh}
-    args={[undefined,undefined,topology.length*2]} count={0} frustumCulled={false} renderOrder={3}>
+    args={[undefined,undefined,sparkCapacity]} count={0} frustumCulled={false} renderOrder={3}>
     <sphereGeometry args={[1,low?6:10,low?4:8]}/>
     <meshBasicMaterial color="#ffffff" transparent opacity={.94}
       blending={AdditiveBlending} depthTest={false} depthWrite={false} toneMapped={false}/>
