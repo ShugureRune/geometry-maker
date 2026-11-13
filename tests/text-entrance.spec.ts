@@ -55,7 +55,10 @@ test('exported video duration includes slow text entrance even when figure growt
  await page.getByLabel('再生速度',{exact:true}).selectOption('4');
  await nav.getByRole('button',{name:'書き出し',exact:true}).click();
  await page.locator('summary').filter({hasText:'動画書き出し'}).click();
- await expect(page.getByText(/長さ：約2\.0\d秒/)).toBeVisible();
+ await page.locator('.video-panel > .studio-info-disclosure').last().locator('summary').click();
+ await expect(page.getByTestId('studio-info-popover')).toContainText(/長さ：約2\.0\d秒/);
+ await page.keyboard.press('Escape');
+ await expect(page.getByTestId('studio-info-popover')).toHaveCount(0);
  await page.getByLabel('動画の幅 (px)').fill('256');
  await page.getByLabel('動画の高さ (px)').fill('256');
  const exportButton=page.getByRole('button',{name:'動画を書き出す',exact:true});
