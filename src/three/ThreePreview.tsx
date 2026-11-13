@@ -236,7 +236,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const orbit = new OrbitControls(camera, gl.domElement);
     controls.current = orbit;
     orbit.enableDamping = true; orbit.dampingFactor = .08; orbit.enablePan = false;
-    orbit.minDistance = 3; orbit.maxDistance = 80;
+    orbit.minDistance = 3; orbit.maxDistance = Math.max(80,homeDistance*2);
     gl.domElement.tabIndex = 0;
     gl.domElement.setAttribute('aria-label', '3D視点操作：ドラッグで回転、ホイールまたはピンチでズーム');
     orbit.listenToKeyEvents(gl.domElement);
@@ -278,6 +278,8 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     invalidate();
   },[explore,invalidate,view]);
 
+  // Allow fully zooming out even when a VOID constellation is spread to 200%.
+  useEffect(()=>{if(controls.current)controls.current.maxDistance=Math.max(80,homeDistance*2);},[homeDistance]);
   // Reframe on aspect-ratio changes, while material/color/density changes retain the view.
   const lastAspect = useRef(aspect);
   useEffect(() => {if (Math.abs(lastAspect.current - aspect) > 1e-6) {lastAspect.current = aspect; resetView();}}, [aspect]);
