@@ -43,6 +43,12 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
         value={standby.transitionSeconds} min={1} max={8} step={1} unit="秒"
         onChange={transitionSeconds=>update({transitionSeconds})}/>
       <label className="three-checkbox">
+        <input type="checkbox" aria-label="ワイヤー再接続時に発光" checked={standby.reconnectGlow}
+          onChange={e=>update({reconnectGlow:e.target.checked})}/>
+        ワイヤー再接続時に発光
+      </label>
+      <HelpInfo>新しいワイヤーがつながるときだけ、接続線が一瞬明るく光ります。通常3Dとコズミックウェブの両方に適用され、OFFにすると元の明るさで接続します。接続線が有効なときに表示されます。</HelpInfo>
+      <label className="three-checkbox">
         <input type="checkbox" checked={standby.preserveCamera}
           onChange={e=>update({preserveCamera:e.target.checked})}/>
         視点をそのまま使う
