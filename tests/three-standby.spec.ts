@@ -99,6 +99,14 @@ test('standby reconnect emission is visible with glow ON and disappears with OFF
   await expect.poll(()=>reconnectSparkCount(page)).toBeGreaterThan(0);
   const canvas=preview.locator('canvas');
   const on=await canvas.screenshot();
+  const strength=page.locator('#three-standby-reconnect-intensity');
+  await expect(strength).toHaveValue('25');
+  await strength.fill('0');
+  await expect.poll(()=>reconnectSparkCount(page)).toBe(0);
+  const zero=await canvas.screenshot();
+  expect(on.equals(zero)).toBe(false);
+  await strength.fill('25');
+  await expect.poll(()=>reconnectSparkCount(page)).toBeGreaterThan(0);
   await glow.uncheck();
   await expect.poll(()=>reconnectSparkCount(page)).toBe(0);
   const off=await canvas.screenshot();
@@ -111,11 +119,12 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await page.locator('#three-standby-interval').fill('30');
   await page.locator('#three-standby-transition').fill('3');
   await page.getByRole('checkbox',{name:'視点をそのまま使う'}).uncheck();
+  await page.locator('#three-standby-reconnect-intensity').fill('15');
   await page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'}).uncheck();
   const saved=await saveJson(page);
   const original=JSON.parse(saved.toString('utf8'));
   expect(original.settings.standby).toMatchObject({
-    enabled:true,intervalSeconds:30,transitionSeconds:3,mode:'exit-enter',preserveCamera:false,reconnectGlow:false
+    enabled:true,intervalSeconds:30,transitionSeconds:3,mode:'exit-enter',preserveCamera:false,reconnectGlow:false,reconnectIntensity:15
   });
   await category(page,'アニメーション');
   await page.getByLabel('3D待機画面モードを有効化').uncheck();
@@ -128,6 +137,8 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await expect(page.locator('#three-standby-mode')).toHaveValue('exit-enter');
   await expect(page.locator('#three-standby-interval')).toHaveValue('30');
   await expect(page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'})).not.toBeChecked();
+  await page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'}).check();
+  await expect(page.locator('#three-standby-reconnect-intensity')).toHaveValue('15');
   const old={...original,settings:{...original.settings}};
   delete old.settings.standby;
   await category(page,'書き出し');
