@@ -445,12 +445,13 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const floor=settings.floorGrid??floorGridDefaults;
     const celestial=settings.celestial??celestialDefaults;
     const styled=network.enabled||neon.enabled||floor.enabled||celestial.enabled||(settings.sky?.kind??'classic')!=='classic';
-    const reconnecting=network.enabled&&!!transition&&(settings.standby??standbyDefaults).reconnectGlow&&
-      seconds.current<transition.duration&&
+    const standbySettings=settings.standby??standbyDefaults;
+    const reconnecting=network.enabled&&!!transition&&standbySettings.reconnectGlow&&
+      standbySettings.reconnectIntensity>0&&seconds.current<transition.duration&&
       seconds.current>transition.duration*(transition.mode==='morph'?MORPH_WIRE_ATTACH_START:.5);
-    // Make bright reconnecting strokes bloom even when ordinary glow is 0.
-    // The threshold still excludes all background and regular line colors.
-    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0,reconnecting?140:0) / 100;
+    // Keep the normal scene's bloom unchanged: unlike the previous 140%
+    // override, a subtle reconnect may only enable a small bloom floor.
+    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0,reconnecting?40*standbySettings.reconnectIntensity/100:0) / 100;
     if (pipeline.current) {
       pipeline.current.bloom.enabled = glow > 0;
       pipeline.current.bloom.strength = Math.min(.55, glow * .28);
