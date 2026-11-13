@@ -71,6 +71,40 @@ test('neural connections retract, detach during motion, then reconnect after all
   await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
 });
 
+async function reconnectSparkCount(page:Page){
+  return page.evaluate(async()=>{
+    const url=performance.getEntriesByType('resource').find(e=>e.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    const root=_roots.get(canvas) as any;
+    return root?.store.getState().scene.getObjectByName('standby-reconnect-sparks')?.count??0;
+  });
+}
+
+test('standby reconnect emission is visible with glow ON and disappears with OFF (ordinary 3D)',async({page})=>{
+  await start(page);
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  const preview=page.getByTestId('three-preview');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
+  await category(page,'アニメーション');
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('8');
+  const glow=page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'});
+  await expect(glow).toBeChecked();
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','reconnect',{timeout:15_000});
+  await expect.poll(()=>reconnectSparkCount(page),{timeout:5_000,intervals:[40,100,150]}).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'3Dを一時停止',exact:true}).click();
+  await expect.poll(()=>reconnectSparkCount(page)).toBeGreaterThan(0);
+  const canvas=preview.locator('canvas');
+  const on=await canvas.screenshot();
+  await glow.uncheck();
+  await expect.poll(()=>reconnectSparkCount(page)).toBe(0);
+  const off=await canvas.screenshot();
+  expect(on.equals(off)).toBe(false);
+});
+
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
   await page.locator('#three-standby-mode').selectOption('exit-enter');
