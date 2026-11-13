@@ -48,14 +48,30 @@ export function validateThreeStandby(value:unknown):ThreeStandbySettings{
   return d as ThreeStandbySettings;
 }
 /** Old composition is captured before the seed changes, not regenerated from an overwritten seed. */
-/** Smooth, short HDR flare while a reconnecting wire approaches its far node.
- * At progress 0 / 1 the old wire brightness is restored exactly. */
-export function standbyReconnectionFlash(progress:number):number{
-  if(!Number.isFinite(progress))return 0;
-  const p=Math.max(0,Math.min(1,progress));
-  const rise=easeInOut((p-.55)/.30);
-  const fall=easeInOut((1-p)/.13);
-  return rise*fall;
+/** Flash around a wire's actual reconnection timestamp, NOT a fraction
+ * of that wire's tiny routed window. The old percentage-based pulse could
+ * last just 1-3 milliseconds on a large cosmic web and be invisible.
+ *
+ * A fixed-duration colored glow is visible even at high edge counts and on
+ * lightweight GPUs. This is used by both wire brightness and the sparks.
+ */
+export function standbyReconnectionGlowAt(
+  seconds:number,duration:number,mode:StandbyTransitionMode,
+  window:{start:number;end:number},neuralEntrance=false,
+):number{
+  if(![seconds,duration,window.start,window.end].every(Number.isFinite)||duration<=0)return 0;
+  if(seconds<0||seconds>=duration)return 0;
+  const end=Math.max(0,Math.min(1,window.end));
+  const completion=mode==='morph'
+    ?duration*(MORPH_WIRE_ATTACH_START+(1-MORPH_WIRE_ATTACH_START)*end)
+    :neuralEntrance
+      ?duration*(.5+.5*(NEURAL_WIRE_START_FRACTION+(1-NEURAL_WIRE_START_FRACTION)*end))
+      :duration*.78;
+  const before=Math.min(.52,duration*.28);
+  const after=Math.min(.32,duration*.19);
+  const difference=seconds-completion;
+  if(difference<=-before||difference>=after)return 0;
+  return difference<0?easeInOut(1+difference/before):easeInOut(1-difference/after);
 }
 
 export type ThreeStandbyTransition={

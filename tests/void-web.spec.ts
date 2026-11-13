@@ -107,6 +107,39 @@ test('mobile lightweight web grows, preserves paused frames and completes standb
   }finally{await context.close();}
 });
 
+test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standby',async({page})=>{
+  const project=fixture('reconnect-cosmic');
+  project.settings.quality='low';
+  project.settings.voidMode!.objectLimit=600;
+  project.settings.animation=true;
+  project.settings.standby={...threeDefaults.standby!,enabled:true,mode:'morph',
+    transitionSeconds:8,pauseOnInteraction:false,reconnectGlow:true};
+  project.elapsedSeconds=12;
+  await open(page,project);
+  await category(page,'アニメーション');
+  const glow=page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'});
+  await expect(glow).toBeChecked();
+  const preview=page.getByTestId('three-preview');
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','reconnect',{timeout:20_000});
+  const count=async()=>page.evaluate(async()=>{
+    const url=performance.getEntriesByType('resource').find(e=>e.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    const root=_roots.get(canvas) as any;
+    return root?.store.getState().scene.getObjectByName('standby-reconnect-sparks')?.count??0;
+  });
+  await expect.poll(count,{timeout:5_000,intervals:[40,100,160]}).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'3Dを一時停止',exact:true}).click();
+  await expect.poll(count).toBeGreaterThan(0);
+  const canvas=preview.locator('canvas');
+  const on=await canvas.screenshot();
+  await glow.uncheck();
+  await expect.poll(count).toBe(0);
+  const off=await canvas.screenshot();
+  expect(on.equals(off)).toBe(false);
+});
+
 test('the web exports WebM and MP4 using exact animation frames and restores preview',async({page})=>{
   const errors=errorsOn(page),project=fixture();project.settings.quality='low';project.settings.voidMode!.objectLimit=600;
   project.settings.entrance={...project.settings.entrance!,enabled:true,mode:'neural-grow',duration:2};project.elapsedSeconds=0;project.exportWidth=256;project.exportHeight=256;await open(page,project);

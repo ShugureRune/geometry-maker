@@ -1,21 +1,36 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionFlash,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
 
 describe('standby reconnect flare',()=>{
-  it('brightens only as a new wire nears reconnection and returns to baseline',()=>{
-    for(const progress of [-2,0,.2,.5,1,2,NaN,Infinity])
-      expect(standbyReconnectionFlash(progress)).toBe(0);
-    expect(standbyReconnectionFlash(.7)).toBeGreaterThan(0);
-    expect(standbyReconnectionFlash(.89)).toBeGreaterThan(.5);
-    expect(standbyReconnectionFlash(.99)).toBeGreaterThan(0);
-    expect(standbyReconnectionFlash(.99)).toBeLessThan(.1);
-    for(let i=0;i<=100;i++){
-      const strength=standbyReconnectionFlash(i/100);
-      expect(strength).toBeGreaterThanOrEqual(0);
-      expect(strength).toBeLessThanOrEqual(1);
+  const route={start:.25,end:.5};
+  it('uses a visible real-time window instead of the almost zero duration of a dense cosmic edge',()=>{
+    for(const duration of [1,4,8]){
+      const finish=duration*(MORPH_WIRE_ATTACH_START+(1-MORPH_WIRE_ATTACH_START)*route.end);
+      expect(standbyReconnectionGlowAt(finish,duration,'morph',route)).toBeCloseTo(1);
+      expect(standbyReconnectionGlowAt(finish-.18,duration,'morph',route)).toBeGreaterThan(0);
+      // The transition ends at duration, so a post-connection flare is only
+      // observable while the transition is still active.
+      if(finish+.13<duration)
+        expect(standbyReconnectionGlowAt(finish+.13,duration,'morph',route)).toBeGreaterThan(0);
+      expect(standbyReconnectionGlowAt(duration*.3,duration,'morph',route)).toBe(0);
+      expect(standbyReconnectionGlowAt(0,duration,'morph',route)).toBe(0);
+      expect(standbyReconnectionGlowAt(duration,duration,'morph',route)).toBe(0);
+      const tiny={start:.499,end:.501};
+      const tinyFinish=duration*(MORPH_WIRE_ATTACH_START+(1-MORPH_WIRE_ATTACH_START)*tiny.end);
+      expect(standbyReconnectionGlowAt(tinyFinish-.18,duration,'morph',tiny)).toBeGreaterThan(0);
     }
+  });
+  it('handles both exit/enter modes and rejects invalid samples',()=>{
+    for(const neural of [false,true]){
+      const finish=4*(neural?.5+.5*(.72+.28*route.end):.78);
+      expect(standbyReconnectionGlowAt(finish,4,'exit-enter',route,neural)).toBeCloseTo(1);
+    }
+    for(const time of [-1,NaN,Infinity,4])
+      expect(standbyReconnectionGlowAt(time,4,'morph',route)).toBe(0);
+    expect(standbyReconnectionGlowAt(2,0,'morph',route)).toBe(0);
+    expect(standbyReconnectionGlowAt(2,4,'morph',{start:0,end:NaN})).toBe(0);
   });
 });
 
