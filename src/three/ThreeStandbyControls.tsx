@@ -47,7 +47,11 @@ export function ThreeStandbyControls({settings,onChange,onNext,transitioning,exp
           onChange={e=>update({reconnectGlow:e.target.checked})}/>
         ワイヤー再接続時に発光
       </label>
-      <HelpInfo>新しいワイヤーがつながるときだけ、接続線が一瞬明るく光ります。通常3Dとコズミックウェブの両方に適用され、OFFにすると元の明るさで接続します。接続線が有効なときに表示されます。</HelpInfo>
+      {standby.reconnectGlow&&
+        <ThreeRange id="three-standby-reconnect-intensity" label="再接続の発光の強さ"
+          value={standby.reconnectIntensity} min={0} max={100} step={5} unit="%"
+          onChange={reconnectIntensity=>update({reconnectIntensity})}/>}
+      <HelpInfo>再接続する瞬間の光を控えめに表示します。光が強すぎる場合は「再接続の発光の強さ」を下げてください。登場時の発光には影響しません。通常3Dとコズミックウェブ共通です。</HelpInfo>
       <label className="three-checkbox">
         <input type="checkbox" checked={standby.preserveCamera}
           onChange={e=>update({preserveCamera:e.target.checked})}/>
