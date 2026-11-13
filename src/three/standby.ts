@@ -16,6 +16,8 @@ export type ThreeStandbySettings={
   reconnectGlow:boolean;
   /** Soft reconnection flare strength; separate from entrance glow. */
   reconnectIntensity:number;
+  /** One gentle whole-network ignition after all standby cables have connected. */
+  reconnectCompletionGlow:boolean;
   /** Orbit around the current focal point only while standby playback runs. */
   cameraAutoRotate:boolean;
   cameraRotateSpeed:number;
@@ -27,6 +29,7 @@ export type ThreeStandbySettings={
 export const standbyDefaults:ThreeStandbySettings={
   enabled:false,intervalSeconds:15,transitionSeconds:4,mode:'morph',
   preserveCamera:true,pauseOnInteraction:true,reconnectGlow:true,reconnectIntensity:25,
+  reconnectCompletionGlow:true,
   cameraAutoRotate:false,cameraRotateSpeed:1,
   cameraOrbitMode:'horizontal',cameraOrbitTilt:10,
 };
@@ -38,7 +41,8 @@ export function validateThreeStandby(value:unknown):ThreeStandbySettings{
     typeof d.enabled!=='boolean'||typeof d.preserveCamera!=='boolean'||
     typeof d.pauseOnInteraction!=='boolean'||typeof d.reconnectGlow!=='boolean'||
     typeof d.reconnectIntensity!=='number'||!Number.isInteger(d.reconnectIntensity)||
-    d.reconnectIntensity<0||d.reconnectIntensity>100||typeof d.cameraAutoRotate!=='boolean'||
+    d.reconnectIntensity<0||d.reconnectIntensity>100||
+    typeof d.reconnectCompletionGlow!=='boolean'||typeof d.cameraAutoRotate!=='boolean'||
     typeof d.cameraRotateSpeed!=='number'||!Number.isFinite(d.cameraRotateSpeed)||
     d.cameraRotateSpeed<.25||d.cameraRotateSpeed>3||
     (d.cameraOrbitMode!=='horizontal'&&d.cameraOrbitMode!=='inclined')||
@@ -76,6 +80,19 @@ export function standbyReconnectionGlowAt(
   const difference=seconds-completion;
   if(difference<=-before||difference>=after)return 0;
   return difference<0?easeInOut(1+difference/before):easeInOut(1-difference/after);
+}
+
+/** Whole-network ignition begins only AFTER the last standby wire arrives.
+ * Retain its exact clock time across the transition -> normal-scene remount,
+ * otherwise a pulse triggered at t=duration would never be rendered.
+ * Seekable, pausable, single-shot and independent from the entrance animation.
+ */
+export const STANDBY_COMPLETION_FLASH_DURATION=.62;
+export function standbyCompletionFlash(seconds:number,finishedAt?:number):number{
+  if(finishedAt===undefined||!Number.isFinite(seconds)||!Number.isFinite(finishedAt))return 0;
+  const age=seconds-finishedAt;
+  if(age<0||age>=STANDBY_COMPLETION_FLASH_DURATION)return 0;
+  return Math.pow(1-age/STANDBY_COMPLETION_FLASH_DURATION,2);
 }
 
 export type ThreeStandbyTransition={
