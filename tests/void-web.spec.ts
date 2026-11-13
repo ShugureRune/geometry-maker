@@ -130,9 +130,24 @@ test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standb
     const root=_roots.get(canvas) as any;
     return root?.store.getState().scene.getObjectByName('standby-reconnect-sparks')?.count??0;
   });
-  await expect.poll(count,{timeout:5_000,intervals:[40,100,160]}).toBeGreaterThan(0);
-  await page.getByRole('button',{name:'3Dを一時停止',exact:true}).click();
-  await expect.poll(count).toBeGreaterThan(0);
+  // Freeze on the exact frame where the (much smaller) spark is visible.
+  // An external Playwright click can take hundreds of milliseconds, after
+  // which the short reconnection phase may already have finished.
+  await page.waitForFunction(async()=>{
+    const url=performance.getEntriesByType('resource').find(e=>e.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    const scene=(_roots.get(canvas) as any)?.store.getState().scene;
+    if(!(scene?.getObjectByName('standby-reconnect-sparks')?.count>0))return false;
+    const button=Array.from(document.querySelectorAll('button')).find(el=>
+      (el.getAttribute('aria-label')??'').includes('3Dを一時停止')||
+      (el.textContent??'').includes('3Dを一時停止'));
+    if(!button)return false;
+    button.click();
+    return true;
+  },undefined,{timeout:9000,polling:25});
+  await expect(page.getByRole('button',{name:'3Dを再生',exact:true})).toBeVisible();
+  await expect.poll(count,{timeout:1000}).toBeGreaterThan(0);
   const canvas=preview.locator('canvas');
   const on=await canvas.screenshot();
   const strength=page.locator('#three-standby-reconnect-intensity');
