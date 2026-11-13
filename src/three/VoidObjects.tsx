@@ -64,20 +64,29 @@ function VoidSolids(props:BatchProps&{kind:ThreeKind}){
     g.setAttribute('voidEmission',new InstancedBufferAttribute(new Float32Array(records.length),1));return g;
   },[kind,low,props.detailLow,props.extraLow,records.length]);
   const material=useMemo(()=>{
-    const common={color:'#ffffff',emissive:'#ffffff',emissiveIntensity:1,transparent:true,
+    // Preserve the exact prototype shader; the colored emissive fix is web-only.
+    const common={color:'#ffffff',emissive:props.web?'#000000':'#ffffff',emissiveIntensity:1,transparent:true,
       roughness:look==='matte'?Math.max(.65,settings.roughness):settings.roughness,
       metalness:look==='matte'?0:settings.metalness,flatShading:!['sphere','torus','capsule','torus-knot'].includes(kind),
       polygonOffset:neon.enabled,polygonOffsetFactor:1,polygonOffsetUnits:1};
     const m=look==='glass'?new MeshPhysicalMaterial({...common,transmission:low||translucent?0:.65,thickness:.6}):new MeshStandardMaterial({...common,wireframe:look==='wireframe'&&!translucent});
     m.opacity=translucent?neon.faceOpacity:look==='glass'?(low?.65:.92):1;
     m.onBeforeCompile=shader=>{
-      shader.vertexShader='attribute float voidOpacity; attribute float voidEmission; varying float vVoidOpacity; varying float vVoidEmission;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvVoidOpacity=voidOpacity; vVoidEmission=voidEmission;');
-      shader.fragmentShader='varying float vVoidOpacity; varying float vVoidEmission;\n'+shader.fragmentShader
+      if(!props.web){
+        shader.vertexShader='attribute float voidOpacity; attribute float voidEmission; varying float vVoidOpacity; varying float vVoidEmission;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvVoidOpacity=voidOpacity; vVoidEmission=voidEmission;');
+        shader.fragmentShader='varying float vVoidOpacity; varying float vVoidEmission;\n'+shader.fragmentShader
+          .replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.a *= vVoidOpacity;')
+          .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vVoidEmission;\n#ifdef USE_INSTANCING_COLOR\ntotalEmissiveRadiance *= vColor.rgb;\n#endif');
+        return;
+      }
+      shader.vertexShader='attribute float voidOpacity; attribute float voidEmission; varying float vVoidOpacity; varying float vVoidEmission; varying vec3 vVoidTint;\n'+shader.vertexShader
+        .replace('#include <begin_vertex>','#include <begin_vertex>\nvVoidOpacity=voidOpacity; vVoidEmission=voidEmission;\n#ifdef USE_INSTANCING_COLOR\nvVoidTint=instanceColor;\n#else\nvVoidTint=vec3(0.0);\n#endif');
+      shader.fragmentShader='varying float vVoidOpacity; varying float vVoidEmission; varying vec3 vVoidTint;\n'+shader.fragmentShader
         .replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.a *= vVoidOpacity;')
-        .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vVoidEmission;\n#ifdef USE_INSTANCING_COLOR\ntotalEmissiveRadiance *= vColor.rgb;\n#endif');
+        .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance += vVoidTint * vVoidEmission;');
     };
-    m.customProgramCacheKey=()=>`void-instance-opacity-v1-${look}`;return m;
-  },[look,low,translucent,neon.enabled,neon.faceOpacity,settings.roughness,settings.metalness,kind]);
+    m.customProgramCacheKey=()=> 'void-instance-opacity-'+(props.web?'v2':'v1')+'-'+look;return m;
+  },[look,low,translucent,neon.enabled,neon.faceOpacity,settings.roughness,settings.metalness,kind,props.web]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);useEffect(()=>()=>material.dispose(),[material]);
   const update=()=>{
     if(!mesh.current)return;
