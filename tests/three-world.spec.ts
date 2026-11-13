@@ -143,6 +143,44 @@ test('one camera mode looks in place and moves with wheel/WASD without changing 
   expect(beforeImage).not.toBe(afterImage);
 });
 
+test('mobile touch rotates in place, two fingers pan, and pinch moves the camera forward',async({browser})=>{
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1});
+  const page=await context.newPage();
+  try{
+    await start(page);
+    const canvas=page.getByTestId('three-preview').locator('canvas');
+    await canvas.scrollIntoViewIfNeeded();
+    const bounds=(await canvas.boundingBox())!;
+    const x=bounds.x+bounds.width*.5,y=bounds.y+bounds.height*.5;
+    const cdp=await context.newCDPSession(page);
+    const fire=async(type:'touchStart'|'touchMove'|'touchEnd',points:{id:number;x:number;y:number}[])=>
+      cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+    const before=await savedView(page);
+    await fire('touchStart',[{id:1,x,y}]);
+    await fire('touchMove',[{id:1,x:x+70,y:y+30}]);
+    await fire('touchEnd',[]);
+    const looked=await savedView(page);
+    expect(gap(before.position,looked.position)).toBeLessThan(.001);
+    expect(gap(before.target,looked.target)).toBeGreaterThan(.3);
+    const facing=(v:{position:number[];target:number[]})=>
+      v.target.map((n,i)=>n-v.position[i]);
+
+    await fire('touchStart',[{id:2,x:x-25,y},{id:3,x:x+25,y}]);
+    await fire('touchMove',[{id:2,x:x+45,y},{id:3,x:x+95,y}]);
+    await fire('touchEnd',[]);
+    const panned=await savedView(page);
+    expect(gap(looked.position,panned.position)).toBeGreaterThan(.2);
+    expect(gap(facing(looked),facing(panned))).toBeLessThan(.01);
+
+    await fire('touchStart',[{id:4,x:x-30,y},{id:5,x:x+30,y}]);
+    await fire('touchMove',[{id:4,x:x-70,y},{id:5,x:x+70,y}]);
+    await fire('touchEnd',[]);
+    const zoomed=await savedView(page);
+    expect(gap(panned.position,zoomed.position)).toBeGreaterThan(.5);
+    expect(gap(facing(panned),facing(zoomed))).toBeLessThan(.01);
+  }finally{await context.close();}
+});
+
 test('mobile low quality handles floating islands, snowy weather and solar lighting then returns to 2D',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await start(page);
