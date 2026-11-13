@@ -1,7 +1,28 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,standbyCompletionFlash,STANDBY_COMPLETION_FLASH_DURATION,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
+
+describe('final whole-network reconnection ignition',()=>{
+  it('is silent until all wires complete, fires exactly at completion and decays once',()=>{
+    for(const duration of [1,2,4,8]){
+      expect(standbyCompletionFlash(duration-.001,duration)).toBe(0);
+      expect(standbyCompletionFlash(duration,duration)).toBe(1);
+      expect(standbyCompletionFlash(duration+.08,duration)).toBeGreaterThan(.5);
+      expect(standbyCompletionFlash(duration+.3,duration)).toBeGreaterThan(0);
+      expect(standbyCompletionFlash(duration+.3,duration)).toBeLessThan(.4);
+      expect(standbyCompletionFlash(duration+STANDBY_COMPLETION_FLASH_DURATION,duration)).toBe(0);
+      expect(standbyCompletionFlash(duration+1,duration)).toBe(0);
+      // The effect depends on scene time, not wall time or previous frames.
+      expect(standbyCompletionFlash(duration+.12,duration))
+        .toBe(standbyCompletionFlash(duration+.12,duration));
+    }
+    for(const time of [0,NaN,Infinity])
+      expect(standbyCompletionFlash(time,undefined)).toBe(0);
+    expect(standbyCompletionFlash(NaN,4)).toBe(0);
+    expect(standbyCompletionFlash(Infinity,4)).toBe(0);
+  });
+});
 
 describe('standby reconnect flare',()=>{
   const route={start:.25,end:.5};
@@ -59,11 +80,13 @@ describe('3D standby transition grammar',()=>{
     expect(standbyDefaults.cameraAutoRotate).toBe(false);
     expect(standbyDefaults.reconnectGlow).toBe(true);
     expect(standbyDefaults.reconnectIntensity).toBe(25);
+    expect(standbyDefaults.reconnectCompletionGlow).toBe(true);
     expect(standbyDefaults.cameraRotateSpeed).toBe(1);
     expect(standbyDefaults.cameraOrbitMode).toBe('horizontal');
     expect(standbyDefaults.cameraOrbitTilt).toBe(10);
     expect(validateThreeStandby({enabled:true})).toEqual({...standbyDefaults,enabled:true});
     expect(validateThreeStandby({enabled:true,reconnectGlow:false}).reconnectGlow).toBe(false);
+    expect(validateThreeStandby({enabled:true,reconnectCompletionGlow:false}).reconnectCompletionGlow).toBe(false);
     expect(validateThreeStandby({enabled:true,reconnectIntensity:0}).reconnectIntensity).toBe(0);
     expect(validateThreeStandby({enabled:true,reconnectIntensity:100}).reconnectIntensity).toBe(100);
     expect(validateThreeStandby({...standbyDefaults,cameraAutoRotate:true,cameraRotateSpeed:2.5,
@@ -75,11 +98,11 @@ describe('3D standby transition grammar',()=>{
       mode:'morph',preserveCamera:true,pauseOnInteraction:true};
     expect(validateThreeStandby(legacy)).toMatchObject({
       cameraAutoRotate:false,cameraRotateSpeed:1,
-      cameraOrbitMode:'horizontal',cameraOrbitTilt:10,
+      cameraOrbitMode:'horizontal',cameraOrbitTilt:10,reconnectCompletionGlow:true,
     });
     for(const bad of [{enabled:'yes'},{intervalSeconds:4},{intervalSeconds:121},
       {transitionSeconds:0},{transitionSeconds:9},{mode:'warp'},{preserveCamera:1},
-      {pauseOnInteraction:null},{reconnectGlow:'yes'},
+      {pauseOnInteraction:null},{reconnectGlow:'yes'},{reconnectCompletionGlow:'yes'},
       {reconnectIntensity:-1},{reconnectIntensity:101},{reconnectIntensity:.5},{reconnectIntensity:NaN},
       {cameraAutoRotate:'yes'},
       {cameraRotateSpeed:0},{cameraRotateSpeed:3.5},{cameraRotateSpeed:Infinity},
