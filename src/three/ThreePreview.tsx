@@ -645,12 +645,13 @@ export default function ThreePreview(input: Props) {
     completionFlashAt.current=props.skipEntrance&&seconds.current>=finished.duration-1e-4
       ?seconds.current:null;
   }
-  // A seed switch resets the scene clock to zero. Keep the same next-wave
-  // start time across the transition boundary so its electrical pulse never
-  // teleports/restarts when the old scene layer finally unmounts.
+  // A seed switch resets the scene clock to zero. Wait until EVERY new
+  // wire has finished reconnecting before launching electrical packets.
+  // Preserve that launch time after the old scene unmounts, so the signal
+  // does not jump or restart at the transition boundary.
   const signalRestartAt=useRef<number|null>(null);
   if(props.transition){
-    signalRestartAt.current=props.transition.duration*MORPH_WIRE_ATTACH_START+.12;
+    signalRestartAt.current=props.transition.duration+NEURAL_SIGNAL_LAUNCH_DELAY;
   }
   const signalCompletionOverride=(props.transition||props.skipEntrance)&&signalRestartAt.current!==null
     ?signalRestartAt.current-NEURAL_SIGNAL_LAUNCH_DELAY:undefined;
