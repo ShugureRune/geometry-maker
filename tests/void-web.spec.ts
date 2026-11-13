@@ -161,6 +161,40 @@ test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standb
   expect(on.equals(off)).toBe(false);
 });
 
+test('cosmic web lights all completed wires once, with adjustable soft glow',async({page})=>{
+  const project=fixture('reconnect-web-final-ignition');
+  project.settings.quality='low';
+  project.settings.voidMode!.objectLimit=600;
+  project.settings.animation=true;
+  project.settings.standby={...threeDefaults.standby!,enabled:true,
+    mode:'morph',transitionSeconds:4,pauseOnInteraction:false,
+    reconnectGlow:true,reconnectIntensity:25};
+  project.elapsedSeconds=12;
+  await open(page,project);
+  const preview=page.getByTestId('three-preview'),canvas=preview.locator('canvas');
+  await category(page,'アニメーション');
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await page.waitForFunction(()=>{
+    const preview=document.querySelector('[data-testid="three-preview"]') as HTMLElement|null;
+    if(preview?.dataset.standbyActive!=='false'||
+      Number(preview.dataset.standbyGlobalFlash??0)<.16)return false;
+    const button=Array.from(document.querySelectorAll('button')).find(el=>el.textContent?.trim()==='3Dを一時停止');
+    if(!button)return false;
+    button.click();
+    return true;
+  },undefined,{polling:16,timeout:25_000});
+  await expect(page.getByRole('button',{name:'3Dを再生',exact:true})).toBeVisible();
+  const flash=async()=>Number(await preview.getAttribute('data-standby-global-flash'));
+  await expect.poll(flash,{timeout:2000}).toBeGreaterThan(.02);
+  const on=await canvas.screenshot();
+  await page.locator('#three-standby-reconnect-intensity').fill('0');
+  await expect.poll(flash).toBe(0);
+  const off=await canvas.screenshot();
+  expect(on.equals(off)).toBe(false);
+  await page.locator('#three-standby-reconnect-intensity').fill('25');
+  await expect.poll(flash).toBeGreaterThan(.02);
+});
+
 test('the web exports WebM and MP4 using exact animation frames and restores preview',async({page})=>{
   const errors=errorsOn(page),project=fixture();project.settings.quality='low';project.settings.voidMode!.objectLimit=600;
   project.settings.entrance={...project.settings.entrance!,enabled:true,mode:'neural-grow',duration:2};project.elapsedSeconds=0;project.exportWidth=256;project.exportHeight=256;await open(page,project);
