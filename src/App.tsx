@@ -36,6 +36,7 @@ import {ThreeExportPanel} from './three/ThreeExportPanel';
 import {ThreeBoundary} from './three/ThreeBoundary';
 import {ThreeStyleControls} from './three/ThreeStyleControls';
 import {Hybrid2DControls} from './three/Hybrid2DControls';
+import {hybrid2DDefaults,hybrid2DSeed} from './three/hybrid-2d';
 import {FloorGridControls} from './three/FloorGridControls';
 import {SkyControls} from './three/SkyControls';
 import {VoidModeControls} from './three/VoidModeControls';
@@ -169,10 +170,36 @@ export default function App() {
 
   // Reuse the exact 2D SVG renderer as a transparent in-world 3D texture.
   // The SVG is ephemeral; projects store the source generator settings instead.
-  const hybridArtwork=useMemo(()=>renderMode==='3d'&&threeSettings.hybrid2D?.enabled
-    ?{svg:renderToStaticMarkup(<Preview scene={scene} background={twoDBackground} transparent/>),
-      width:scene.width,height:scene.height}
-    :undefined,[renderMode,threeSettings.hybrid2D?.enabled,scene,twoDBackground]);
+  const [smallHybridDevice,setSmallHybridDevice]=useState(()=>
+    matchMedia('(max-width: 720px), (pointer: coarse)').matches);
+  useEffect(()=>{
+    const media=matchMedia('(max-width: 720px), (pointer: coarse)');
+    const update=()=>setSmallHybridDevice(media.matches);
+    media.addEventListener('change',update);
+    return()=>media.removeEventListener('change',update);
+  },[]);
+  const hybridOptions=threeSettings.hybrid2D??hybrid2DDefaults;
+  const hybridCount=hybridOptions.enabled
+    ?Math.min(hybridOptions.count,threeSettings.quality==='low'||
+      (threeSettings.quality==='auto'&&smallHybridDevice)?12:32):0;
+  // Keep native SVGs isolated and never regenerate them while moving the
+  // entire constellation, orbiting the camera or editing 3D transparency.
+  const hybridArtworks=useMemo(()=>{
+    if(renderMode!=='3d'||hybridCount===0)return undefined;
+    return Array.from({length:hybridCount},(_,index)=>{
+      const artworkSeed=hybrid2DSeed(seed,hybridOptions.variation,index);
+      let artworkScene=scene;
+      if(index>0){
+        const generated=generateScene(artworkSeed,ratio,version,enabledShapeKinds,magicSettings);
+        const visible=visibleScene(generated,densityCandidates(generated,artworkSeed),density);
+        artworkScene=version===MAGIC_ALGORITHM_VERSION?visible:themeScene(visible,visualTheme,artworkSeed);
+      }
+      return {seed:artworkSeed,svg:renderToStaticMarkup(
+        <Preview scene={artworkScene} background={twoDBackground} transparent/>),
+        width:artworkScene.width,height:artworkScene.height};
+    });
+  },[renderMode,hybridCount,seed,hybridOptions.variation,
+    ratio,version,enabledShapeKinds,magicSettings,density,visualTheme,scene,twoDBackground]);
 
   const [animation,setAnimation]=useState<AnimationSettings>(()=>({
     animationEnabled:lastProject?.animationEnabled??true,
@@ -613,7 +640,7 @@ export default function App() {
             }}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
                 {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time}
-                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} hybridArtwork={hybridArtwork} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}${voidEnabled?':'+voidVersion:''}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
+                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} hybridArtworks={hybridArtworks} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}${voidEnabled?':'+voidVersion:''}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
                    skipEntrance={standbyFinishedSeed===seed} onVoidVisibleCount={setVoidVisibleCount}
                    onTransitionComplete={id=>{
                      setStandbyFinishedSeed(seed);
