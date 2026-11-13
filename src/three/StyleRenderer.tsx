@@ -15,7 +15,7 @@ import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections,type RootedWireStep} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
-import {splitExitEnter,standbyMorphWireProgress,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionFlash,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketTrailAt,neuralArrivalFlashAt,neuralSignalPlan} from './neural-signals';
 
@@ -155,7 +155,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const growWires=neuralAppearance&&(appearing||
       (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
     const replayMorphWires=standby?.transition.mode==='morph';
-    let active=0;
+    let active=0,maxReconnectFlash=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
       let perEdgeAlpha=1;
@@ -196,6 +196,10 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       const route=wireRoutes[i];
       let reverse=false;
       let startMix=0,endMix=1;
+      // Ordinary exit/enter uses the wire fade-in; routed modes use the
+      // precise per-edge growth to time the flash from primary to leaf.
+      let connectionProgress=standby?.layer==='new'
+        ?splitExitEnter(seconds.current,standby.transition.duration).enter:0;
       if(growWires||replayMorphWires){
         const wirePhase=(growthTime/entrance.duration-NEURAL_WIRE_START_FRACTION)/
           (1-NEURAL_WIRE_START_FRACTION);
@@ -203,6 +207,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
           standbyMorphWireProgress(seconds.current,standby!.transition.duration,
             standby!.layer,0,1,route):
           neuralWireWindowProgress(wirePhase,route.start,route.end);
+        if(standby?.layer==='new')connectionProgress=progress;
         // No ghost points at the source/target when a cable is absent.
         if(progress<=.001)continue;
         // Both directions keep the cable anchored at its parent node.
@@ -226,7 +231,12 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         ?neuralStartupFlash(seconds.current,entrance.duration):0;
       const pulse=(network.animation==='pulse'?networkPulse(clock,a.phase+b.phase):1)*(1+ignition*.65);
       const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
-      const strength=pulse*perEdgeAlpha;
+      // Tint existing linear-RGB wire colors: no neutral white flashes and
+      // no effect outside the new layer of an active standby transition.
+      const reconnect=standby?.layer==='new'&&(settings.standby??standbyDefaults).reconnectGlow
+        ?standbyReconnectionFlash(connectionProgress):0;
+      maxReconnectFlash=Math.max(maxReconnectFlash,reconnect);
+      const strength=pulse*perEdgeAlpha*(1+reconnect*2.5);
       colorStart.setXYZ(active,
         (ca.r+(cb.r-ca.r)*startMix)*strength,
         (ca.g+(cb.g-ca.g)*startMix)*strength,
@@ -239,6 +249,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       active++;
     }
     geometry.instanceCount=active;
+    line.userData.reconnectFlash=maxReconnectFlash;
     start.data.needsUpdate=true;
     end.data.needsUpdate=true;
     colorStart.data.needsUpdate=true;
