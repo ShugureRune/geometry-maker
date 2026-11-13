@@ -15,7 +15,7 @@ import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections,type RootedWireStep} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
-import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,standbyCompletionFlash,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketTrailAt,neuralArrivalFlashAt,neuralSignalPlan} from './neural-signals';
 
@@ -26,7 +26,7 @@ export function useOutlineGeometry(enabled:boolean,low:boolean){
   return geometries;
 }
 
-export function NeonOutline({geometry,object,settings,background,low,seconds,morphOpacity,skipEntrance=false}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;morphOpacity?:RefObject<number>;skipEntrance?:boolean}){
+export function NeonOutline({geometry,object,settings,background,low,seconds,morphOpacity,skipEntrance=false,completionFlashAt}:{geometry:LineSegmentsGeometry;object:ThreeObject;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;morphOpacity?:RefObject<number>;skipEntrance?:boolean;completionFlashAt?:number}){
   const neon=settings.neon??neonDefaults, {invalidate,size}=useThree();
   const visibilityLoop=(settings.visibilityAnimation??visibilityDefaults).enabled;
   const entrance=settings.entrance??entranceDefaults;
@@ -74,13 +74,16 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
     const ignition=network.enabled&&network.mode==='neural'&&!morphOpacity&&
       !skipEntrance&&entrance.enabled
       ?neuralStartupFlash(seconds.current,entrance.duration):0;
-    material.color.copy(baseColor).multiplyScalar(1+ignition*.75);
+    const standbySettings=settings.standby??standbyDefaults;
+    const completion=standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+      ?standbyCompletionFlash(seconds.current,completionFlashAt)*standbySettings.reconnectIntensity/100:0;
+    material.color.copy(baseColor).multiplyScalar(1+ignition*.75+completion*.85);
     material.uniformsNeedUpdate=true;
   });
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false,completionFlashAt}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean;completionFlashAt?:number}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
@@ -161,6 +164,9 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const growWires=neuralAppearance&&(appearing||
       (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
     const replayMorphWires=standby?.transition.mode==='morph';
+    const standbySettings=settings.standby??standbyDefaults;
+    const wholeFlash=standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+      ?standbyCompletionFlash(seconds.current,completionFlashAt)*standbySettings.reconnectIntensity/100:0;
     let active=0,maxReconnectFlash=0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
@@ -234,12 +240,11 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       const ca=colors[i][reverse?1:0],cb=colors[i][reverse?0:1];
       // Tint existing linear-RGB wire colors: no neutral white flashes and
       // no effect outside the new layer of an active standby transition.
-      const standbySettings=settings.standby??standbyDefaults;
       const reconnect=standby?.layer==='new'&&standbySettings.reconnectGlow
         ?standbyReconnectionGlowAt(seconds.current,standby.transition.duration,
           standby.transition.mode,route,neuralAppearance)*standbySettings.reconnectIntensity/100:0;
       maxReconnectFlash=Math.max(maxReconnectFlash,reconnect);
-      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1);
+      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1+wholeFlash*1.9);
       colorStart.setXYZ(active,
         (ca.r+(cb.r-ca.r)*startMix)*strength,
         (ca.g+(cb.g-ca.g)*startMix)*strength,
@@ -252,7 +257,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       active++;
     }
     geometry.instanceCount=active;
-    line.userData.reconnectFlash=maxReconnectFlash;
+    line.userData.reconnectFlash=Math.max(maxReconnectFlash,wholeFlash*.6);
     start.data.needsUpdate=true;
     end.data.needsUpdate=true;
     colorStart.data.needsUpdate=true;
