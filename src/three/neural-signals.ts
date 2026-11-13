@@ -1,4 +1,4 @@
-import {rootedWireSteps,type NetworkEdge} from './network';
+import {rootedWireSteps,type NetworkEdge,type RootedWireStep} from './network';
 import type {ThreeObject} from './model';
 
 /** Visual-only 3D neural circuit ignition and traveling packets.
@@ -36,9 +36,9 @@ export type NeuralSignalPlan={routes:NeuralSignalRoute[];cycle:number};
  * rank; a single shared cycle keeps the entire forest synchronized forever.
  */
 export function neuralSignalPlan(
-  objects:readonly ThreeObject[],edges:readonly NetworkEdge[],
+  objects:readonly ThreeObject[],edges:readonly NetworkEdge[],steps?:readonly RootedWireStep[],
 ):NeuralSignalPlan{
-  const rooted=rootedWireSteps(objects,edges);
+  const rooted=steps??rootedWireSteps(objects,edges);
   if(rooted.length===0)return {routes:[],cycle:1};
   // rootedWireSteps expresses cumulative *distance* as normalized windows.
   // Recover the shared distance scale from any edge, then convert to seconds.

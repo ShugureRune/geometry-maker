@@ -1,7 +1,7 @@
 // Imported only from the lazy 3D renderer. No new runtime dependencies.
 import {useEffect, useLayoutEffect, useMemo, useRef, type RefObject} from 'react';
 import {useFrame, useThree} from '@react-three/fiber';
-import {AdditiveBlending,Color,InstancedMesh,Object3D,type InterleavedBufferAttribute} from 'three';
+import {AdditiveBlending,Color,InstancedMesh,InstancedBufferAttribute,Object3D,type InterleavedBufferAttribute} from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
@@ -12,7 +12,7 @@ import {neonDefaults, networkDefaults} from './style-settings';
 import {outlineSegments} from './outline-geometry';
 import {networkPulse,radiance,styleColor} from './style-paint';
 import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './network-colors';
-import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections} from './network';
+import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections,type RootedWireStep} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
 import {splitExitEnter,standbyMorphWireProgress,type MorphMatch,type ThreeStandbyTransition} from './standby';
@@ -80,14 +80,14 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
     return edges.map(edge=>({a:byId.get(edge.a)!,b:byId.get(edge.b)!}));
   },[objects,edges]);
   // Every wire shares the same main-figure-rooted propagation wave.
-  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges),[objects,edges]);  const matchesById=useMemo(()=>{
+  const wireRoutes=useMemo(()=>routes??rootedWireSteps(objects,edges),[objects,edges,routes]);  const matchesById=useMemo(()=>{
     const byId=new Map<string,MorphMatch>();
     for(const pair of standby?.matches??[]){
       const object=standby?.layer==='old'?pair.from:pair.to;
@@ -95,7 +95,10 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     }
     return byId;
   },[standby?.matches,standby?.layer]);
-  const geometry=useMemo(()=>new LineSegmentsGeometry().setPositions(new Float32Array(edges.length*6)).setColors(new Float32Array(edges.length*6)),[edges]);
+  const geometry=useMemo(()=>{
+    const g=new LineSegmentsGeometry().setPositions(new Float32Array(edges.length*6)).setColors(new Float32Array(edges.length*6));
+    if(widths)g.setAttribute('voidWidth',new InstancedBufferAttribute(new Float32Array(edges.length),1));return g;
+  },[edges,!!widths]);
   const transitionEnvelope=()=>{
     if(!standby)return 1;
     const {transition,layer}=standby;
@@ -106,8 +109,17 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     return layer==='old'?1-phases.exit:phases.enter;
   };
   const currentOpacity=()=>network.opacity*transitionEnvelope();
-  const material=useMemo(()=>new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,
-    depthTest:true,depthWrite:false,toneMapped:true,opacity:currentOpacity()}),[]);
+  const material=useMemo(()=>{
+    const m=new LineMaterial({worldUnits:true,vertexColors:true,transparent:true,depthTest:true,depthWrite:false,toneMapped:true,opacity:currentOpacity()});
+    // Optional VOID widths only. The normal 3D shader and all effects stay intact.
+    if(widths){
+      m.vertexShader='attribute float voidWidth; varying float vVoidWidth;\n'+m.vertexShader
+        .replace('void main() {','void main() {\nvVoidWidth=voidWidth;')
+        .replace('float hw = linewidth * 0.5;','float hw = linewidth * voidWidth * 0.5;').replace('offset *= linewidth;','offset *= linewidth * voidWidth;');
+      m.fragmentShader='varying float vVoidWidth;\n'+m.fragmentShader.replace('float norm = len / linewidth;','float norm = len / (linewidth * vVoidWidth);');
+    }
+    return m;
+  },[!!widths]);
   useLayoutEffect(()=>{material.opacity=currentOpacity();},
     [material,network.opacity,standby?.transition.id,standby?.transition.mode,standby?.transition.duration,standby?.layer]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;return value;},[geometry,material]);
@@ -130,9 +142,10 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     const end=geometry.getAttribute('instanceEnd') as InterleavedBufferAttribute;
     const colorStart=geometry.getAttribute('instanceColorStart') as InterleavedBufferAttribute;
     const colorEnd=geometry.getAttribute('instanceColorEnd') as InterleavedBufferAttribute;
+    const edgeWidth=geometry.getAttribute('voidWidth');
     const appearance=settings.visibilityAnimation??visibilityDefaults;
     const entrance=settings.entrance??entranceDefaults;
-    const appearing=!standby&&!skipEntrance&&entrance.enabled&&(settings.animation||seconds.current>0);
+    const appearing=!standby&&!skipEntrance&&entrance.enabled&&(startAtZero||settings.animation||seconds.current>0);
     const neuralAppearance=entrance.enabled&&entrance.mode==='neural-grow'&&!skipEntrance;
     // Exit/enter retains the original reveal. Morph transitions explicitly
     // detach every cable BEFORE moving any nodes, then redraw the new topology.
@@ -222,6 +235,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         (ca.r+(cb.r-ca.r)*endMix)*strength,
         (ca.g+(cb.g-ca.g)*endMix)*strength,
         (ca.b+(cb.b-ca.b)*endMix)*strength);
+      if(edgeWidth)edgeWidth.setX(active,widths![i]);
       active++;
     }
     geometry.instanceCount=active;
@@ -229,6 +243,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     end.data.needsUpdate=true;
     colorStart.data.needsUpdate=true;
     colorEnd.data.needsUpdate=true;
+    if(edgeWidth)edgeWidth.needsUpdate=true;
   };
   // On seed commits, buffers initially contain zeroed origin vertices.
   // Fill them before the first render, not one frame after React remounts.
@@ -245,17 +260,17 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
  * Incoming wiring can begin carrying packets as soon as each section grows:
  * no particle ever runs ahead of its visible cable during a morph.
  */
-export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false,standby,completionOverride}:{
+export function NeuralSignals({objects,edges,settings,background,low,seconds,skipEntrance=false,standby,completionOverride,routes}:{
   objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;
   background:Background;low:boolean;seconds:RefObject<number>;skipEntrance?:boolean;
   standby?:{transition:ThreeStandbyTransition;matches?:readonly MorphMatch[]};
   /** Absolute clock position to synchronize a fresh wave after a seed switch. */
-  completionOverride?:number;
+  completionOverride?:number;routes?:RootedWireStep[];
 }){
   const network=settings.network??networkDefaults;
   const entrance=settings.entrance??entranceDefaults;
-  const signalPlan=useMemo(()=>neuralSignalPlan(objects,edges),[objects,edges]);
-  const wireRoutes=useMemo(()=>rootedWireSteps(objects,edges),[objects,edges]);
+  const signalPlan=useMemo(()=>neuralSignalPlan(objects,edges,routes),[objects,edges,routes]);
+  const wireRoutes=useMemo(()=>routes??rootedWireSteps(objects,edges),[objects,edges,routes]);
   const matchesById=useMemo(()=>{
     const lookup=new Map<string,MorphMatch>();
     for(const match of standby?.matches??[])if(match.to)lookup.set(match.to.id,match);

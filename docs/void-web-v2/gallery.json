@@ -1,0 +1,74 @@
+[
+  {
+    "seed": "cosmic-web-01",
+    "ratio": "16:9",
+    "density": 100,
+    "limit": 2800,
+    "quality": "high",
+    "label": "cosmic-web-01",
+    "objects": "2800",
+    "filaments": "124",
+    "knots": "66",
+    "renderQuality": "high"
+  },
+  {
+    "seed": "cosmic-web-02",
+    "ratio": "16:9",
+    "density": 100,
+    "limit": 2800,
+    "quality": "high",
+    "label": "cosmic-web-02",
+    "objects": "2800",
+    "filaments": "116",
+    "knots": "58",
+    "renderQuality": "high"
+  },
+  {
+    "seed": "cosmic-depth-17",
+    "ratio": "16:9",
+    "density": 100,
+    "limit": 2800,
+    "quality": "high",
+    "label": "cosmic-depth-17",
+    "objects": "2800",
+    "filaments": "121",
+    "knots": "65",
+    "renderQuality": "high"
+  },
+  {
+    "seed": "cosmic-web-01",
+    "ratio": "16:9",
+    "density": 50,
+    "limit": 1400,
+    "quality": "high",
+    "label": "standard",
+    "objects": "1400",
+    "filaments": "124",
+    "knots": "66",
+    "renderQuality": "high"
+  },
+  {
+    "seed": "cosmic-depth-17",
+    "ratio": "1:1",
+    "density": 75,
+    "limit": 1400,
+    "quality": "high",
+    "label": "square",
+    "objects": "1400",
+    "filaments": "124",
+    "knots": "66",
+    "renderQuality": "high"
+  },
+  {
+    "seed": "cosmic-web-01",
+    "ratio": "9:16",
+    "density": 100,
+    "limit": 2800,
+    "quality": "auto",
+    "label": "portrait-lightweight",
+    "objects": "640",
+    "filaments": "146",
+    "knots": "76",
+    "renderQuality": "low"
+  }
+]

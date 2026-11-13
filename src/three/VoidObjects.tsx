@@ -1,6 +1,6 @@
 // Only the lazy ThreePreview imports this renderer. At most 13 mesh batches
 // and 3 outline batches: never a React component or geometry per VOID node.
-import {useEffect,useLayoutEffect,useMemo,useRef,type RefObject} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState,type RefObject} from 'react';
 import {useFrame,useThree} from '@react-three/fiber';
 import {BoxGeometry,CapsuleGeometry,Color,ConeGeometry,CylinderGeometry,DodecahedronGeometry,IcosahedronGeometry,InstancedBufferAttribute,
   InstancedMesh,MeshPhysicalMaterial,MeshStandardMaterial,Object3D,OctahedronGeometry,SphereGeometry,TetrahedronGeometry,TorusGeometry,TorusKnotGeometry,Vector3} from 'three';
@@ -18,31 +18,33 @@ import {neuralStartupFlash} from './neural-signals';
 import {entranceDefaults} from './entrance';
 import type {MorphMatch,ThreeStandbyTransition} from './standby';
 import {voidDrawRecords,voidObjectPose,type VoidDrawRecord} from './void-pose';
+import {VoidWebOutlines} from './VoidWebOutlines';
 
 type Props={objects:ThreeObject[];previous:ThreeObject[];matches:readonly MorphMatch[];settings:ThreeSettings;background:Background;
-  visualTheme:VisualTheme;low:boolean;seconds:RefObject<number>;seed:string;skipEntrance?:boolean;transition?:ThreeStandbyTransition|null};
-type BatchProps=Props&{records:VoidDrawRecord[]};
+  visualTheme:VisualTheme;low:boolean;seconds:RefObject<number>;seed:string;skipEntrance?:boolean;transition?:ThreeStandbyTransition|null;web?:boolean;detailLow?:boolean;extraLow?:boolean};
+export type VoidBatchProps=Props&{records:VoidDrawRecord[]};
+type BatchProps=VoidBatchProps;
 const roleColors={primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'};
 
 /** Exact dimensions of the existing thirteen solids; no background particles. */
-function geometryFor(kind:ThreeKind,low:boolean){
+function geometryFor(kind:ThreeKind,low:boolean,lightest=false){
   switch(kind){
-    case 'sphere':return new SphereGeometry(1,low?16:40,low?8:20);
+    case 'sphere':return new SphereGeometry(1,lightest?10:low?16:40,lightest?6:low?8:20);
     case 'cube':return new BoxGeometry(2/Math.sqrt(3),2/Math.sqrt(3),2/Math.sqrt(3));
-    case 'torus':return new TorusGeometry(.72,.23,low?8:16,low?32:64);
+    case 'torus':return new TorusGeometry(.72,.23,lightest?5:low?8:16,lightest?18:low?32:64);
     case 'icosahedron':return new IcosahedronGeometry(1,0);
     case 'dodecahedron':return new DodecahedronGeometry(1,0);
     case 'octahedron':return new OctahedronGeometry(1,0);
     case 'tetrahedron':return new TetrahedronGeometry(1,0);
-    case 'cylinder':return new CylinderGeometry(.62,.62,1.45,low?12:32);
-    case 'cone':return new ConeGeometry(.72,1.35,low?12:32);
-    case 'capsule':return new CapsuleGeometry(.42,.68,low?4:8,low?10:24);
+    case 'cylinder':return new CylinderGeometry(.62,.62,1.45,lightest?8:low?12:32);
+    case 'cone':return new ConeGeometry(.72,1.35,lightest?8:low?12:32);
+    case 'capsule':return new CapsuleGeometry(.42,.68,lightest?3:low?4:8,lightest?8:low?10:24);
     case 'prism':return new CylinderGeometry(.69,.69,1.32,3);
     case 'pyramid':return new CylinderGeometry(0,.70,1.30,4);
-    case 'torus-knot':return new TorusKnotGeometry(.50,.15,low?48:112,low?6:12,2,3);
+    case 'torus-knot':return new TorusKnotGeometry(.50,.15,lightest?20:low?48:112,lightest?4:low?6:12,2,3);
   }
 }
-function colorsFor(records:VoidDrawRecord[],props:Props,outline:boolean){
+export function voidRecordColors(records:VoidDrawRecord[],props:Props,outline:boolean){
   const neon=props.settings.neon??neonDefaults;
   return records.map(record=>[record.from??record.object,record.to??record.object].map((object,index)=>{
     const background=index===0&&props.transition?props.transition.fromBackground:props.background;
@@ -54,13 +56,13 @@ function colorsFor(records:VoidDrawRecord[],props:Props,outline:boolean){
 function VoidSolids(props:BatchProps&{kind:ThreeKind}){
   const {records,kind,settings,low}=props,mesh=useRef<InstancedMesh>(null);
   const dummy=useMemo(()=>new Object3D(),[]),color=useMemo(()=>new Color(),[]);
-  const colors=useMemo(()=>colorsFor(records,props,false),[records,props.background,props.transition,low]);
+  const colors=useMemo(()=>voidRecordColors(records,props,false),[records,props.background,props.transition,low]);
   const neon=settings.neon??neonDefaults,look=settings.material==='theme'?themeMaterial(props.visualTheme):settings.material;
   const translucent=neon.enabled&&neon.display==='transparent',surfaceVisible=!neon.enabled||neon.display!=='lines';
   const geometry=useMemo(()=>{
-    const g=geometryFor(kind,low);g.setAttribute('voidOpacity',new InstancedBufferAttribute(new Float32Array(records.length),1));
+    const g=geometryFor(kind,props.detailLow??low,!!props.extraLow);g.setAttribute('voidOpacity',new InstancedBufferAttribute(new Float32Array(records.length),1));
     g.setAttribute('voidEmission',new InstancedBufferAttribute(new Float32Array(records.length),1));return g;
-  },[kind,low,records.length]);
+  },[kind,low,props.detailLow,props.extraLow,records.length]);
   const material=useMemo(()=>{
     const common={color:'#ffffff',emissive:'#ffffff',emissiveIntensity:1,transparent:true,
       roughness:look==='matte'?Math.max(.65,settings.roughness):settings.roughness,
@@ -96,7 +98,7 @@ function VoidSolids(props:BatchProps&{kind:ThreeKind}){
     alpha.needsUpdate=true;emission.needsUpdate=true;
   };
   useLayoutEffect(update,[records,settings,colors,props.transition,props.skipEntrance,props.background,props.seed,geometry,material,surfaceVisible]);useFrame(update);
-  return <instancedMesh ref={mesh} args={[geometry,material,records.length]} frustumCulled={false} dispose={null}/>;
+  return <instancedMesh name={props.web?`void-web-solid-${kind}`:undefined} ref={mesh} args={[geometry,material,records.length]} frustumCulled={false} dispose={null}/>;
 }
 
 function VoidOutlines(props:BatchProps&{role:ThreeObject['role']}){
@@ -115,7 +117,7 @@ function VoidOutlines(props:BatchProps&{role:ThreeObject['role']}){
     return m;
   },[low]);
   const line=useMemo(()=>{const value=new LineSegments2(geometry,material);value.frustumCulled=false;return value;},[geometry,material]);
-  const colors=useMemo(()=>colorsFor(records,props,true),[records,neon,props.background,props.transition,low]);
+  const colors=useMemo(()=>voidRecordColors(records,props,true),[records,neon,props.background,props.transition,low]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);useEffect(()=>()=>material.dispose(),[material]);
   useLayoutEffect(()=>{
     const weight=props.role==='primary'?1:props.role==='support'?.8:.65;
@@ -147,11 +149,19 @@ function VoidOutlines(props:BatchProps&{role:ThreeObject['role']}){
 }
 
 export function VoidObjects(props:Props){
+  const {camera}=useThree(),[near,setNear]=useState(false);
+  useFrame(()=>{
+    if(!props.web||props.low)return;
+    // Derive detail from the saved camera alone: no history-dependent LOD,
+    // so importing the same view/time restores the same geometry precision.
+    const next=Math.round(camera.position.length()*1000)<16000;if(next!==near)setNear(next);
+  });
+  const qualityProps={...props,detailLow:props.web?(props.low||!near):props.low,extraLow:!!props.web&&props.low};
   const records=useMemo(()=>voidDrawRecords(props.objects,props.previous,props.transition,props.matches),[props.objects,props.previous,props.transition,props.matches]);
   const batches=useMemo(()=>THREE_KINDS.map(kind=>({kind,records:records.filter(r=>r.object.kind===kind)})).filter(b=>b.records.length),[records]);
   const outlines=useMemo(()=>(['primary','support','accent'] as const).map(role=>({role,records:records.filter(r=>r.object.role===role)})).filter(b=>b.records.length),[records]);
-  return <group name="void-prototype-batches">
-    {batches.map(batch=><VoidSolids key={batch.kind} {...props} {...batch}/>)}
-    {(props.settings.neon??neonDefaults).enabled&&outlines.map(batch=><VoidOutlines key={batch.role} {...props} {...batch}/>)}
+  return <group name={props.web?'void-web-batches':'void-prototype-batches'}>
+    {batches.map(batch=><VoidSolids key={batch.kind} {...qualityProps} {...batch}/>)}
+    {(props.settings.neon??neonDefaults).enabled&&(props.web?batches.map(batch=><VoidWebOutlines key={'outline-'+batch.kind} {...qualityProps} {...batch}/>):outlines.map(batch=><VoidOutlines key={batch.role} {...props} {...batch}/>))}
   </group>;
 }

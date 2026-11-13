@@ -3,6 +3,7 @@ import {threeEntrancePose,entranceDefaults} from './entrance';
 import {threeVisibility,visibilityDefaults,visibilityUsesScale} from './visibility';
 import {standbyObjectPose,standbyMeshVisibility,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import type {ThreeSettings} from './settings';
+import {VOID_WEB_VERSION} from './void-settings';
 export type VoidDrawRecord={object:ThreeObject;from?:ThreeObject;to?:ThreeObject;variant?:'old'|'new'|'shared'};
 export function voidDrawRecords(objects:ThreeObject[],previous:ThreeObject[],transition:ThreeStandbyTransition|null|undefined,matches:readonly MorphMatch[]):VoidDrawRecord[]{
   if(!transition)return objects.map(object=>({object}));
@@ -23,7 +24,7 @@ export function voidObjectPose(record:VoidDrawRecord,time:number,settings:ThreeS
     return {...result,radius:result.radius*(visibilityUsesScale(appearance)?Math.max(.001,visibility):1),opacity:result.opacity*visibility};
   }
   const pose=threePose(object,time,settings.floatAmount,settings.rotationAmount);
-  const arrival=!skipEntrance&&entrance.enabled&&(settings.animation||time>0)?threeEntrancePose(object,time,entrance,seed):null;
+  const arrival=!skipEntrance&&entrance.enabled&&(settings.voidMode?.version===VOID_WEB_VERSION||settings.animation||time>0)?threeEntrancePose(object,time,entrance,seed):null;
   const visibility=threeVisibility(object,time,appearance);
   return {position:pose.position.map((n,i)=>n+(arrival?.offset[i]??0)) as typeof pose.position,
     rotation:[pose.rotation[0],pose.rotation[1],pose.rotation[2]+(arrival?.rotationZ??0)] as typeof pose.rotation,
