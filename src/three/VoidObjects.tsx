@@ -16,12 +16,12 @@ import {outlineSegments} from './outline-geometry';
 import {radiance,styleColor} from './style-paint';
 import {neuralStartupFlash} from './neural-signals';
 import {entranceDefaults} from './entrance';
-import type {MorphMatch,ThreeStandbyTransition} from './standby';
+import {standbyDefaults,standbyCompletionFlash,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {voidDrawRecords,voidObjectPose,type VoidDrawRecord} from './void-pose';
 import {VoidWebOutlines} from './VoidWebOutlines';
 
 type Props={objects:ThreeObject[];previous:ThreeObject[];matches:readonly MorphMatch[];settings:ThreeSettings;background:Background;
-  visualTheme:VisualTheme;low:boolean;seconds:RefObject<number>;seed:string;skipEntrance?:boolean;transition?:ThreeStandbyTransition|null;web?:boolean;detailLow?:boolean;extraLow?:boolean};
+  visualTheme:VisualTheme;low:boolean;seconds:RefObject<number>;seed:string;skipEntrance?:boolean;transition?:ThreeStandbyTransition|null;web?:boolean;detailLow?:boolean;extraLow?:boolean;completionFlashAt?:number};
 export type VoidBatchProps=Props&{records:VoidDrawRecord[]};
 type BatchProps=VoidBatchProps;
 const roleColors={primary:'#b995ff',support:'#76cfe8',accent:'#beffd4'};
@@ -93,6 +93,9 @@ function VoidSolids(props:BatchProps&{kind:ThreeKind}){
     const alpha=geometry.getAttribute('voidOpacity'),emission=geometry.getAttribute('voidEmission');let used=0,minAlpha=1;
     const entrance=settings.entrance??entranceDefaults;
     const ignition=!props.transition&&!props.skipEntrance&&entrance.enabled&&settings.network?.enabled?neuralStartupFlash(props.seconds.current,entrance.duration):0;
+    const standbySettings=settings.standby??standbyDefaults;
+    const completion=standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+      ?standbyCompletionFlash(props.seconds.current,props.completionFlashAt)*standbySettings.reconnectIntensity/100:0;
     for(let i=0;i<records.length;i++){
       const record=records[i],pose=voidObjectPose(record,props.seconds.current,settings,props.seed,!!props.skipEntrance,props.transition);
       if(pose.opacity<=.001)continue;
@@ -100,7 +103,7 @@ function VoidSolids(props:BatchProps&{kind:ThreeKind}){
       color.copy(colors[i][0]).lerp(colors[i][1],pose.colorMix);mesh.current.setColorAt(used,color);
       alpha.setX(used,pose.opacity);minAlpha=Math.min(minAlpha,pose.opacity);
       const weight=record.object.role==='primary'?.45:record.object.role==='accent'?.3:.16;
-      emission.setX(used,(props.background.glowIntensity??0)/100*weight*(look==='glass'?.45:1)+ignition*1.35);used++;
+      emission.setX(used,(props.background.glowIntensity??0)/100*weight*(look==='glass'?.45:1)+ignition*1.35+completion*1.1);used++;
     }
     mesh.current.count=used;mesh.current.visible=surfaceVisible;material.depthWrite=!translucent&&minAlpha>=.999;
     mesh.current.instanceMatrix.needsUpdate=true;if(mesh.current.instanceColor)mesh.current.instanceColor.needsUpdate=true;
@@ -139,11 +142,14 @@ function VoidOutlines(props:BatchProps&{role:ThreeObject['role']}){
     const start=geometry.getAttribute('instanceStart'),end=geometry.getAttribute('instanceEnd'),ca=geometry.getAttribute('instanceColorStart'),cb=geometry.getAttribute('instanceColorEnd'),alpha=geometry.getAttribute('voidOpacity');let used=0;
     const entrance=settings.entrance??entranceDefaults;
     const ignition=!props.transition&&!props.skipEntrance&&entrance.enabled&&settings.network?.enabled?neuralStartupFlash(props.seconds.current,entrance.duration):0;
+    const standbySettings=settings.standby??standbyDefaults;
+    const completion=standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+      ?standbyCompletionFlash(props.seconds.current,props.completionFlashAt)*standbySettings.reconnectIntensity/100:0;
     for(let i=0;i<records.length;i++){
       const record=records[i],pose=voidObjectPose(record,props.seconds.current,settings,props.seed,!!props.skipEntrance,props.transition);
       if(pose.opacity<=.06)continue;
       dummy.position.set(...pose.position);dummy.rotation.set(...pose.rotation);dummy.scale.setScalar(pose.radius*1.002);dummy.updateMatrix();
-      color.copy(colors[i][0]).lerp(colors[i][1],pose.colorMix).multiplyScalar(1+ignition*.75);
+      color.copy(colors[i][0]).lerp(colors[i][1],pose.colorMix).multiplyScalar(1+ignition*.75+completion*.85);
       const template=templates.get(record.object.kind)!;
       for(let k=0;k<template.length;k+=6){
         vertex.fromArray(template,k).applyMatrix4(dummy.matrix);start.setXYZ(used,vertex.x,vertex.y,vertex.z);
