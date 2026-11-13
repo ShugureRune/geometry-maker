@@ -38,7 +38,7 @@ import {ThreeStyleControls} from './three/ThreeStyleControls';
 import {FloorGridControls} from './three/FloorGridControls';
 import {SkyControls} from './three/SkyControls';
 import {VoidModeControls} from './three/VoidModeControls';
-import {generateVoidComposition,isVoidComposition} from './three/void-graph';
+import {generateVoidComposition,isVoidComposition,spaceVoidComposition} from './three/void-graph';
 import {generateVoidWeb} from './three/void-web';
 import {VOID_WEB_VERSION,voidDefaults,voidRenderSettings} from './three/void-settings';
 import {floorGridDefaults} from './three/floor-grid';
@@ -248,7 +248,7 @@ export default function App() {
   const threeBaseComposition=useMemo(()=>renderMode==='3d'?
     voidEnabled?(voidVersion===VOID_WEB_VERSION?generateVoidWeb(seed,ratio):generateVoidComposition(seed,ratio)):generateThreeComposition(seed,ratio):null,[renderMode,seed,ratio,voidEnabled,voidVersion]);
   const threeComposition=useMemo(()=>threeBaseComposition?
-    isVoidComposition(threeBaseComposition)?threeBaseComposition:spaceThreeComposition(threeBaseComposition,threeSettings.spacingPercent??100):null,
+    isVoidComposition(threeBaseComposition)?spaceVoidComposition(threeBaseComposition,threeSettings.spacingPercent??100):spaceThreeComposition(threeBaseComposition,threeSettings.spacingPercent??100):null,
     [threeBaseComposition,threeSettings.spacingPercent]);
   const standby=threeSettings.standby??standbyDefaults;
   function beginStandbyTransition(){

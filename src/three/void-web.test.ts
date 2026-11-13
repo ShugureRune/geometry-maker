@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {generateVoidWeb} from './void-web';
 import {cavityClearance} from './void-graph';
-import {generateVoidComposition,voidEdges} from './void-graph';
+import {generateVoidComposition,voidEdges,spaceVoidComposition} from './void-graph';
 import {THREE_KINDS,threePose} from './model';
 import {voidDelaunay} from './void-spatial';
 import {seededRandom} from '../scene';
@@ -12,6 +12,34 @@ import {parseThreeProject,threeProjectText,type ThreeProject} from './project';
 import {threeDefaults} from './settings';
 
 describe('volumetric cosmic web',()=>{
+  it('restores VOID spacing without rerolling nodes, changing solid radii or breaking cavity/edge geometry',()=>{
+    for(const make of [generateVoidWeb,generateVoidComposition]){
+      const base=make('void-spacing','16:9'),snapshot=JSON.stringify(base);
+      expect(spaceVoidComposition(base,100)).toBe(base);
+      const sourceEdges=base.voidGraph.edges.map(({a,b,width})=>({a,b,width}));
+      for(const percent of [50,75,100,150,200]){
+        const spaced=spaceVoidComposition(base,percent),factor=percent/100;
+        expect(spaced.width).toBeCloseTo(base.width*factor,8);
+        expect(spaced.height).toBeCloseTo(base.height*factor,8);
+        expect(spaced.objects.map(o=>[o.id,o.kind,o.role,o.radius,o.startDensity,o.parentId])).toEqual(
+          base.objects.map(o=>[o.id,o.kind,o.role,o.radius,o.startDensity,o.parentId]));
+        expect(spaced.voidGraph.filaments).toEqual(base.voidGraph.filaments);
+        expect(spaced.voidGraph.edges.map(({a,b,width})=>({a,b,width}))).toEqual(sourceEdges);
+        spaced.objects.forEach((obj,i)=>obj.position.forEach((value,k)=>
+          expect(value).toBeCloseTo(base.objects[i].position[k]*factor,8)));
+        spaced.voidGraph.cavities.forEach((cavity,i)=>{
+          expect(cavity.radius).toBeCloseTo(base.voidGraph.cavities[i].radius*factor,8);
+          cavity.center.forEach((value,k)=>expect(value).toBeCloseTo(base.voidGraph.cavities[i].center[k]*factor,8));
+        });
+        spaced.voidGraph.edges.forEach((edge,i)=>{
+          const original=base.voidGraph.edges[i];
+          expect(edge.distance).toBeCloseTo(original.distance*factor,8);
+        });
+        expect(spaced).toEqual(spaceVoidComposition(base,percent));
+      }
+      expect(JSON.stringify(base)).toBe(snapshot);
+    }
+  });
   const cases=['cosmic-web-01','cosmic-web-02','cosmic-depth-17'].flatMap(seed=>(['16:9','9:16','1:1'] as const).map(ratio=>({seed,ratio})));
   it.each(cases)('keeps the connected volumetric graph and cavities for $seed / $ratio',({seed,ratio})=>{
       const scene=generateVoidWeb(seed,ratio);

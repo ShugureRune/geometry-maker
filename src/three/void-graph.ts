@@ -11,6 +11,19 @@ export type VoidGraph={version:VoidVersion;cavities:VoidCavity[];filaments:VoidF
   web?:{backboneIds:string[];junctions:number;cycles:number;chambers:number}};
 export type VoidComposition=Omit<ThreeComposition,'objects'>&{objects:VoidNode[];voidGraph:VoidGraph};
 export const isVoidComposition=(scene:ThreeComposition):scene is VoidComposition=>'voidGraph' in scene;
+/** Stretch the already-generated VOID layout without rerolling the graph.
+ * 100% is exactly the historic VOID placement (unlike ordinary 3D's legacy
+ * spacing baseline); scale both cavity bounds and edge lengths with nodes. */
+export function spaceVoidComposition(composition:VoidComposition,percent=100):VoidComposition{
+  const factor=percent/100;
+  if(factor===1)return composition;
+  const scale=(point:V):V=>point.map(value=>value*factor) as V;
+  return {...composition,width:composition.width*factor,height:composition.height*factor,
+    objects:composition.objects.map(object=>({...object,position:scale(object.position)})),
+    voidGraph:{...composition.voidGraph,
+      cavities:composition.voidGraph.cavities.map(cavity=>({...cavity,center:scale(cavity.center),radius:cavity.radius*factor})),
+      edges:composition.voidGraph.edges.map(edge=>({...edge,distance:edge.distance*factor}))}};
+}
 const add=(a:V,b:V):V=>a.map((n,i)=>n+b[i]) as V;
 const sub=(a:V,b:V):V=>a.map((n,i)=>n-b[i]) as V;
 const mul=(a:V,t:number):V=>a.map(n=>n*t) as V;
