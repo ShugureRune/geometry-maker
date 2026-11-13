@@ -49,6 +49,7 @@ function referenceFixture(enabled=false){
   const original=fixture(enabled);
   const standby={...original.settings.standby} as NonNullable<typeof original.settings.standby>;
   delete (standby as Partial<typeof standby>).reconnectGlow;
+  delete (standby as Partial<typeof standby>).reconnectIntensity;
   return {...original,settings:{...original.settings,standby}};
 }
 
