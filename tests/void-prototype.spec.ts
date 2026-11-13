@@ -47,10 +47,9 @@ test('OFF preserves ordinary 3D, restores its camera/time and never overwrites n
  * Omit only that new JSON field when loading the exact same scene on base. */
 function referenceFixture(enabled=false){
   const original=fixture(enabled);
-  const legacy={...original,settings:{...original.settings,
-    standby:{...original.settings.standby}}};
-  delete (legacy.settings.standby as {reconnectGlow?:boolean}).reconnectGlow;
-  return legacy;
+  const standby={...original.settings.standby} as NonNullable<typeof original.settings.standby>;
+  delete (standby as Partial<typeof standby>).reconnectGlow;
+  return {...original,settings:{...original.settings,standby}};
 }
 
 test('matches the base reference pixel-for-pixel for ordinary 3D and saved v1 VOID',async({page,browser})=>{
