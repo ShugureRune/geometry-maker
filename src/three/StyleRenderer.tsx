@@ -15,7 +15,7 @@ import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections,type RootedWireStep} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
-import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,standbyNetworkCompletionFlash,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketTrailAt,neuralArrivalFlashAt,neuralSignalPlan} from './neural-signals';
 
@@ -80,7 +80,7 @@ export function NeonOutline({geometry,object,settings,background,low,seconds,mor
   return <primitive object={line} dispose={null}/>;
 }
 
-export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean}){
+export function NetworkLines({objects,edges,settings,background,low,seconds,seed,standby,skipEntrance=false,routes,widths,startAtZero=false,completionAt}:{objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;seed:string;standby?:{transition:ThreeStandbyTransition;layer:'old'|'new';matches?:readonly MorphMatch[]};skipEntrance?:boolean;routes?:RootedWireStep[];widths?:number[];startAtZero?:boolean;completionAt?:RefObject<number|null>}){
   const network=settings.network??networkDefaults, {invalidate,size}=useThree();
   const topology=useMemo(()=>{
     const byId=new Map(objects.map(object=>[object.id,object]));
@@ -162,6 +162,12 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       (standby?.layer==='new'&&standby.transition.mode==='exit-enter'));
     const replayMorphWires=standby?.transition.mode==='morph';
     let active=0,maxReconnectFlash=0;
+    const standbySettings=settings.standby??standbyDefaults;
+    // The transition layer disappears immediately on completion. Only the
+    // settled network should receive the shared post-connection ignition.
+    const completeFlash=!standby&&standbySettings.reconnectGlow
+      ?standbyNetworkCompletionFlash(seconds.current,completionAt?.current??null)*
+        standbySettings.reconnectIntensity/100:0;
     for(let i=0;i<topology.length;i++){
       const {a,b}=topology[i];
       let perEdgeAlpha=1;
@@ -239,7 +245,7 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
         ?standbyReconnectionGlowAt(seconds.current,standby.transition.duration,
           standby.transition.mode,route,neuralAppearance)*standbySettings.reconnectIntensity/100:0;
       maxReconnectFlash=Math.max(maxReconnectFlash,reconnect);
-      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1);
+      const strength=pulse*perEdgeAlpha*(1+reconnect*1.1+completeFlash*1.75);
       colorStart.setXYZ(active,
         (ca.r+(cb.r-ca.r)*startMix)*strength,
         (ca.g+(cb.g-ca.g)*startMix)*strength,
@@ -252,7 +258,8 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       active++;
     }
     geometry.instanceCount=active;
-    line.userData.reconnectFlash=maxReconnectFlash;
+    line.userData.reconnectFlash=Math.max(maxReconnectFlash,completeFlash);
+    line.userData.completionFlash=completeFlash;
     start.data.needsUpdate=true;
     end.data.needsUpdate=true;
     colorStart.data.needsUpdate=true;
