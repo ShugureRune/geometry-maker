@@ -35,6 +35,7 @@ import {standbyDefaults,type ThreeStandbyTransition} from './three/standby';
 import {ThreeExportPanel} from './three/ThreeExportPanel';
 import {ThreeBoundary} from './three/ThreeBoundary';
 import {ThreeStyleControls} from './three/ThreeStyleControls';
+import {Hybrid2DControls} from './three/Hybrid2DControls';
 import {FloorGridControls} from './three/FloorGridControls';
 import {SkyControls} from './three/SkyControls';
 import {VoidModeControls} from './three/VoidModeControls';
@@ -166,6 +167,13 @@ export default function App() {
     return version===MAGIC_ALGORITHM_VERSION?visible:themeScene(visible,visualTheme,seed);
   },[baseScene,candidates,density,visualTheme,seed,version]);
 
+  // Reuse the exact 2D SVG renderer as a transparent in-world 3D texture.
+  // The SVG is ephemeral; projects store the source generator settings instead.
+  const hybridArtwork=useMemo(()=>renderMode==='3d'&&threeSettings.hybrid2D?.enabled
+    ?{svg:renderToStaticMarkup(<Preview scene={scene} background={twoDBackground} transparent/>),
+      width:scene.width,height:scene.height}
+    :undefined,[renderMode,threeSettings.hybrid2D?.enabled,scene,twoDBackground]);
+
   const [animation,setAnimation]=useState<AnimationSettings>(()=>({
     animationEnabled:lastProject?.animationEnabled??true,
     animationDuration:lastProject?.animationDuration??defaults.animationDuration,
@@ -193,6 +201,7 @@ export default function App() {
         kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,
         seed,aspectRatio:ratio,density,visualTheme,background,
         colorSettings:activeColors,settings:threeSettings,
+        hybridSource:{algorithmVersion:version,enabledShapeKinds,magicCircle:magicSettings},
         ...(threeView.current?{view:threeView.current}:{}),
         elapsedSeconds:elapsed,
         floorElapsedSeconds:Math.max(0,Math.min(1e9,
@@ -406,7 +415,9 @@ export default function App() {
         </section>
         {renderMode==='2d'&&version===ALGORITHM_VERSION&&<ShapeKindControls enabled={enabledShapeKinds} onChange={setEnabledShapeKinds}/>}
         {renderMode==='2d'&&version===MAGIC_ALGORITHM_VERSION&&<MagicCircleControls value={magicSettings} onChange={setMagicSettings} seed={seed}/>}
-        {renderMode==='3d'&&<ThreeShapeControls settings={threeSettings} onChange={setThreeSettings}/>}
+        {renderMode==='3d'&&<><ThreeShapeControls settings={threeSettings} onChange={setThreeSettings}/>
+          <Hybrid2DControls settings={threeSettings} onChange={setThreeSettings}
+            sourceLabel={version===MAGIC_ALGORITHM_VERSION?'魔法陣':version===LEGACY_ALGORITHM_VERSION?'v4（クラシック）':'v5（拡張）'}/></>}
 
         <section className="control-section ratio-section" aria-labelledby="ratio-heading">
           <div className="section-heading"><h3 id="ratio-heading"><span>03</span> 縦横比</h3><span className="tiny-label">ASPECT RATIO</span></div>
@@ -554,6 +565,7 @@ export default function App() {
            onBusyChange={setThreeExportBusy}
           project={()=>({kind:'geometry-maker-3d',schemaVersion:1,algorithmVersion:THREE_ALGORITHM_VERSION,seed,aspectRatio:ratio,density,visualTheme,background,
             colorSettings:activeColors,settings:threeSettings,
+            hybridSource:{algorithmVersion:version,enabledShapeKinds,magicCircle:magicSettings},
              ...(standbyFinishedSeed===seed?{standbyComplete:true}:{}),
              floorElapsedSeconds:Math.max(0,Math.min(1e9,
                threeApi.current?.getFloorElapsedSeconds?.()??threeRestore.floorTime)),
@@ -562,6 +574,9 @@ export default function App() {
             beforeVoid.current=null;
             setStandbyTransition(null);setStandbyFinishedSeed(project.standbyComplete?project.seed:null);setThreeReady(false);setSeed(project.seed);committedSeed.current=project.seed;setRatio(project.aspectRatio);setDensity(project.density);
             setVisualTheme(project.visualTheme);setColorSettings(project.colorSettings);setBackground(project.colorSettings?coloredBackground(project.background,project.colorSettings):project.background);
+            if(project.hybridSource){setVersion(project.hybridSource.algorithmVersion);
+              setEnabledShapeKinds(project.hybridSource.enabledShapeKinds);
+              setMagicSettings(project.hybridSource.magicCircle);}
             setThreeSettings(project.settings);threeView.current=project.view;setThreeRestore(previous=>({serial:previous.serial+1,time:project.elapsedSeconds,
               floorTime:project.floorElapsedSeconds??project.elapsedSeconds}));
           }}/>}
@@ -598,7 +613,7 @@ export default function App() {
             }}>
               <Suspense fallback={<div className="three-fallback" role="status">3Dエンジンを読み込んでいます…</div>}>
                 {threeComposition&&<ThreePreview key={threeRestore.serial} initialTime={threeRestore.time}
-                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}${voidEnabled?':'+voidVersion:''}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
+                  initialFloorTime={threeRestore.floorTime} composition={threeComposition} sourceComposition={threeBaseComposition!} hybridArtwork={hybridArtwork} skySeed={seed} density={density} background={threeBackground} visualTheme={visualTheme} settings={threeSettings} restartKey={`${seed}:${ratio}:${regenerations}${voidEnabled?':'+voidVersion:''}`} view={threeView} api={threeApi} onReady={setThreeReady} transition={standbyTransition}
                    skipEntrance={standbyFinishedSeed===seed} onVoidVisibleCount={setVoidVisibleCount}
                    onTransitionComplete={id=>{
                      setStandbyFinishedSeed(seed);
