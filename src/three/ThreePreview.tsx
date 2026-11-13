@@ -1,5 +1,6 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
+import {flushSync} from 'react-dom';
 import {useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
 import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2, Vector3} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -188,7 +189,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost, onVideoExportState}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void; onVideoExportState:(enabled:boolean)=>void}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const cameraInteractionUntil=useRef(0);
@@ -494,6 +495,10 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       beforeVideoFloorTime.current=floorSeconds.current;
       exportingVideo.current=true;
       skipDelta.current=true;
+      // A completed standby scene skips entrance in the live preview. During
+      // export we MUST replay the entrance from frame 0 even if live animation
+      // is paused. Commit the render settings before capturing the first frame.
+      flushSync(()=>onVideoExportState(true));
     },
     async captureVideoFrame(time,width,height,canvas,signal){
       if(!exportingVideo.current)throw new Error('3D動画の書き出しが開始されていません。');
@@ -542,6 +547,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       exportingVideo.current=false;
       seconds.current=beforeVideoTime.current;
       floorSeconds.current=beforeVideoFloorTime.current;
+      onVideoExportState(false);
       pendingVideoFrame.current?.reject(new Error('動画書き出しが終了しました。'));
       pendingVideoFrame.current=null;
       skipDelta.current=true;
@@ -594,8 +600,14 @@ function webGLAvailable() {
 }
 
 export default function ThreePreview(input: Props) {
+  const [videoExporting,setVideoExporting]=useState(false);
   const effectiveSettings=useMemo(()=>voidRenderSettings(input.settings),[input.settings]);
-  const props=effectiveSettings===input.settings?input:{...input,settings:effectiveSettings};
+  // Video export always plays the entrance from t=0. Live standby completion
+  // and a paused preview must not suppress the opening animation in the file.
+  const renderSettings=useMemo(()=>videoExporting?{...effectiveSettings,animation:true}:effectiveSettings,
+    [effectiveSettings,videoExporting]);
+  const props=videoExporting||effectiveSettings!==input.settings
+    ?{...input,settings:renderSettings,skipEntrance:videoExporting?false:input.skipEntrance}:input;
   const voidMode=isVoidComposition(props.composition);
   const web=isVoidWeb(props.composition);
   const [supported] = useState(webGLAvailable), [lost, setLost] = useState(false);
@@ -752,7 +764,8 @@ export default function ThreePreview(input: Props) {
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}
-      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}
+        onVideoExportState={setVideoExporting}/>
     </Canvas>
 
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>
