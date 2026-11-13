@@ -445,7 +445,12 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     const floor=settings.floorGrid??floorGridDefaults;
     const celestial=settings.celestial??celestialDefaults;
     const styled=network.enabled||neon.enabled||floor.enabled||celestial.enabled||(settings.sky?.kind??'classic')!=='classic';
-    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0) / 100;
+    const reconnecting=network.enabled&&!!transition&&(settings.standby??standbyDefaults).reconnectGlow&&
+      seconds.current<transition.duration&&
+      seconds.current>transition.duration*(transition.mode==='morph'?MORPH_WIRE_ATTACH_START:.5);
+    // Make bright reconnecting strokes bloom even when ordinary glow is 0.
+    // The threshold still excludes all background and regular line colors.
+    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0,reconnecting?140:0) / 100;
     if (pipeline.current) {
       pipeline.current.bloom.enabled = glow > 0;
       pipeline.current.bloom.strength = Math.min(.55, glow * .28);
