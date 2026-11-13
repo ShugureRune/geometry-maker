@@ -14,7 +14,7 @@ import {threePose, threeSpacingFactor, visibleThreeObjects, type ThreeCompositio
 import {effectiveThreeQuality, themeMaterial, threeResolutionError, type ThreePreviewHandle, type ThreeSettings, type ThreeView} from './settings';
 import {networkConnections} from './network';
 import {networkDefaults,neonDefaults} from './style-settings';
-import {NeonOutline,NetworkLines,NeuralSignals,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
+import {NeonOutline,NetworkLines,NeuralSignals,StandbyReconnectionSparks,useOutlineGeometry,type OutlineGeometries} from './StyleRenderer';
 import {FloorGrid} from './FloorGrid';
 import {SkyRenderer} from './SkyRenderer';
 import {skyDefaults} from './sky-settings';
@@ -751,6 +751,11 @@ export default function ThreePreview(input: Props) {
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
         skipEntrance={props.skipEntrance}/>}
+      {props.transition&&edges.length>0&&network.enabled&&
+        (props.settings.standby??standbyDefaults).reconnectGlow&&
+        <StandbyReconnectionSparks objects={objects} edges={edges} routes={routes}
+          settings={props.settings} background={props.background} low={low} seconds={seconds}
+          transition={props.transition} matches={matches}/>}
       {edges.length>0&&network.enabled&&network.mode==='neural'&&network.animation==='signal'&&
         <NeuralSignals objects={objects} edges={edges} settings={props.settings}
           routes={routes}
