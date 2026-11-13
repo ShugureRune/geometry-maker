@@ -409,7 +409,7 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
   },[topology,network.width,settings,entrance,seconds,skipEntrance,standby,
     completionOverride,lanes,tailCount]);
   useFrame(update);
-  return <instancedMesh ref={mesh}
+  return <instancedMesh ref={mesh} name="neural-signal-packets"
     args={[undefined,undefined,topology.length*lanes*(tailCount+2)]}
     count={0} frustumCulled={false} renderOrder={2}>
     <sphereGeometry args={[1,low?6:10,low?4:8]}/>

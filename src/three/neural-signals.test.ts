@@ -192,18 +192,19 @@ describe('glowing neural trail and arrival feedback',()=>{
     expect(neuralArrivalFlashAt(6,Infinity,root,plan.cycle)).toBe(0);
     expect(neuralArrivalFlashAt(6,6,{start:1,end:1},plan.cycle)).toBe(0);
   });
-  it('restarts a fresh root wave late in the rewire and lets it reach leaves after completion',()=>{
+  it('waits until standby completes before launching the new root wave',()=>{
     const root=byChild.get('middle-a')!,leaf=byChild.get('small-a1')!;
-    const duration=6,reconnectBegin=.8*duration;
-    const absoluteLaunch=reconnectBegin+.12;
-    const completion=absoluteLaunch-NEURAL_SIGNAL_LAUNCH_DELAY;
-    expect(neuralPacketAt(reconnectBegin,completion,root,plan.cycle)).toBeNull();
+    const duration=6;
+    // Reconnection is complete only at the end of the transition; the
+    // usual launch delay then leaves the full network dark briefly.
+    const completion=duration;
+    const absoluteLaunch=completion+NEURAL_SIGNAL_LAUNCH_DELAY;
+    expect(neuralPacketAt(duration*.8,completion,root,plan.cycle)).toBeNull();
+    expect(neuralPacketAt(duration-.001,completion,root,plan.cycle)).toBeNull();
+    expect(neuralPacketAt(duration+.1,completion,root,plan.cycle)).toBeNull();
+    expect(neuralArrivalFlashAt(duration+.1,completion,root,plan.cycle)).toBe(0);
     expect(neuralPacketAt(absoluteLaunch+.05,completion,root,plan.cycle)).not.toBeNull();
-    // The wave keeps its original absolute launch when the transition layer
-    // disappears at t=duration. It must NOT restart at the scene commit.
-    const afterComplete=neuralPacketAt(duration+.1,completion,leaf,plan.cycle);
-    expect(afterComplete).not.toBeNull();
-    expect(neuralPacketAt(duration+.1,duration,leaf,plan.cycle)).toBeNull();
-    expect(neuralArrivalFlashAt(duration+.1,completion,root,plan.cycle)).toBeGreaterThan(0);
+    const leafTime=absoluteLaunch+leaf.start+.05;
+    expect(neuralPacketAt(leafTime,completion,leaf,plan.cycle)).not.toBeNull();
   });
 });

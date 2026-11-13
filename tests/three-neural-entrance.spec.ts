@@ -106,3 +106,64 @@ test('new entrance animation remains stable with seed auto-switch and repeating 
   }
   expect(errors).toEqual([]);
 });
+
+
+test('electrical packets stay off until standby wiring is fully connected',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('./');
+  await page.getByRole('button',{name:'3Dモード',exact:true}).click();
+  await category(page,'図形');
+  await page.getByLabel('3D描画品質').selectOption('low');
+  const preview=page.getByTestId('three-preview');
+  await expect(preview.locator('canvas')).toBeVisible();
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  await page.locator('#network-mode').selectOption('neural');
+  await expect(preview).toHaveAttribute('data-neural-signals','on');
+  await category(page,'アニメーション');
+  await page.getByLabel('3D図形を順番に登場させる').check();
+  await page.locator('#three-entrance-mode').selectOption('neural-grow');
+  await page.getByLabel('3D待機画面モードを有効化').check();
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('5');
+  await page.getByRole('checkbox',{name:'操作している間は止める'}).uncheck();
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await expect(preview).toHaveAttribute('data-standby-active','true');
+
+  // Sample every frame throughout the rewire. The previous launch at 80%
+  // could show traveling packets while cable tips were still disconnected.
+  const result=await page.evaluate(async()=>{
+    const url=performance.getEntriesByType('resource')
+      .find(e=>e.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    const root=_roots.get(canvas) as any;
+    const host=document.querySelector('[data-testid="three-preview"]') as HTMLElement;
+    let maxEarlyPackets=0,frames=0;
+    return new Promise<{maxEarlyPackets:number;frames:number}>(resolve=>{
+      const frame=()=>{
+        if(host.dataset.standbyActive==='false'){
+          resolve({maxEarlyPackets,frames});return;
+        }
+        const count=root?.store.getState().scene
+          .getObjectByName('neural-signal-packets')?.count??0;
+        maxEarlyPackets=Math.max(maxEarlyPackets,count);
+        frames++;
+        requestAnimationFrame(frame);
+      };
+      frame();
+    });
+  });
+  expect(result.frames).toBeGreaterThan(30);
+  expect(result.maxEarlyPackets).toBe(0);
+
+  // The first wave should start shortly AFTER reconnection finishes.
+  await expect.poll(()=>page.evaluate(async()=>{
+    const url=performance.getEntriesByType('resource')
+      .find(e=>e.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    return (_roots.get(canvas) as any)?.store.getState().scene
+      .getObjectByName('neural-signal-packets')?.count??0;
+  }),{timeout:5_000,intervals:[30,50,70]}).toBeGreaterThan(0);
+});
