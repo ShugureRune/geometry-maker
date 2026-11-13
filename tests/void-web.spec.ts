@@ -159,6 +159,28 @@ test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standb
   await expect.poll(count).toBe(0);
   const off=await canvas.screenshot();
   expect(on.equals(off)).toBe(false);
+
+  // Re-enable while frozen in mid-reconnection, then verify a separate flash
+  // on the fully formed web AFTER old transition layers are removed.
+  await glow.check();
+  await strength.fill('25');
+  const freezeCompletion=page.waitForFunction(()=>{
+    const preview=document.querySelector('[data-testid="three-preview"]') as HTMLElement|null;
+    if(preview?.dataset.standbyActive!=='false'||
+      Number(preview.dataset.standbyCompletionFlash??0)<.07)return false;
+    const pause=Array.from(document.querySelectorAll('button')).find(b=>b.textContent?.trim()==='3Dを一時停止');
+    if(!pause)return false;
+    pause.click();
+    return true;
+  },undefined,{polling:'raf',timeout:15000});
+  await page.getByRole('button',{name:'3Dを再生',exact:true}).click();
+  await freezeCompletion;
+  await expect(preview).toHaveAttribute('data-standby-active','false');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash'))).toBeGreaterThan(.01);
+  const allWiresLit=await canvas.screenshot();
+  await strength.fill('0');
+  await expect(preview).toHaveAttribute('data-standby-completion-flash','0.0000');
+  expect(allWiresLit.equals(await canvas.screenshot())).toBe(false);
 });
 
 test('the web exports WebM and MP4 using exact animation frames and restores preview',async({page})=>{
