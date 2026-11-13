@@ -5,6 +5,7 @@ import {useFrame,useThree} from '@react-three/fiber';
 import {BufferGeometry,Float32BufferAttribute,InstancedBufferAttribute,InstancedMesh,ShaderMaterial,DoubleSide,Object3D,Color,UniformsLib,UniformsUtils} from 'three';
 import {outlineSegments} from './outline-geometry';
 import {neonDefaults} from './style-settings';
+import {standbyDefaults,standbyCompletionFlash} from './standby';
 import {entranceDefaults} from './entrance';
 import {neuralStartupFlash} from './neural-signals';
 import {voidObjectPose} from './void-pose';
@@ -92,11 +93,14 @@ export function VoidWebOutlines(props:VoidBatchProps&{kind:ThreeKind}){
     const alpha=geometry.getAttribute('voidOpacity'),width=geometry.getAttribute('voidWidth');let used=0;
     const entrance=settings.entrance??entranceDefaults;
     const ignition=!props.transition&&!props.skipEntrance&&entrance.enabled&&settings.network?.enabled?neuralStartupFlash(props.seconds.current,entrance.duration):0;
+    const standbySettings=settings.standby??standbyDefaults;
+    const completion=standbySettings.reconnectGlow&&standbySettings.reconnectCompletionGlow
+      ?standbyCompletionFlash(props.seconds.current,props.completionFlashAt)*standbySettings.reconnectIntensity/100:0;
     for(let i=0;i<records.length;i++){
       const record=records[i],pose=voidObjectPose(record,props.seconds.current,settings,props.seed,!!props.skipEntrance,props.transition);
       if(pose.opacity<=.06)continue;
       dummy.position.set(...pose.position);dummy.rotation.set(...pose.rotation);dummy.scale.setScalar(pose.radius*1.002);dummy.updateMatrix();instance.setMatrixAt(used,dummy.matrix);
-      color.copy(colors[i][0]).lerp(colors[i][1],pose.colorMix).multiplyScalar(1+ignition*.75);instance.setColorAt(used,color);
+      color.copy(colors[i][0]).lerp(colors[i][1],pose.colorMix).multiplyScalar(1+ignition*.75+completion*.85);instance.setColorAt(used,color);
       alpha.setX(used,pose.opacity);width.setX(used,record.object.role==='primary'?1:record.object.role==='support'?.8:.65);used++;
     }
     instance.count=used;instance.instanceMatrix.needsUpdate=true;if(instance.instanceColor)instance.instanceColor.needsUpdate=true;
