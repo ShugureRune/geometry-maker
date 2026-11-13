@@ -159,6 +159,31 @@ test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standb
   await expect.poll(count).toBe(0);
   const off=await canvas.screenshot();
   expect(on.equals(off)).toBe(false);
+  // Complete the very same morph and inspect the global ignition AFTER the
+  // transition component has unmounted (all cosmic web wires now connected).
+  await glow.check();
+  await strength.fill('25');
+  const whole=page.getByRole('checkbox',{name:'全接続完了時に全体発光'});
+  await expect(whole).toBeChecked();
+  await page.getByRole('button',{name:'3Dを再生',exact:true}).click();
+  await page.waitForFunction(()=>{
+    const preview=document.querySelector('[data-testid="three-preview"]');
+    if(preview?.getAttribute('data-standby-active')!=='false'||
+      Number(preview.getAttribute('data-standby-completion-flash'))<=.01)return false;
+    const pause=Array.from(document.querySelectorAll('button')).find(button=>
+      button.textContent?.trim()==='3Dを一時停止');
+    pause?.click();
+    return !!pause;
+  },undefined,{timeout:12000,polling:25});
+  await expect(page.getByRole('button',{name:'3Dを再生',exact:true})).toBeVisible();
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash')))
+    .toBeGreaterThan(0);
+  const completedOn=await canvas.screenshot();
+  await whole.uncheck();
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash')))
+    .toBe(0);
+  const completedOff=await canvas.screenshot();
+  expect(completedOn.equals(completedOff)).toBe(false);
 });
 
 test('the web exports WebM and MP4 using exact animation frames and restores preview',async({page})=>{
