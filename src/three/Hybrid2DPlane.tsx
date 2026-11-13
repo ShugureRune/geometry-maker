@@ -1,24 +1,26 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
 import {useFrame,useThree} from '@react-three/fiber';
 import {CanvasTexture,DoubleSide,Mesh,SRGBColorSpace} from 'three';
-import type {Hybrid2DSettings} from './hybrid-2d';
+import type {Hybrid2DInstance,Hybrid2DSettings} from './hybrid-2d';
 
-export type Hybrid2DArtwork={svg:string;width:number;height:number};
+export type Hybrid2DArtwork={seed:string;svg:string;width:number;height:number};
 const rad=(degrees:number)=>degrees*Math.PI/180;
 
 /** Rasterize the application's own safe, server-rendered SVG once per change.
  * A single texture/mesh replaces hundreds of 3D draw calls. No external image
  * URL is accepted, and object URLs/textures are released on replacement. */
-export function Hybrid2DPlane({artwork,options,seconds,low}:{
+export function Hybrid2DPlane({artwork,options,seconds,low,index,instance,multiple}:{
   artwork:Hybrid2DArtwork;options:Hybrid2DSettings;seconds:RefObject<number>;low:boolean;
+  index:number;instance:Hybrid2DInstance;multiple:boolean;
 }){
   const {invalidate}=useThree();
-  const [loaded,setLoaded]=useState<{svg:string;low:boolean;texture:CanvasTexture}|null>(null);
+  const [loaded,setLoaded]=useState<{svg:string;low:boolean;multiple:boolean;texture:CanvasTexture}|null>(null);
   const mesh=useRef<Mesh>(null);
   useEffect(()=>{
     let cancelled=false;
     let result:CanvasTexture|null=null;
-    const limit=low?768:1536;
+    // For a constellation, keep total texture memory practical (even at 32).
+    const limit=multiple?(low?192:384):(low?768:1536);
     const scale=Math.min(1,limit/Math.max(artwork.width,artwork.height));
     const width=Math.max(1,Math.round(artwork.width*scale));
     const height=Math.max(1,Math.round(artwork.height*scale));
@@ -38,7 +40,7 @@ export function Hybrid2DPlane({artwork,options,seconds,low}:{
       result=new CanvasTexture(canvas);
       result.colorSpace=SRGBColorSpace;
       result.anisotropy=low?1:4;
-      setLoaded({svg:artwork.svg,low,texture:result});
+      setLoaded({svg:artwork.svg,low,multiple,texture:result});
       invalidate();
     };
     image.onerror=()=>{if(!cancelled)setLoaded(null);};
@@ -48,25 +50,29 @@ export function Hybrid2DPlane({artwork,options,seconds,low}:{
       URL.revokeObjectURL(url);
       result?.dispose();
     };
-  },[artwork.svg,artwork.width,artwork.height,low,invalidate]);
+  },[artwork.svg,artwork.width,artwork.height,low,multiple,invalidate]);
 
   useFrame(({camera})=>{
     if(!mesh.current)return;
-    const z=rad(options.rotationZ+seconds.current*options.spinSpeed);
+    const z=rad(options.rotationZ+instance.rotation[2]+seconds.current*options.spinSpeed);
     if(options.billboard){
       mesh.current.quaternion.copy(camera.quaternion);
       mesh.current.rotateZ(z);
     }else{
-      mesh.current.rotation.set(rad(options.rotationX),rad(options.rotationY),z);
+      mesh.current.rotation.set(rad(options.rotationX+instance.rotation[0]),
+        rad(options.rotationY+instance.rotation[1]),z);
     }
   });
   // Never render a disposed high/low-quality texture while its replacement loads.
-  const texture=loaded?.svg===artwork.svg&&loaded.low===low?loaded.texture:null;
+  const texture=loaded?.svg===artwork.svg&&loaded.low===low&&loaded.multiple===multiple?loaded.texture:null;
   if(!texture)return null;
   const aspect=artwork.width/artwork.height;
-  return <mesh ref={mesh} name="hybrid-2d-plane"
-    position={[options.x,options.y,options.z]} frustumCulled={false}>
-    <planeGeometry args={[options.size*aspect,options.size]}/>
+  const size=options.size*instance.scale;
+  return <mesh ref={mesh} name={index===0?'hybrid-2d-plane':`hybrid-2d-plane-${index}`}
+    userData={{hybridSeed:artwork.seed,hybridIndex:index}}
+    position={[options.x+instance.offset[0],options.y+instance.offset[1],options.z+instance.offset[2]]}
+    frustumCulled={false}>
+    <planeGeometry args={[size*aspect,size]}/>
     <meshBasicMaterial map={texture} color="#ffffff" transparent
       opacity={options.opacity} alphaTest={.015} side={DoubleSide}
       depthTest depthWrite={options.opacity>=.999} toneMapped={false}/>
