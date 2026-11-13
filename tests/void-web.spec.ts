@@ -119,6 +119,7 @@ test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standb
   await category(page,'アニメーション');
   const glow=page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'});
   await expect(glow).toBeChecked();
+  await expect(page.locator('#three-standby-reconnect-intensity')).toHaveValue('25');
   const preview=page.getByTestId('three-preview');
   await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
   await expect(preview).toHaveAttribute('data-standby-wire-phase','reconnect',{timeout:20_000});
@@ -134,6 +135,11 @@ test('cosmic web reconnect sparks visibly follow the ON/OFF switch during standb
   await expect.poll(count).toBeGreaterThan(0);
   const canvas=preview.locator('canvas');
   const on=await canvas.screenshot();
+  const strength=page.locator('#three-standby-reconnect-intensity');
+  await strength.fill('0');
+  await expect.poll(count).toBe(0);
+  const zero=await canvas.screenshot();
+  expect(on.equals(zero)).toBe(false);
   await glow.uncheck();
   await expect.poll(count).toBe(0);
   const off=await canvas.screenshot();
