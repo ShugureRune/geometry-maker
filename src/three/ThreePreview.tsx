@@ -26,7 +26,7 @@ import {floorGridDefaults,floorGridOffset} from './floor-grid';
 import {threeVisibility,visibilityDefaults,visibilityUsesFade,visibilityUsesScale} from './visibility';
 import {entranceDefaults,threeEntrancePose} from './entrance';
 import {neuralStartupFlash,NEURAL_SIGNAL_LAUNCH_DELAY} from './neural-signals';
-import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {standbyDefaults,easeInOut,matchThreeObjects,standbyMeshVisibility,standbyObjectPose,standbyMorphPhase,standbyCompletionFlash,MORPH_WIRE_ATTACH_START,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {advanceStandbyClock} from './standby-clock';
 import {inclinedCameraOrbitStep} from './camera-orbit';
 import {isVoidComposition,voidEdges} from './void-graph';
@@ -188,7 +188,7 @@ function Solid({object, settings, background, visualTheme, low, seconds, outline
   </mesh>;
 }
 
-function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void}) {
+function SceneRuntime({composition, background, settings, restartKey, view, api, onReady, seconds, floorSeconds, low, onLost, transition, onTransitionComplete, progressHost, completionFlashAt}: Props & {seconds: Clock; floorSeconds:Clock; low: boolean; onLost: () => void; completionFlashAt:RefObject<number|null>}) {
   const {gl, scene, camera, size, invalidate} = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const cameraInteractionUntil=useRef(0);
@@ -346,6 +346,11 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       progressHost.current.dataset.standbyWirePhase=
         transition?.mode==='morph'&&(settings.network??networkDefaults).enabled
           ?standbyMorphPhase(seconds.current,transition.duration):'off';
+      const completionSettings=settings.standby??standbyDefaults;
+      const wholeFlash=(settings.network??networkDefaults).enabled&&completionSettings.reconnectGlow
+        ?standbyCompletionFlash(seconds.current,completionFlashAt.current)*
+          completionSettings.reconnectIntensity/100:0;
+      progressHost.current.dataset.standbyGlobalFlash=wholeFlash.toFixed(3);
       const grid=settings.floorGrid??floorGridDefaults;
       progressHost.current.dataset.floorTime=floorSeconds.current.toFixed(6);
       progressHost.current.dataset.floorOffset=floorGridOffset(floorSeconds.current,grid).toFixed(6);
@@ -451,7 +456,10 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       seconds.current>transition.duration*(transition.mode==='morph'?MORPH_WIRE_ATTACH_START:.5);
     // Keep the normal scene's bloom unchanged: unlike the previous 140%
     // override, a subtle reconnect may only enable a small bloom floor.
-    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0,reconnecting?40*standbySettings.reconnectIntensity/100:0) / 100;
+    const wholeFlash=network.enabled&&standbySettings.reconnectGlow
+      ?standbyCompletionFlash(seconds.current,completionFlashAt.current)*
+        standbySettings.reconnectIntensity/100:0;
+    const glow = Math.max(background.glowIntensity??0,network.enabled?network.glow:0,neon.enabled?neon.glow:0,floor.enabled?floor.glow:0,celestial.enabled?120:0,reconnecting?40*standbySettings.reconnectIntensity/100:0,wholeFlash*40) / 100;
     if (pipeline.current) {
       pipeline.current.bloom.enabled = glow > 0;
       pipeline.current.bloom.strength = Math.min(.55, glow * .28);
@@ -496,6 +504,9 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
     getFloorElapsedSeconds:()=>floorSeconds.current,
     beginVideoExport(){
       if(exportingVideo.current)throw new Error('3D動画はすでに書き出し中です。');
+      // Do not replay a live standby-completion flash at an unrelated
+      // timestamp when the exporter seeks back to video frame zero.
+      completionFlashAt.current=null;
       beforeVideoTime.current=seconds.current;
       beforeVideoFloorTime.current=floorSeconds.current;
       exportingVideo.current=true;
@@ -614,6 +625,26 @@ export default function ThreePreview(input: Props) {
   }, []);
   const low = effectiveThreeQuality(props.settings.quality, smallDevice||(web&&softwareDevice)) === 'low';
   const seconds = useRef(props.initialTime??0);
+  const completionFlashAt=useRef<number|null>(null);
+  const priorStandbyTransition=useRef<ThreeStandbyTransition|null>(props.transition??null);
+  const lastIgnitionRestart=useRef(props.restartKey);
+  if(lastIgnitionRestart.current!==props.restartKey){
+    lastIgnitionRestart.current=props.restartKey;
+    completionFlashAt.current=null;
+  }
+  if(props.transition){
+    // Starting a new switch also clears any unfinished previous glow.
+    priorStandbyTransition.current=props.transition;
+    completionFlashAt.current=null;
+  }else if(priorStandbyTransition.current){
+    const finished=priorStandbyTransition.current;
+    priorStandbyTransition.current=null;
+    // The old wire layer is unmounted at t=duration. Trigger on the first
+    // normal-scene render instead of letting a pre-completion flash vanish.
+    // Cancelled switches and imported completed scenes do not flash.
+    completionFlashAt.current=props.skipEntrance&&seconds.current>=finished.duration-1e-4
+      ?seconds.current:null;
+  }
   // A seed switch resets the scene clock to zero. Keep the same next-wave
   // start time across the transition boundary so its electrical pulse never
   // teleports/restarts when the old scene layer finally unmounts.
@@ -751,7 +782,7 @@ export default function ThreePreview(input: Props) {
         routes={routes} widths={widths} startAtZero={web}
         settings={props.settings} background={props.background} low={low} seconds={seconds}
         seed={props.skySeed} standby={props.transition?{transition:props.transition,layer:'new',matches}:undefined}
-        skipEntrance={props.skipEntrance}/>}
+        completionFlashAt={completionFlashAt} skipEntrance={props.skipEntrance}/>}
       {props.transition&&edges.length>0&&network.enabled&&
         (props.settings.standby??standbyDefaults).reconnectGlow&&
         <StandbyReconnectionSparks objects={objects} edges={edges} routes={routes}
@@ -763,7 +794,8 @@ export default function ThreePreview(input: Props) {
           background={props.background} low={low} seconds={seconds} skipEntrance={props.skipEntrance}
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}
-      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
+      <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds}
+        completionFlashAt={completionFlashAt} onLost={onLost}/>
     </Canvas>
 
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>
