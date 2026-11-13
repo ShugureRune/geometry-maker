@@ -1,7 +1,28 @@
 import {describe,expect,it} from 'vitest';
 import {generateThreeComposition,visibleThreeObjects} from './model';
-import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
+import {standbyDefaults,validateThreeStandby,matchThreeObjects,morphPose,splitExitEnter,standbyFrame,cameraSafeMorphPosition,standbyMorphMotionProgress,standbyMorphWireProgress,standbyReconnectionGlowAt,standbyNetworkCompletionFlash,MORPH_WIRE_RELEASE_END,MORPH_WIRE_ATTACH_START} from './standby';
 import {threeDefaults,validateThreeSettings} from './settings';
+
+describe('entire network ignition after standby reattachment',()=>{
+  it('starts only after connection completion, is seekable/pausable, then ends once',()=>{
+    expect(standbyNetworkCompletionFlash(3.99,4)).toBe(0);
+    expect(standbyNetworkCompletionFlash(4,4)).toBe(1);
+    const peak=standbyNetworkCompletionFlash(4.1,4);
+    expect(peak).toBeGreaterThan(0);
+    expect(peak).toBeLessThan(1);
+    expect(standbyNetworkCompletionFlash(4.25,4)).toBeGreaterThan(0);
+    expect(standbyNetworkCompletionFlash(4.6,4)).toBe(0);
+    expect(standbyNetworkCompletionFlash(6,4)).toBe(0);
+    expect(standbyNetworkCompletionFlash(0,null)).toBe(0);
+    expect(standbyNetworkCompletionFlash(4,NaN)).toBe(0);
+    expect(standbyNetworkCompletionFlash(NaN,4)).toBe(0);
+    for(let i=0;i<=100;i++){
+      const pulse=standbyNetworkCompletionFlash(4+i*.01,4);
+      expect(pulse).toBeGreaterThanOrEqual(0);
+      expect(pulse).toBeLessThanOrEqual(1);
+    }
+  });
+});
 
 describe('standby reconnect flare',()=>{
   const route={start:.25,end:.5};
