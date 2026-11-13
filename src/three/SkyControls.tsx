@@ -38,7 +38,7 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
   return <section className="control-section three-controls" aria-labelledby="sky-heading">
     <div className="studio-setting-label studio-setting-heading">
       <h3 id="sky-heading">空と景色</h3>
-      <HelpInfo>23種類の3D背景に対応。時間帯・太陽光・天候・自然物・探索モードに対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</HelpInfo>
+      <HelpInfo>23種類の3D背景に対応。時間帯・太陽光・天候・自然物・統一カメラ移動に対応。屋外背景10種類は描画距離を調整でき、霧のON/OFFも切り替えられます。砂漠・白い霧の草原・森の縁は立体的な起伏と斜面の陰影を調整できます。屋外リミナル10種類は人工物のない自然空間です。砂漠・鏡の塩湖・夜の花畑・森の縁・薄明の平原・雲海・黒い水面も追加しました。浅瀬の反射は軽量な疑似反射、雪はゆっくり舞い、草は風で揺れます。3D図形・天体・ネオン・床グリッドと併用でき、背景ごとの3色も保存できます。アニメーションは3D再生・一時停止に連動します。従来の単色・グラデーションも使用できます。</HelpInfo>
     </div>
     <label htmlFor="three-sky-kind">3D背景の種類</label>
     <select id="three-sky-kind" value={sky.kind} onChange={e=>update({kind:e.target.value as SkyKind})}>
@@ -90,17 +90,6 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <HelpInfo>リアルタイムの空色・光の方向を使った軽量な水面反射です。実際の図形・山を鏡写しにするフルシーン反射とは異なります。</HelpInfo>
       </fieldset>}
       {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
-        <legend>自由に歩く</legend>
-        <label className="three-checkbox" htmlFor="three-world-explore">
-          <input id="three-world-explore" type="checkbox" checked={world.explore}
-            onChange={e=>updateWorld({explore:e.target.checked})}/> 自由探索モードを有効化
-        </label>
-        <ThreeRange id="three-world-explore-speed" label="歩く速さ"
-          value={world.exploreSpeed} min={1} max={20} step={1} unit="倍"
-          onChange={exploreSpeed=>updateWorld({exploreSpeed})}/>
-        <HelpInfo>PCでは画面クリックでマウス視点操作、WASDで移動、Space/Shiftで上下移動。Escでマウス操作を解除。スマホでは画面上の矢印で移動・回転できます。</HelpInfo>
-      </fieldset>}
-      {hasOutdoorVisibility(sky.kind)&&<fieldset className="three-kind-fieldset">
         <legend>遠くの見え方</legend>
         <ThreeRange id="three-outdoor-view-distance" label="描画距離" value={visibility.distance}
           min={100} max={1000} step={50} unit="%" onChange={distance=>updateVisibility({distance})}/>
@@ -135,6 +124,13 @@ export function SkyControls({value,onChange}:{value?:SkySettings;onChange:(sky:S
         <button type="button" onClick={resetPalette} disabled={!sky.colors?.[sky.kind]}>この背景の標準色に戻す</button>
       </fieldset>
     </>}
+      <fieldset className="three-kind-fieldset" data-testid="unified-navigation-controls">
+        <legend>3Dカメラ操作</legend>
+        <ThreeRange id="three-world-explore-speed" label="移動速度"
+          value={world.exploreSpeed} min={1} max={20} step={1} unit="倍"
+          onChange={exploreSpeed=>updateWorld({exploreSpeed})}/>
+        <HelpInfo>モード切り替えは不要です。1本指ドラッグはその場で視点回転、2本指スワイプは平行移動、ピンチは視線方向に前進・後退します。PCでは左ドラッグで視点回転、右ドラッグで平行移動、ホイールで前進・後退、WASDとSpace/Shiftでも移動できます。</HelpInfo>
+      </fieldset>
 
   </section>;
 }

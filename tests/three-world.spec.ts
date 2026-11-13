@@ -101,24 +101,98 @@ test('sun time, storms, natural density and water reflection adjust image and su
   expect(digest(await png(page))).toBe(saved);
 });
 
-test('explore mode flies with WASD without losing 3D PNG and has touch buttons on mobile',async({page})=>{
+async function savedView(page:Page):Promise<{position:number[];target:number[]}>{
+  await category(page,'書き出し');
+  const download=page.waitForEvent('download');
+  await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();
+  const data=JSON.parse(await readFile((await(await download).path())!,'utf8'));
+  if(data.view)return data.view;
+  // An untouched camera has no saved view yet; inspect its actual initial pose.
+  return page.evaluate(async()=>{
+    const url=performance.getEntriesByType('resource').find(entry=>entry.name.includes('@react-three_fiber.js'))!.name;
+    const {_roots}=await import(/* @vite-ignore */url);
+    const canvas=document.querySelector('[data-testid="three-preview"] canvas');
+    const camera=(_roots.get(canvas) as any).store.getState().camera;
+    const forward=camera.getWorldDirection(camera.position.clone());
+    return {position:camera.position.toArray(),target:camera.position.clone().addScaledVector(forward,12).toArray()};
+  });
+}
+const gap=(a:number[],b:number[])=>Math.hypot(...a.map((value,i)=>value-b[i]));
+
+test('one camera mode looks in place and moves with wheel/WASD without changing 3D export',async({page})=>{
   await start(page);
   await category(page,'背景');
   await page.getByLabel('3D背景の種類').selectOption('endless-desert');
-  await page.locator('#three-world-explore').check();
-  const preview=page.getByTestId('three-preview');
-  await expect(preview).toHaveAttribute('data-explore','on');
-  await expect(page.getByRole('button',{name:'探索 ↑'})).toBeVisible();
-  const before=digest(await png(page));
-  await page.keyboard.down('w');
-  await page.waitForTimeout(420);
-  await page.keyboard.up('w');
-  const after=digest(await png(page));
-  expect(before).not.toBe(after);
-  await category(page,'背景');
-  await page.locator('#three-world-explore').uncheck();
-  await expect(preview).toHaveAttribute('data-explore','off');
+  const preview=page.getByTestId('three-preview'),canvas=preview.locator('canvas');
+  await expect(preview).toHaveAttribute('data-navigation','unified');
+  await expect(page.locator('#three-world-explore')).toHaveCount(0);
+  await expect(page.locator('#three-world-explore-speed')).toBeVisible();
   await expect(page.getByRole('button',{name:'探索 ↑'})).toHaveCount(0);
+
+  const before=await savedView(page),box=(await canvas.boundingBox())!;
+  await page.mouse.move(box.x+box.width*.45,box.y+box.height*.45);
+  await page.mouse.down();
+  await page.mouse.move(box.x+box.width*.45+90,box.y+box.height*.45+25,{steps:6});
+  await page.mouse.up();
+  const looked=await savedView(page);
+  expect(gap(looked.position,before.position)).toBeLessThan(.001);
+  expect(gap(looked.target,before.target)).toBeGreaterThan(.5);
+
+  await canvas.hover();
+  await page.mouse.wheel(0,-280);
+  const advanced=await savedView(page);
+  expect(gap(advanced.position,looked.position)).toBeGreaterThan(.15);
+
+  const beforeImage=digest(await png(page));
+  await canvas.focus();
+  await page.keyboard.down('w');
+  await page.waitForTimeout(350);
+  await page.keyboard.up('w');
+  const afterImage=digest(await png(page));
+  expect(beforeImage).not.toBe(afterImage);
+});
+
+test('mobile touch rotates in place, two fingers pan, and pinch moves the camera forward',async({browser})=>{
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1});
+  const page=await context.newPage();
+  try{
+    await start(page);
+    const canvas=page.getByTestId('three-preview').locator('canvas');
+    const gestureCenter=async()=>{
+      await canvas.scrollIntoViewIfNeeded();
+      const bounds=(await canvas.boundingBox())!;
+      return {x:bounds.x+bounds.width*.5,y:bounds.y+bounds.height*.5};
+    };
+    const cdp=await context.newCDPSession(page);
+    const fire=async(type:'touchStart'|'touchMove'|'touchEnd',points:{id:number;x:number;y:number}[])=>
+      cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+    const before=await savedView(page);
+    const {x,y}=await gestureCenter();
+    await fire('touchStart',[{id:1,x,y}]);
+    await fire('touchMove',[{id:1,x:x+70,y:y+30}]);
+    await fire('touchEnd',[]);
+    const looked=await savedView(page);
+    expect(gap(before.position,looked.position)).toBeLessThan(.001);
+    expect(gap(before.target,looked.target)).toBeGreaterThan(.3);
+    const facing=(v:{position:number[];target:number[]})=>
+      v.target.map((n,i)=>n-v.position[i]);
+
+    const panCenter=await gestureCenter(),px=panCenter.x,py=panCenter.y;
+    await fire('touchStart',[{id:2,x:px-25,y:py},{id:3,x:px+25,y:py}]);
+    await fire('touchMove',[{id:2,x:px+45,y:py},{id:3,x:px+95,y:py}]);
+    await fire('touchEnd',[]);
+    const panned=await savedView(page);
+    expect(gap(looked.position,panned.position)).toBeGreaterThan(.2);
+    expect(gap(facing(looked),facing(panned))).toBeLessThan(.01);
+
+    const pinchCenter=await gestureCenter(),zx=pinchCenter.x,zy=pinchCenter.y;
+    await fire('touchStart',[{id:4,x:zx-30,y:zy},{id:5,x:zx+30,y:zy}]);
+    await fire('touchMove',[{id:4,x:zx-70,y:zy},{id:5,x:zx+70,y:zy}]);
+    await fire('touchEnd',[]);
+    const zoomed=await savedView(page);
+    expect(gap(panned.position,zoomed.position)).toBeGreaterThan(.5);
+    expect(gap(facing(panned),facing(zoomed))).toBeLessThan(.01);
+  }finally{await context.close();}
 });
 
 test('mobile low quality handles floating islands, snowy weather and solar lighting then returns to 2D',async({page})=>{

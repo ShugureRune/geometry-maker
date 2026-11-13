@@ -1,6 +1,6 @@
 // This is the only entry importing WebGL libraries. App loads it with React.lazy.
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
-import {useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
+import {useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref, type RefObject} from 'react';
 import {ACESFilmicToneMapping, CanvasTexture, Color, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace, Vector2, Vector3} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
@@ -193,7 +193,6 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const controls = useRef<OrbitControls | null>(null);
   const cameraInteractionUntil=useRef(0);
   const cameraReset=useRef<{from:Vector3;focus:Vector3;elapsed:number;damping:boolean}|null>(null);
-  const explore=!!(settings.sky?.world??worldDefaults).explore;
   const pipeline = useRef<{composer: EffectComposer; bloom: UnrealBloomPass; output: OutputPass} | null>(null);
   const skipDelta = useRef(true);
   const exportingVideo=useRef(false);
@@ -209,6 +208,24 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   const lastBackdropBlend=useRef(-1);
   const aspect = composition.width / composition.height;
   const homeDistance = Math.max(composition.height, composition.width / aspect) / (2 * Math.tan(40 * Math.PI / 360)) * 1.2 + 2;
+  const onNavigation=useCallback((forwardTarget:Vector3)=>{
+    cameraInteractionUntil.current=performance.now()+1500;
+    if(cameraReset.current){
+      const orbit=controls.current;
+      if(orbit)orbit.enableDamping=cameraReset.current.damping;
+      cameraReset.current=null;
+    }
+    const orbit=controls.current;
+    if(orbit){
+      // OrbitControls is no longer the input handler. Its target is only a
+      // forward direction marker for legacy view/standby compatibility.
+      orbit.autoRotate=false;
+      orbit.enableDamping=false;
+      orbit.target.copy(forwardTarget);
+      orbit.update();
+    }
+    invalidate();
+  },[invalidate]);
   function resetView() {
     cameraReset.current=null;
     const orbit = controls.current;
@@ -225,8 +242,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
 
   function smoothResetView(){
     const orbit=controls.current;
-    // Never teleport a user who is exploring the world in free-flight mode.
-    if(!orbit||explore)return;
+    if(!orbit)return;
     cameraReset.current={from:camera.position.clone(),focus:orbit.target.clone(),elapsed:0,
       damping:orbit.enableDamping};
     invalidate();
@@ -235,11 +251,11 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
   useEffect(() => {
     const orbit = new OrbitControls(camera, gl.domElement);
     controls.current = orbit;
-    orbit.enableDamping = true; orbit.dampingFactor = .08; orbit.enablePan = false;
+    orbit.enabled=false;
+    orbit.enableDamping=false; orbit.dampingFactor=.08; orbit.enablePan=false;
     orbit.minDistance = 3; orbit.maxDistance = Math.max(80,homeDistance*2);
     gl.domElement.tabIndex = 0;
-    gl.domElement.setAttribute('aria-label', '3D視点操作：ドラッグで回転、ホイールまたはピンチでズーム');
-    orbit.listenToKeyEvents(gl.domElement);
+    gl.domElement.setAttribute('aria-label', '3D視点操作：その場で見回す・平行移動・前後移動');
     if (view.current) {camera.position.set(...view.current.position); orbit.target.set(...view.current.target); orbit.update();}
     else resetView();
     const change = () => {
@@ -266,17 +282,6 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       gl.domElement.removeEventListener('webglcontextlost', lost);
     };
   }, [camera, gl, invalidate, view, onLost]);
-
-  useEffect(()=>{
-    const orbit=controls.current;
-    if(!orbit)return;
-    orbit.enabled=!explore;
-    if(!explore&&view.current){
-      orbit.target.set(...view.current.target);
-      orbit.update();
-    }
-    invalidate();
-  },[explore,invalidate,view]);
 
   // Allow fully zooming out even when a VOID constellation is spread to 200%.
   useEffect(()=>{if(controls.current)controls.current.maxDistance=Math.max(80,homeDistance*2);},[homeDistance]);
@@ -346,7 +351,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       progressHost.current.dataset.floorOffset=floorGridOffset(floorSeconds.current,grid).toFixed(6);
     }
     skipDelta.current = false;
-    if(!explore){
+    {
       const journey=cameraReset.current,orbit=controls.current;
       if(journey&&orbit){
         journey.elapsed+=Math.min(.05,Math.max(0,delta));
@@ -576,7 +581,7 @@ function SceneRuntime({composition, background, settings, restartKey, view, api,
       return await new Promise<Blob>((resolve, reject) => output.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNGを作成できませんでした。解像度を下げてください。')), 'image/png'));
     } finally {output.width = 0; output.height = 0;}
   }}));
-  return null;
+  return <ExploreController speed={(settings.sky?.world??worldDefaults).exploreSpeed} view={view} onNavigate={onNavigation}/>;
 }
 
 function webGLAvailable() {
@@ -616,9 +621,7 @@ export default function ThreePreview(input: Props) {
   // morph begins, otherwise animated grid lines and PCB signals teleport.
   const floorSeconds=useRef(props.initialFloorTime??props.initialTime??0);
   const progressHost=useRef<HTMLDivElement>(null);
-  const touchActions=useRef(new Set<string>());
   const world=props.settings.sky?.world??worldDefaults;
-  const exploring=!!world.explore;
   const outdoor=!!props.settings.sky&&props.settings.sky.kind!=='classic';
   const sunlight=sunlightAtHour(world.timeOfDay);
   const objects = useMemo(() => web?visibleVoidObjects(props.composition,props.density,props.settings.enabledKinds,props.settings.voidMode?.objectLimit,low):visibleThreeObjects(props.composition, props.density, props.settings.enabledKinds), [web,props.composition, props.density, props.settings.enabledKinds,props.settings.voidMode?.objectLimit,low]);
@@ -675,7 +678,7 @@ export default function ThreePreview(input: Props) {
     data-camera-orbit-mode={(props.settings.standby??standbyDefaults).cameraOrbitMode}
     data-floor-grid={(props.settings.floorGrid??floorGridDefaults).enabled?'on':'off'} data-floor-style={(props.settings.floorGrid??floorGridDefaults).style}
       data-celestial-count={celestialObjects.length}
-    data-sky-kind={(props.settings.sky??skyDefaults).kind} data-explore={exploring?'on':'off'}>
+    data-sky-kind={(props.settings.sky??skyDefaults).kind} data-navigation="unified">
     <Canvas frameloop="demand" dpr={low ? 1 : [1, 1.75]} shadows={!low} camera={{position: [0, 1, 18], fov: 40, near: .1, far: 1200}}
       gl={{antialias: true, alpha: false, powerPreference: low ? 'low-power' : 'high-performance', toneMapping: ACESFilmicToneMapping}}
       onCreated={({gl}) => {
@@ -750,24 +753,8 @@ export default function ThreePreview(input: Props) {
           standby={props.transition?{transition:props.transition,matches}:undefined}
           completionOverride={signalCompletionOverride}/>}
       <SceneRuntime {...props} progressHost={progressHost} low={low} seconds={seconds} floorSeconds={floorSeconds} onLost={onLost}/>
-      <ExploreController enabled={exploring} speed={(props.settings.sky?.world??worldDefaults).exploreSpeed}
-        view={props.view} touchActions={touchActions}/>
     </Canvas>
-    {exploring&&<div className="three-explore-pad" aria-label="探索カメラの操作"
-      style={{position:'absolute',left:10,bottom:12,zIndex:6,display:'grid',
-        gridTemplateColumns:'repeat(5,43px)',gap:5,touchAction:'none',userSelect:'none'}}>
-      {([
-        ['w','↑'],['a','←'],['s','↓'],['d','→'],['ascend','上昇'],
-        ['turn-left','↶'],['turn-right','↷'],['look-up','仰ぐ'],['look-down','見下'],['descend','下降'],
-      ] as const).map(([action,label])=><button type="button" key={action}
-        aria-label={'探索 '+label}
-        onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);touchActions.current.add(action);}}
-        onPointerUp={()=>touchActions.current.delete(action)}
-        onPointerCancel={()=>touchActions.current.delete(action)}
-        onLostPointerCapture={()=>touchActions.current.delete(action)}
-        style={{background:'#162438dd',color:'#f4ffff',border:'1px solid #829bb2',borderRadius:7,
-          minHeight:38,fontSize:label.length>1?11:19}}>{label}</button>)}
-    </div>}
+
     <span className="three-quality-badge">{low ? '軽量描画' : '高品質描画'}</span>
   </div>;
 }
