@@ -113,6 +113,41 @@ test('standby reconnect emission is visible with glow ON and disappears with OFF
   expect(on.equals(off)).toBe(false);
 });
 
+test('all completed 3D wires ignite together exactly once, then respect the independent toggle',async({page})=>{
+  await start(page);
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  const preview=page.getByTestId('three-preview'),canvas=preview.locator('canvas');
+  await category(page,'アニメーション');
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('4');
+  const whole=page.getByRole('checkbox',{name:'全接続完了時に全体発光'});
+  await expect(whole).toBeChecked();
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await expect(preview).toHaveAttribute('data-standby-wire-phase','move',{timeout:6000});
+  expect(Number(await preview.getAttribute('data-standby-completion-flash'))).toBe(0);
+  // Complete-state re-render removes the transition at the exact boundary.
+  // Freeze a positive post-transition pulse before its short lifetime elapses.
+  await page.waitForFunction(()=>{
+    const box=document.querySelector('[data-testid="three-preview"]');
+    if(box?.getAttribute('data-standby-active')!=='false'||
+      Number(box.getAttribute('data-standby-completion-flash'))<=.01)return false;
+    const pause=Array.from(document.querySelectorAll('button')).find(button=>
+      button.textContent?.trim()==='3Dを一時停止');
+    pause?.click();
+    return !!pause;
+  },undefined,{timeout:14000,polling:25});
+  await expect(page.getByRole('button',{name:'3Dを再生',exact:true})).toBeVisible();
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash')))
+    .toBeGreaterThan(0);
+  const illuminated=await canvas.screenshot();
+  await whole.uncheck();
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash')))
+    .toBe(0);
+  const unlit=await canvas.screenshot();
+  expect(illuminated.equals(unlit)).toBe(false);
+});
+
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
   await page.locator('#three-standby-mode').selectOption('exit-enter');
@@ -120,11 +155,12 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await page.locator('#three-standby-transition').fill('3');
   await page.getByRole('checkbox',{name:'視点をそのまま使う'}).uncheck();
   await page.locator('#three-standby-reconnect-intensity').fill('15');
+  await page.getByRole('checkbox',{name:'全接続完了時に全体発光'}).uncheck();
   await page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'}).uncheck();
   const saved=await saveJson(page);
   const original=JSON.parse(saved.toString('utf8'));
   expect(original.settings.standby).toMatchObject({
-    enabled:true,intervalSeconds:30,transitionSeconds:3,mode:'exit-enter',preserveCamera:false,reconnectGlow:false,reconnectIntensity:15
+    enabled:true,intervalSeconds:30,transitionSeconds:3,mode:'exit-enter',preserveCamera:false,reconnectGlow:false,reconnectIntensity:15,reconnectCompletionGlow:false
   });
   await category(page,'アニメーション');
   await page.getByLabel('3D待機画面モードを有効化').uncheck();
@@ -138,6 +174,7 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await expect(page.locator('#three-standby-interval')).toHaveValue('30');
   await expect(page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'})).not.toBeChecked();
   await page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'}).check();
+  await expect(page.getByRole('checkbox',{name:'全接続完了時に全体発光'})).not.toBeChecked();
   await expect(page.locator('#three-standby-reconnect-intensity')).toHaveValue('15');
   const old={...original,settings:{...original.settings}};
   delete old.settings.standby;
@@ -148,6 +185,7 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await category(page,'アニメーション');
   await expect(page.getByLabel('3D待機画面モードを有効化')).not.toBeChecked();
   await page.getByLabel('3D待機画面モードを有効化').check();
+  await expect(page.getByRole('checkbox',{name:'全接続完了時に全体発光'})).toBeChecked();
   await expect(page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'})).toBeChecked();
 });
 test('auto standby rotates seeds after configured idle interval and respects pause',async({page})=>{
