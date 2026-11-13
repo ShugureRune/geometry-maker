@@ -77,10 +77,11 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await page.locator('#three-standby-interval').fill('30');
   await page.locator('#three-standby-transition').fill('3');
   await page.getByRole('checkbox',{name:'視点をそのまま使う'}).uncheck();
+  await page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'}).uncheck();
   const saved=await saveJson(page);
   const original=JSON.parse(saved.toString('utf8'));
   expect(original.settings.standby).toMatchObject({
-    enabled:true,intervalSeconds:30,transitionSeconds:3,mode:'exit-enter',preserveCamera:false
+    enabled:true,intervalSeconds:30,transitionSeconds:3,mode:'exit-enter',preserveCamera:false,reconnectGlow:false
   });
   await category(page,'アニメーション');
   await page.getByLabel('3D待機画面モードを有効化').uncheck();
@@ -92,6 +93,7 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   await expect(page.getByLabel('3D待機画面モードを有効化')).toBeChecked();
   await expect(page.locator('#three-standby-mode')).toHaveValue('exit-enter');
   await expect(page.locator('#three-standby-interval')).toHaveValue('30');
+  await expect(page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'})).not.toBeChecked();
   const old={...original,settings:{...original.settings}};
   delete old.settings.standby;
   await category(page,'書き出し');
@@ -100,6 +102,8 @@ test('3D standby settings roundtrip JSON, and legacy projects default safely off
   });
   await category(page,'アニメーション');
   await expect(page.getByLabel('3D待機画面モードを有効化')).not.toBeChecked();
+  await page.getByLabel('3D待機画面モードを有効化').check();
+  await expect(page.getByRole('checkbox',{name:'ワイヤー再接続時に発光'})).toBeChecked();
 });
 test('auto standby rotates seeds after configured idle interval and respects pause',async({page})=>{
   await start(page);

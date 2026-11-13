@@ -43,14 +43,23 @@ test('OFF preserves ordinary 3D, restores its camera/time and never overwrites n
   await toggle(page,true);await category(page,'装飾');await expect(page.locator('#network-width')).toHaveValue('2');expect(errors).toEqual([]);
 });
 
+/** Baseline checkout predates the optional reconnect flash preference.
+ * Omit only that new JSON field when loading the exact same scene on base. */
+function referenceFixture(enabled=false){
+  const original=fixture(enabled);
+  const standby={...original.settings.standby} as NonNullable<typeof original.settings.standby>;
+  delete (standby as Partial<typeof standby>).reconnectGlow;
+  return {...original,settings:{...original.settings,standby}};
+}
+
 test('matches the base reference pixel-for-pixel for ordinary 3D and saved v1 VOID',async({page,browser})=>{
   test.skip(!process.env.VOID_REFERENCE_URL,'Set VOID_REFERENCE_URL to a read-only checkout of the PR base.');
   await open(page);const actual=await png(page);
   const reference=await browser.newPage();try{
-    await open(reference,fixture(),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(actual));
+    await open(reference,referenceFixture(),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(actual));
     if(await reference.getByLabel('VOID MODEを有効化').count()){
       await open(page,fixture(true));const prototype=await png(page);
-      await open(reference,fixture(true),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(prototype));
+      await open(reference,referenceFixture(true),process.env.VOID_REFERENCE_URL!);expect(hash(await png(reference))).toBe(hash(prototype));
     }
   }finally{await reference.close();}
 });
