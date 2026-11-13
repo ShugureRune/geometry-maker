@@ -78,6 +78,18 @@ export function standbyReconnectionGlowAt(
   return difference<0?easeInOut(1+difference/before):easeInOut(1-difference/after);
 }
 
+/** A brief network-wide ignition AFTER the last standby wire has connected.
+ * Unlike routed per-edge sparks, every wire uses the same timestamp.
+ * Kept independent from the entrance ignition and clamped to a soft fade.
+ */
+export const STANDBY_COMPLETION_FLASH_SECONDS=.55;
+export function standbyCompletionFlash(seconds:number,completedAt:number|null):number{
+  if(completedAt===null||!Number.isFinite(seconds)||!Number.isFinite(completedAt))return 0;
+  const age=seconds-completedAt;
+  if(age<0||age>=STANDBY_COMPLETION_FLASH_SECONDS)return 0;
+  return 1-easeInOut(age/STANDBY_COMPLETION_FLASH_SECONDS);
+}
+
 export type ThreeStandbyTransition={
   id:number;
   mode:StandbyTransitionMode;
