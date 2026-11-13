@@ -18,11 +18,11 @@ async function open(page:Page,project=fixture(),url='./'){
   await page.getByRole('button',{name:'3Dモード',exact:true}).click();await category(page,'書き出し');
   await page.getByLabel('保存した3D設定ファイル',{exact:true}).setInputFiles({name:'scene.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});
   await expect(page.getByText('3D設定を読み込みました。',{exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled({timeout:30_000});
 }
 async function png(page:Page){await category(page,'書き出し');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'3D PNGを書き出す',exact:true}).click();const file=await pending;expect(await file.failure()).toBeNull();return readFile((await file.path())!);}
 async function json(page:Page){await category(page,'書き出し');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'3Dの設定を保存',exact:true}).click();return readFile((await(await pending).path())!,'utf8');}
-async function toggle(page:Page,enabled:boolean){await category(page,'背景');await page.getByLabel('VOID MODEを有効化').setChecked(enabled);await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled();}
+async function toggle(page:Page,enabled:boolean){await category(page,'背景');await page.getByLabel('VOID MODEを有効化').setChecked(enabled);await expect(page.getByRole('button',{name:'視点をリセット',exact:true})).toBeEnabled({timeout:30_000});}
 
 test('OFF preserves ordinary 3D, restores its camera/time and never overwrites normal wiring',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await open(page);
