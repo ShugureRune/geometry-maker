@@ -15,7 +15,7 @@ import {networkEndpointColor,networkArrivalGlowColor,neuralWireColorAt} from './
 import {MIN_NETWORK_ENDPOINT_VISIBILITY,rootedWireSteps,visibleNetworkSegment,type networkConnections,type RootedWireStep} from './network';
 import {threeVisibility,visibilityDefaults} from './visibility';
 import {entranceDefaults,threeEntrancePose,threeEntranceProgress,neuralWireEndpoints,neuralWireWindowProgress,NEURAL_WIRE_START_FRACTION} from './entrance';
-import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionFlash,type MorphMatch,type ThreeStandbyTransition} from './standby';
+import {splitExitEnter,standbyDefaults,standbyMorphWireProgress,standbyReconnectionGlowAt,type MorphMatch,type ThreeStandbyTransition} from './standby';
 import {standbyWirePose} from './standby-wire';
 import {neuralStartupFlash,neuralPacketTrailAt,neuralArrivalFlashAt,neuralSignalPlan} from './neural-signals';
 
@@ -131,7 +131,13 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
     material.worldUnits=!low;material.linewidth=.018*network.width;
     line.onBeforeRender=function(renderer){
       LineSegments2.prototype.onBeforeRender.call(this,renderer);
-      if(low){material.linewidth=Math.max(.8,network.width*1.2)*material.resolution.y/Math.max(1,size.height);material.uniformsNeedUpdate=true;}
+      // Keep the whole connecting stroke visibly bright on lightweight
+      // devices, where postprocessing bloom is deliberately disabled.
+      const boost=1+1.6*(line.userData.reconnectFlash??0);
+      material.linewidth=low
+        ?Math.max(.8,network.width*1.2)*material.resolution.y/Math.max(1,size.height)*boost
+        :.018*network.width*boost;
+      material.uniformsNeedUpdate=true;
     };
     invalidate();
   },[line,network.width,network.opacity,material,low,size.height,invalidate]);
@@ -196,10 +202,6 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       const route=wireRoutes[i];
       let reverse=false;
       let startMix=0,endMix=1;
-      // Ordinary exit/enter uses the wire fade-in; routed modes use the
-      // precise per-edge growth to time the flash from primary to leaf.
-      let connectionProgress=standby?.layer==='new'
-        ?splitExitEnter(seconds.current,standby.transition.duration).enter:0;
       if(growWires||replayMorphWires){
         const wirePhase=(growthTime/entrance.duration-NEURAL_WIRE_START_FRACTION)/
           (1-NEURAL_WIRE_START_FRACTION);
@@ -207,7 +209,6 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
           standbyMorphWireProgress(seconds.current,standby!.transition.duration,
             standby!.layer,0,1,route):
           neuralWireWindowProgress(wirePhase,route.start,route.end);
-        if(standby?.layer==='new')connectionProgress=progress;
         // No ghost points at the source/target when a cable is absent.
         if(progress<=.001)continue;
         // Both directions keep the cable anchored at its parent node.
@@ -234,9 +235,10 @@ export function NetworkLines({objects,edges,settings,background,low,seconds,seed
       // Tint existing linear-RGB wire colors: no neutral white flashes and
       // no effect outside the new layer of an active standby transition.
       const reconnect=standby?.layer==='new'&&(settings.standby??standbyDefaults).reconnectGlow
-        ?standbyReconnectionFlash(connectionProgress):0;
+        ?standbyReconnectionGlowAt(seconds.current,standby.transition.duration,
+          standby.transition.mode,route,neuralAppearance):0;
       maxReconnectFlash=Math.max(maxReconnectFlash,reconnect);
-      const strength=pulse*perEdgeAlpha*(1+reconnect*2.5);
+      const strength=pulse*perEdgeAlpha*(1+reconnect*3.6);
       colorStart.setXYZ(active,
         (ca.r+(cb.r-ca.r)*startMix)*strength,
         (ca.g+(cb.g-ca.g)*startMix)*strength,
@@ -406,6 +408,92 @@ export function NeuralSignals({objects,edges,settings,background,low,seconds,ski
     <sphereGeometry args={[1,low?6:10,low?4:8]}/>
     <meshBasicMaterial color="#ffffff" transparent opacity={.98} blending={AdditiveBlending}
       depthTest depthWrite={false} toneMapped={false}/>
+  </instancedMesh>;
+}
+
+/** A luminous, camera-visible point at each newly reconnected cable tip.
+ * The regular LineMaterial merely changing HDR RGB could be imperceptible
+ * after tone mapping, especially in lightweight/low-quality rendering.
+ * One instanced draw call covers every edge in either normal 3D or VOID.
+ */
+export function StandbyReconnectionSparks({objects,edges,routes,settings,background,low,seconds,transition,matches}:{
+  objects:ThreeObject[];edges:ReturnType<typeof networkConnections>;routes?:RootedWireStep[];
+  settings:ThreeSettings;background:Background;low:boolean;seconds:RefObject<number>;
+  transition:ThreeStandbyTransition;matches:readonly MorphMatch[];
+}){
+  const mesh=useRef<InstancedMesh>(null);
+  const dummy=useMemo(()=>new Object3D(),[]);
+  const tint=useMemo(()=>new Color(),[]);
+  const network=settings.network??networkDefaults;
+  const entrance=settings.entrance??entranceDefaults;
+  const routed=useMemo(()=>routes??rootedWireSteps(objects,edges),[objects,edges,routes]);
+  const matchesById=useMemo(()=>{
+    const lookup=new Map<string,MorphMatch>();
+    for(const match of matches)if(match.to)lookup.set(match.to.id,match);
+    return lookup;
+  },[matches]);
+  const topology=useMemo(()=>{
+    const byId=new Map(objects.map(object=>[object.id,object]));
+    return edges.map((edge,i)=>{
+      const a=byId.get(edge.a)!,b=byId.get(edge.b)!;
+      const route=routed[i],source=route.source==='a'?a:b,target=route.source==='a'?b:a;
+      return {source,target,route,color:networkEndpointColor(target.role,network,background,low)};
+    });
+  },[objects,edges,routed,network,background,low]);
+  const update=()=>{
+    const instance=mesh.current;
+    if(!instance)return;
+    let used=0,maxGlow=0;
+    const time=seconds.current,duration=transition.duration;
+    const neuralEntrance=entrance.enabled&&entrance.mode==='neural-grow';
+    for(const edge of topology){
+      const glow=standbyReconnectionGlowAt(time,duration,transition.mode,edge.route,neuralEntrance);
+      if(glow<.03)continue;
+      const sourcePose=standbyWirePose(edge.source,'new',matchesById.get(edge.source.id),transition,time,settings,'');
+      const targetPose=standbyWirePose(edge.target,'new',matchesById.get(edge.target.id),transition,time,settings,'');
+      const opacity=Math.min(sourcePose.opacity,targetPose.opacity);
+      if(opacity<=MIN_NETWORK_ENDPOINT_VISIBILITY)continue;
+      let progress=1;
+      if(transition.mode==='morph')progress=standbyMorphWireProgress(time,duration,'new',0,1,edge.route);
+      else if(neuralEntrance){
+        const enter=splitExitEnter(time,duration).enter;
+        progress=neuralWireWindowProgress(
+          (enter-NEURAL_WIRE_START_FRACTION)/(1-NEURAL_WIRE_START_FRACTION),
+          edge.route.start,edge.route.end);
+      }
+      if(progress<=.01)continue;
+      const alpha=glow*opacity;
+      maxGlow=Math.max(maxGlow,alpha);
+      const from=sourcePose.position,to=targetPose.position;
+      dummy.position.set(
+        from[0]+(to[0]-from[0])*progress,
+        from[1]+(to[1]-from[1])*progress,
+        from[2]+(to[2]-from[2])*progress);
+      const radius=Math.min(1.25,Math.max(low?.22:.16,edge.target.radius*1.12));
+      for(let layer=0;layer<2;layer++){
+        dummy.scale.setScalar(radius*(layer===0?.55:1.6));
+        dummy.updateMatrix();
+        instance.setMatrixAt(used,dummy.matrix);
+        tint.copy(edge.color).multiplyScalar(alpha*(layer===0?3.5:.85));
+        instance.setColorAt(used,tint);
+        used++;
+      }
+    }
+    instance.count=used;
+    instance.userData.reconnectGlow=maxGlow;
+    instance.instanceMatrix.needsUpdate=true;
+    if(instance.instanceColor)instance.instanceColor.needsUpdate=true;
+  };
+  useLayoutEffect(()=>{
+    if(mesh.current&&!mesh.current.instanceColor)mesh.current.setColorAt(0,new Color('#ffffff'));
+    update();
+  },[topology,settings,transition,matchesById,entrance,seconds]);
+  useFrame(update);
+  return <instancedMesh name="standby-reconnect-sparks" ref={mesh}
+    args={[undefined,undefined,topology.length*2]} count={0} frustumCulled={false} renderOrder={3}>
+    <sphereGeometry args={[1,low?6:10,low?4:8]}/>
+    <meshBasicMaterial color="#ffffff" transparent opacity={.94}
+      blending={AdditiveBlending} depthTest={false} depthWrite={false} toneMapped={false}/>
   </instancedMesh>;
 }
 
