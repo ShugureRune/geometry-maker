@@ -43,14 +43,21 @@ test('OFF preserves ordinary 3D, restores its camera/time and never overwrites n
   await toggle(page,true);await category(page,'装飾');await expect(page.locator('#network-width')).toHaveValue('2');expect(errors).toEqual([]);
 });
 
-/** Baseline checkout predates the optional reconnect flash preference.
- * Omit only that new JSON field when loading the exact same scene on base. */
+/** The unmodified baseline lacks newer standby and multi-seed hybrid keys.
+ * Strip only those unsupported settings for its reference import; the disabled
+ * hybrid has no effect on the actual ordinary 3D/VOID pixels being compared. */
 function referenceFixture(enabled=false){
   const original=fixture(enabled);
   const standby={...original.settings.standby} as NonNullable<typeof original.settings.standby>;
   delete (standby as Partial<typeof standby>).reconnectGlow;
   delete (standby as Partial<typeof standby>).reconnectIntensity;
-  return {...original,settings:{...original.settings,standby}};
+  const hybrid2D={...original.settings.hybrid2D} as NonNullable<typeof original.settings.hybrid2D>;
+  const legacyHybrid=hybrid2D as Partial<typeof hybrid2D>;
+  delete legacyHybrid.count;
+  delete legacyHybrid.spread;
+  delete legacyHybrid.layout;
+  delete legacyHybrid.variation;
+  return {...original,settings:{...original.settings,standby,hybrid2D}};
 }
 
 test('matches the base reference pixel-for-pixel for ordinary 3D and saved v1 VOID',async({page,browser})=>{
