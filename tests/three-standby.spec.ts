@@ -113,6 +113,46 @@ test('standby reconnect emission is visible with glow ON and disappears with OFF
   expect(on.equals(off)).toBe(false);
 });
 
+test('fully connected standby network emits one synchronized flash after the transition ends',async({page})=>{
+  await start(page);
+  await category(page,'装飾');
+  await page.getByRole('button',{name:'ネオンネットワーク',exact:true}).click();
+  const preview=page.getByTestId('three-preview');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-network-count'))).toBeGreaterThan(0);
+  await category(page,'アニメーション');
+  await page.locator('#three-standby-mode').selectOption('morph');
+  await page.locator('#three-standby-transition').fill('2');
+  const strength=page.locator('#three-standby-reconnect-intensity');
+  await expect(strength).toHaveValue('25');
+  // Watch the completed, fully connected scene; freeze the very first bright
+  // render rather than waiting for a Playwright click after the short pulse.
+  const freeze=page.waitForFunction(()=>{
+    const preview=document.querySelector('[data-testid="three-preview"]') as HTMLElement|null;
+    if(preview?.dataset.standbyActive!=='false'||
+      Number(preview.dataset.standbyCompletionFlash??0)<.07)return false;
+    const pause=Array.from(document.querySelectorAll('button')).find(b=>b.textContent?.trim()==='3Dを一時停止');
+    if(!pause)return false;
+    pause.click();
+    return true;
+  },undefined,{polling:'raf',timeout:15_000});
+  await page.getByRole('button',{name:'今すぐ次の3Dシードへ'}).click();
+  await freeze;
+  await expect(page.getByRole('button',{name:'3Dを再生',exact:true})).toBeVisible();
+  await expect(preview).toHaveAttribute('data-standby-active','false');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash'))).toBeGreaterThan(.01);
+  const bright=await preview.locator('canvas').screenshot();
+  // The strength slider gates both the per-wire spark and the full-network
+  // ignition; compare pixels at an identical paused camera/animation time.
+  await strength.fill('0');
+  await expect(preview).toHaveAttribute('data-standby-completion-flash','0.0000');
+  const dark=await preview.locator('canvas').screenshot();
+  expect(bright.equals(dark)).toBe(false);
+  await strength.fill('25');
+  await expect.poll(async()=>Number(await preview.getAttribute('data-standby-completion-flash'))).toBeGreaterThan(.01);
+  await page.getByRole('button',{name:'3Dを再生',exact:true}).click();
+  await expect(preview).toHaveAttribute('data-standby-completion-flash','0.0000',{timeout:5000});
+});
+
 test('3D standby settings roundtrip JSON, and legacy projects default safely off',async({page})=>{
   await start(page);
   await page.locator('#three-standby-mode').selectOption('exit-enter');
