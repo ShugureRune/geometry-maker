@@ -233,7 +233,19 @@ function generateNotes(part: Part, config: Config, sections: Section[], variatio
             return (Math.abs(left-target)+Math.abs(left-previous)*continuity)-
               (Math.abs(right-target)+Math.abs(right-previous)*continuity);
           });
-        const pitch=candidate[!accent&&config.complexity>65&&phraseBar===3&&rand()>.57?1:0]??candidate[0];
+        // Phrase endings resolve toward the current chord root or third,
+        // while ordinary notes retain their seed-selected melodic contour.
+        // Prefer a nearby chord tone: avoid octave leaps at every cadence.
+        const cadenceCandidates=cadence && !final
+          ? candidate.filter(p=>[harmony[0]%12,harmony[2]%12].includes(p%12))
+          : candidate;
+        const resolved=cadenceCandidates.length
+          ? [...cadenceCandidates].sort((a,b)=>
+              (Math.abs(a-previous)*.75+Math.abs(a-target)*.25)-
+              (Math.abs(b-previous)*.75+Math.abs(b-target)*.25))[0]
+          : candidate[0];
+        const pitch=cadence ? resolved :
+          (candidate[!accent&&config.complexity>65&&phraseBar===3&&rand()>.57?1:0]??candidate[0]);
         previous=pitch;
         const duration=final?BAR*.88:Math.max(1,
           onset(steps[i+1]??8)-onset(step)-(cadence?18:Math.round(110-70*blueprint.articulation)));
